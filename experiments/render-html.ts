@@ -8,7 +8,7 @@
  * 用法：node experiments/render-html.ts <log.jsonl> [-o out.html]
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderHtml } from "./lib/html.ts";
 

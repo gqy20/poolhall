@@ -3,8 +3,8 @@
  * 纯函数：JSONL rows → 单文件 HTML 字符串（数据内嵌，零外部依赖）。
  */
 import { C, FONT, PAGE_CSS } from "./style.ts";
-import { circle, el, line, polyline, svg, text } from "./svg.ts";
-import { shotCardSvg, type TableGeom, tableBase } from "./table-svg.ts";
+import { line, polyline, svg, text } from "./svg.ts";
+import { shotCardSvg, type TableGeom } from "./table-svg.ts";
 
 const TABLE_GEOM: TableGeom = {
   width: 1.9812,
@@ -118,12 +118,12 @@ function sparklineSvg(
 /** 单杆台面小卡（轨迹 + 意图线 + 预测线） */
 function trialCardSvg(shot: ShotRow): string {
   if (!shot.samples || shot.samples.length === 0) return "";
-  const cueSamples = shot.samples.map((s) => s.pos["cue"]).filter(Boolean);
-  const objSamples = shot.samples.map((s) => s.pos["1"] ?? s.pos["obj"]).filter(Boolean);
-  const cueInit = shot.samples[0]?.pos["cue"] ?? { x: 0, y: 0 };
-  const objInit = shot.samples[0]?.pos["1"] ?? shot.samples[0]?.pos["obj"] ?? { x: 0, y: 0 };
-  const objFinal = shot.finalBalls?.["1"] ?? shot.finalBalls?.["obj"] ?? objInit;
-  const cueFinal = shot.finalBalls?.["cue"] ?? cueInit;
+  const cueSamples = shot.samples.map((s) => s.pos.cue).filter(Boolean);
+  const objSamples = shot.samples.map((s) => s.pos["1"] ?? s.pos.obj).filter(Boolean);
+  const cueInit = shot.samples[0]?.pos.cue ?? { x: 0, y: 0 };
+  const objInit = shot.samples[0]?.pos["1"] ?? shot.samples[0]?.pos.obj ?? { x: 0, y: 0 };
+  const objFinal = shot.finalBalls?.["1"] ?? shot.finalBalls?.obj ?? objInit;
+  const cueFinal = shot.finalBalls?.cue ?? cueInit;
   const pocket = TABLE_GEOM.pockets.find((p) => p.id === shot.pottedPocket);
   const pot = Boolean(shot.pot);
 

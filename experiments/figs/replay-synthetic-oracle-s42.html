@@ -234,17 +234,17 @@ td.num { font-variant-numeric: tabular-nums; }
     const obj = s.samples.map(f=>f.pos['1']).filter(Boolean);
     const pot = s.pot;
     const html = window.__frame(cue, obj, pot);
-    main.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+viewBox+'" style="width:100%;height:auto;display:block">'+html+'</svg>';
+    main.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" style="width:100%;height:auto;display:block">${html}</svg>`;
   }
   // 静态渲染（无逐帧动画的 v1）
   window.__frame = (cue, obj, pot)=> (
-      '<polyline points="'+cue.map(p=>p.x.toFixed(4)+','+p.y.toFixed(4)).join(' ')+'" fill="none" stroke="#d9730d" stroke-width="0.003" stroke-linecap="round"/>' +
-      '<polyline points="'+obj.map(p=>p.x.toFixed(4)+','+p.y.toFixed(4)).join(' ')+'" fill="none" stroke="'+(pot?'#1b4d3e':'#b7402c')+'" stroke-width="0.0025"/>'
+      '<polyline points="'+cue.map(p=>`${p.x.toFixed(4)},${p.y.toFixed(4)}`).join(' ')+'" fill="none" stroke="#d9730d" stroke-width="0.003" stroke-linecap="round"/>' +
+      '<polyline points="'+obj.map(p=>`${p.x.toFixed(4)},${p.y.toFixed(4)}`).join(' ')+'" fill="none" stroke="'+(pot?'#1b4d3e':'#b7402c')+'" stroke-width="0.0025"/>'
     );
   document.querySelectorAll('.trial-card').forEach(card=>{
     card.addEventListener('click', ()=>{
       const id = card.id.replace('card-','t');
-      const shot = data.shots.find(s=>String('t'+s.trial)===id);
+      const shot = data.shots.find(s=>String(`t${s.trial}`)===id);
       if(shot) renderTrial(shot);
       window.scrollTo({top:0, behavior:'smooth'});
     });
