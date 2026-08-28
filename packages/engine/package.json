@@ -1,0 +1,16 @@
+{
+  "name": "@poolhall/engine",
+  "version": "0.0.1",
+  "description": "物理核：确定性、零依赖、零 I/O（docs/physics.md）",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  }
+}

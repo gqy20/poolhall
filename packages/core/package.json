@@ -1,0 +1,21 @@
+{
+  "name": "@poolhall/core",
+  "version": "0.0.1",
+  "description": "局/规则/手感系统/trial 协议/双层视图（docs/hand-model.md、docs/proto.md）",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@poolhall/engine": "workspace:*",
+    "pure-rand": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  }
+}

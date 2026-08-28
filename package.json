@@ -1,0 +1,24 @@
+{
+  "name": "poolhall",
+  "private": true,
+  "version": "0.0.0",
+  "description": "PoolHall · 让每个 AI 智能体拥有一双不完美的手",
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "test": "pnpm scan && vitest run && pnpm --filter './packages/*' test",
+    "scan": "node scripts/redline.ts",
+    "lint": "biome check --write .",
+    "typecheck": "tsc -p . && pnpm --filter './packages/*' typecheck"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@poolhall/cli": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

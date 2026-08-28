@@ -1,0 +1,19 @@
+# PoolHall monorepo（pnpm 10，docs/tech-stack.md §2/§3）
+# 版本唯一来源：catalog。包内引用一律写 "catalog:"，禁止手写版本号。
+packages:
+  - "packages/*"
+
+catalog:
+  # runtime（按需引入，依赖预算见 docs/tech-stack.md §2）
+  zod: "4.4.3"
+  pure-rand: "8.4.2"
+  commander: "15.0.0"
+  "@clack/prompts": "1.7.0"
+  ansis: "4.3.1"
+  # dev
+  typescript: "7.0.2"
+  "@types/node": "26.4.0"
+  vitest: "4.1.11"
+  fast-check: "4.9.0"
+  "@biomejs/biome": "2.5.11"
+  tsdown: "0.22.14"

@@ -96,12 +96,13 @@ engine 永远不 import core/cli/mcp；core 永远不 import cli/mcp。
 ## 6. 命令速查
 
 ```bash
-pnpm test            # 全部测试（engine/core/cli）
+pnpm test            # 红线扫描 + scripts 测试 + 各包测试
+pnpm scan            # 确定性红线扫描（engine 包）
 pnpm lint            # biome check --write（全部包）
+pnpm typecheck       # 根 + 各包 tsc --noEmit
 pnpm -F engine test  # 单包测试
-pnpm -F cli build    # cli 构建（发布用）
-node packages/engine/src/sim.ts        # dev 直跑 TS（type-stripping）
-node --watch packages/engine/src/sim.ts # watch 模式开发循环
+pnpm exec poolhall --version      # CLI 冒烟（bin 由 pnpm 链接）
+node packages/engine/src/index.ts # dev 直跑 TS（type-stripping）
 ```
 
 ## 7. 文档维护

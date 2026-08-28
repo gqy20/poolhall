@@ -1,0 +1,23 @@
+{
+  "name": "@poolhall/cli",
+  "version": "0.0.1",
+  "description": "薄壳：REPL/批量回放/调试/实验入口（docs/cli.md）",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "bin": {
+    "poolhall": "./src/main.ts"
+  },
+  "dependencies": {
+    "@poolhall/core": "workspace:*",
+    "@poolhall/engine": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  }
+}

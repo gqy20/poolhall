@@ -6,8 +6,8 @@
 ## 总览
 
 ```
-M0 骨架        可跑起来的空壳            ← 当前
-M1 物理核      球真的会按物理滚起来
+M0 骨架        可跑起来的空壳            ✅
+M1 物理核      球真的会按物理滚起来      ← 当前
 M2 手感系统    Agent 的手开始"背叛"它
 M3 第一条知行曲线   benchmark 立项的证明
 M4 渲染器      戏剧性画给人看（Godot / SVG）
@@ -19,13 +19,14 @@ M6 台球厅      常驻服务、对弈、江湖
 
 **目标**：pnpm monorepo 立起来，CI 红线生效。
 
-- [ ] pnpm-workspace.yaml + 四包（engine/core/cli/mcp 占位）
-- [ ] vitest + biome + tsconfig（ESM-only、strict）
-- [ ] `pnpm test` / `pnpm lint` 根脚本聚合
-- [ ] 确定性红线扫描脚本（engine 包文本扫描，进 CI）
-- [ ] `.gitignore`、`docs/` 入库、首个 commit（本文档系列）
+- [x] pnpm-workspace.yaml + 四包（engine/core/cli/mcp 占位）
+- [x] vitest + biome + tsconfig（ESM-only、strict）
+- [x] `pnpm test` / `pnpm lint` 根脚本聚合（另加 `pnpm scan` 红线扫描 / `pnpm typecheck`）
+- [x] 确定性红线扫描脚本（engine 包文本扫描，进 CI，含自身单测；埋雷验证通过：Math.random/Date.now/第三方 import 均被抓）
+- [x] `.gitignore`、`docs/` 入库、首个 commit（本文档系列）
+- [x] CLI bin 链接（`pnpm exec poolhall --version` 三路径冒烟通过）
 
-DoD：`pnpm install && pnpm test && pnpm lint` 全绿；红线扫描能抓到一个故意埋的 `Math.random` 样例。
+DoD：`pnpm install && pnpm test && pnpm lint` 全绿；红线扫描能抓到一个故意埋的 `Math.random` 样例。✅ 2026-08-28 验收通过
 
 ## M1 · 物理核（2 天）
 
@@ -112,4 +113,4 @@ DoD（每项独立）：对外可分享的榜单/对局回放页；至少一场"
 
 ## 变更记录
 
-- 2026-08-28 首次定稿
+- 2026-08-28 首次定稿；同日 M0 验收通过（红线埋雷验证 + 三路径 CLI 冒烟）

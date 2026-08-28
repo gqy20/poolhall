@@ -1,0 +1,20 @@
+{
+  "name": "@poolhall/mcp",
+  "version": "0.0.1",
+  "description": "MCP server 薄壳（后置，M5）：工具面与 CLI 1:1（docs/tech-stack.md）",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@poolhall/core": "workspace:*",
+    "@poolhall/engine": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  }
+}
