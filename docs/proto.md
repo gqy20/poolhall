@@ -1,9 +1,9 @@
 # 行协议与回放格式 · proto
 
-状态：草稿（2026-08-28）——**schema 定稿前不下 v0.1.0**；一旦定稿，破坏性变更必须升 schema 版本并迁移旧文件。
+状态：已定稿（2026-08-29）——实现先于文档冻结（M5 MCP 落地后所有数据通路已稳定）。**破坏性变更按 §5 流程升 schema 版本并迁移旧文件**。
 
 本文件定义两个契约：
-1. **行协议**（`--driver external` 的 stdin/stdout JSONL）——Agent 与壳的活接口
+1. **行协议**（JSONL，UTF-8，每行一个 JSON 对象）——Agent 与壳的活接口。CLI 不再开 `--driver external` flag；M5 起由 `@poolhall/mcp` stdio 链路承载同一份 schema。
 2. **回放格式**（`.phl` 事件日志）——确定性回放的持久契约，也是未来 Godot 前端的唯一输入
 
 ## 1. 行协议（JSONL，UTF-8，每行一个 JSON 对象）
@@ -92,3 +92,4 @@ schema 版本号只增不减。破坏性变更：升版本 → 写迁移脚本�
 ## 变更记录
 
 - 2026-08-28 草稿（待实现中验证后定稿）
+- 2026-08-29 定稿：M5 MCP 落地后，core/protocol.ts + views.ts AgentView 白名单 + mcp/tools.ts 双端 schema + cli/experiment.ts LLM 流程全部稳定。`actual`/`bias`/`optimal` 字段仅出现在 research 视图（mcp `--out` 与 experiment 日志），MCP 默认导出与 AgentView 严格隔离。

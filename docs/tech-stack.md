@@ -31,7 +31,7 @@ poolhall/
 |----|------------|------|
 | engine | **0** | pure-rand 放 core 层 |
 | core | **2** | zod v4、pure-rand |
-| cli | **≤6** | commander、@clack/prompts、ansis、core、engine（+ 后续按需） |
+| cli | **≤8** | commander、@clack/prompts、ansis、js-yaml、ai + @ai-sdk/anthropic、core、engine（M4 起 AI SDK 接入，理由见 §10） |
 | mcp（后置） | **≤3** | @modelcontextprotocol/server、core、engine |
 
 ## 3. 逐项选型（全部经 npm/PyPI 核实，2026-08-28）
@@ -109,3 +109,4 @@ poolhall/
 ## 变更记录
 
 - 2026-08-28 首次定稿
+- 2026-08-29 §2 依赖预算 cli 上限 6→8：M4 起接入 Vercel AI SDK（ai + @ai-sdk/anthropic）+ js-yaml 提示词资产，理由与评估存档见 §10

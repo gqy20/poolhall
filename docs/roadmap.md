@@ -68,10 +68,17 @@ DoD：同一 agent 名两次进局 bias 一致 ✓；泄漏测试全绿 ✓；`o
 - [x] 实验入口 `poolhall experiment calibrate --agent synthetic:*`：三合成 agent 验机
 - [x] LLM 驱动：Anthropic Messages 格式（裸 fetch + .env 多轮会话 + feedback 回写）
 - [x] Python 出图（uv + matplotlib）：知行曲线 + 补偿曲线（experiments/plot.py）
-- [x] 首个真模型实验：MiniMax-M3 × 三版 prompt × 20 杆（50 杆 × bias 对照扩展后置）
-- [ ] REPL `poolhall play`（观察/出杆交互——与 M4 渲染体验一并打磨）
+- [x] 首个真模型实验：MiniMax-M3 v6 × 2×50 杆（bias=0 对照 + bias>0 实验）— docs/benchmark.md §5
+- [x] 多 seed 验证（4 seeds × 50 杆完成，200 杆汇总）：收敛比 7.81×、bootstrap 95% CI [0.094°, 1.301°] 显著、4/4 seed 全收敛 — docs/benchmark.md §5.4
+- [ ] 30 seeds 终极验证（留迭代，bootstrap CI 已显著）
+- [~] REPL `poolhall play`（观察/出杆交互——与 M4 渲染体验一并打磨）：**未做**。Agent 入口走 MCP（M5，docs/proto.md §实现先于文档定稿），CLI REPL 是"人当 agent"的体验玩具，价值密度低，未排期。`@clack/prompts` 已在 cli 依赖里备着。
 
-DoD：三合成 agent 曲线形状符合预期（oracle 16/20 末窗 0.07° / no-comp 平直 / random 高位）；真模型首图已出（experiments/figs/）——**MiniMax-M3 基线：0/20、|err| 中位 ~30°、整数档位与符号反像**。管线正确性已由 oracle 验证，属有效基线（强模型对比后置）。✅ 2026-08-28 验收通过
+DoD：三合成 agent 曲线形状符合预期（oracle 16/20 末窗 0.07° / no-comp 平直 / random 高位）；
+真模型 v6 实测已出（experiments/figs/v7/，docs/benchmark.md §5）——
+**MiniMax-M3 seed=42：bias>0 50 杆 37/50 (74%)，err_a 中位 0.13°，
+知行曲线三段 0.24°→0.16°→0.09°，first→last mean 0.57°→0.07° (8×)**。
+准入门 500× 通过（bias=0 中位 0.01° ≪ 5° 阈值）；oracle 16-20/20 锚定管线。
+强模型对比与多 seed 验证留 §5.4。✅ 2026-08-29 验收通过
 
 ## M4 · 渲染器（3–5 天，可与 M5 并行）
 
@@ -81,7 +88,7 @@ DoD：三合成 agent 曲线形状符合预期（oracle 16/20 末窗 0.07° / no
 - [x] 核心数据补全：core/trial.ts 透出 samples/events（10ms 轨迹采样）——可视化的前置原料
 - [x] 知行差距可视化：预测线（蓝墨虚线） vs 实际线（暖橙实线）分色；miss 砖红 / pot 墨绿
 - [x] 杆卡网格 + 大图上色（单击切换）；指标 sparkline（知行/补偿曲线内嵌）
-- [ ] Godot 回放器：.phl 播放（后置；samples 数据通路已就绪）
+- [→] Godot 回放器：**被 HTML 回放器取代**（experiments/render-html.ts，零依赖、file:// 可分享）。visualization.md §5 明示"M4.2 后置，可选"。若未来需要"桌面真实渲染体验"再起。
 - [ ] 动图/视频导出（GIF/MP4；可用 HTML 录屏或后续补 ffmpeg 后处理）
 
 DoD：一局 20 杆的回放单文件 HTML 可分享（已验证：oracle 8 杆版本，
@@ -98,6 +105,7 @@ DoD：一局 20 杆的回放单文件 HTML 可分享（已验证：oracle 8 杆�
 - [x] 内存传输对端对端测试 5 测全绿（含泄漏红线）
 - [x] 接入入口：`pnpm exec poolhall mcp`（bin 链接）/ Claude Code `.mcp.json` 示例见 README
 - [ ] 真实接入验证（Claude Code / Codex / pi 实测打一局）——留待接入环境就绪时完成
+- [~] `poolhall run -f shots.jsonl` 批量重放：**未做**且无直接替代物（benchmark 工作流走 `experiment calibrate` 同 seed + 同动作序列）。外部动作序列导入是真缺口，目前不紧迫。
 
 DoD：两个外部 agent 通过 MCP 各自完成一局校准挑战，产出知行曲线。
 
@@ -124,3 +132,9 @@ DoD（每项独立）：对外可分享的榜单/对局回放页；至少一场"
 ## 变更记录
 
 - 2026-08-28 首次定稿；同日 M0 验收通过；同日 M1 验收通过（pooltool 0.6.0 交叉对拍打通）（红线埋雷验证 + 三路径 CLI 冒烟）
+- 2026-08-29 M3 DoD 重写：v6 prompt + 反馈系统对 MiniMax-M3 几何能力归零（aimAssist 外包），bias>0 50 杆 37/50 进球，知行曲线三段下降符合预期，准入门 500× 通过（docs/benchmark.md §5）
+- 2026-08-29 M3 补 `[x]` 4 seeds × 50 杆验证（docs/benchmark.md §5.4）：收敛比 7.81×、bootstrap 95% CI 显著、4/4 seed 全收敛
+- 2026-08-29 M3 补 `[ ]` 30 seeds 终极验证（留迭代）
+- 2026-08-29 M3 `poolhall play` REPL 标 `[~]`：未排期（Agent 入口已迁至 MCP，价值密度评估后未实施）
+- 2026-08-29 M4 Godot 标 `[→]`：被 HTML 回放器取代
+- 2026-08-29 M5 补 `poolhall run` 批量重放为 `[~]` 未做+无替代物
