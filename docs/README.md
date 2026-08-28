@@ -7,7 +7,8 @@
 | [hand-model.md](hand-model.md) | 手感系统：噪声公式、默认参数、RNG 流、防泄漏红线 | 已定稿 |
 | [cli.md](cli.md) | CLI 命令面、REPL、实验 harness、出图规范 | 已定稿 |
 | [proto.md](proto.md) | 行协议（JSONL）与回放格式（.phl）契约 | 草稿（实现期验证） |
-| [roadmap.md](roadmap.md) | 里程碑 M0–M6、每阶段完成定义（DoD）、节奏与止损线 | 已定稿 |
+| [benchmark.md](benchmark.md) | 校准挑战协议、信噪比公理与准入门（2×50 杆实证） | 已定稿 |
+| [roadmap.md](roadmap.md) | 里程碑 M0–M6、每阶段完成定义（DoD）、节奏与止损线 | 已定稿 | 里程碑 M0–M6、每阶段完成定义（DoD）、节奏与止损线 | 已定稿 |
 
 规范类见根目录 [AGENTS.md](../AGENTS.md)；项目愿景见 [README.md](../README.md)。
 
