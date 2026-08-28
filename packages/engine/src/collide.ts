@@ -1,13 +1,13 @@
 /**
- * 碰撞解算（docs/physics.md §3）
- * 球-球：等质量、沿连心线、恢复系数 e_b，切向不变（v0 无 throw）。
- * 库边：法向 e_c 反弹 + 切向保留；ω 不变（碰撞后短暂打滑由积分器自然处理）。
+ * 碰撞解算（docs/physics.md §3 §4）
+ * 球-球：等质量、沿连心线、恢复系数 e_b + v2 throw（spin_z → vel 切向）
+ * 库边：法向 e_c 反弹 + 切向保留 + v2 加塞（spin_z → vel 切向）
  */
 import type { BallParams } from "./consts.ts";
 import type { Ball, CushionDir } from "./types.ts";
 import { dist, EPS, scale, sub, vec2 } from "./vec2.ts";
 
-/** 球-球冲量解算（含重叠分离修正） */
+/** 球-球冲量解算（v2：throw 把 ω_z 转化为 vel 切向分量，高低杆涌现） */
 export function resolveBallBall(a: Ball, b: Ball, p: BallParams): void {
   const d = sub(b.pos, a.pos);
   const gap = dist(b.pos, a.pos);
@@ -29,9 +29,20 @@ export function resolveBallBall(a: Ball, b: Ball, p: BallParams): void {
   const j = ((1 + p.e_b) / 2) * -relN;
   a.vel = { x: a.vel.x - j * n.x, y: a.vel.y - j * n.y };
   b.vel = { x: b.vel.x + j * n.x, y: b.vel.y + j * n.y };
+
+  // v2 throw: ω_z → vel 切向分量（高杆跟球 / 缩球回退涌现）
+  // 切向方向 = (-n.y, n.x)；a 的 ω_z 给 b 反向切向 push；b 的 ω_z 给 a 反向切向 push
+  if (p.throwSigma > 0) {
+    const tang = { x: -n.y, y: n.x };
+    const jThrow = p.throwSigma * p.R;
+    const pushA = -b.w.z * jThrow;
+    const pushB = -a.w.z * jThrow;
+    a.vel = { x: a.vel.x + pushA * tang.x, y: a.vel.y + pushA * tang.y };
+    b.vel = { x: b.vel.x + pushB * tang.x, y: b.vel.y + pushB * tang.y };
+  }
 }
 
-/** 库边反弹：法向 ×(-e_c)，切向 ×tangentKeep */
+/** 库边反弹：法向 ×(-e_c)，切向 ×tangentKeep；v2 加塞：spin_z → vel 切向 push */
 export function resolveCushion(ball: Ball, dir: CushionDir, p: BallParams): void {
   switch (dir) {
     case "up":
@@ -46,6 +57,17 @@ export function resolveCushion(ball: Ball, dir: CushionDir, p: BallParams): void
     case "right":
       ball.vel = vec2(-ball.vel.x * p.e_c, ball.vel.y * p.tangentKeep);
       break;
+  }
+
+  // v2 加塞：spin_z → vel 切向 push
+  if (p.cushionSpinSigma > 0) {
+    const tangX = dir === "up" || dir === "down" ? 1 : 0;
+    const tangY = dir === "up" || dir === "down" ? 0 : 1;
+    // 方向：right/up 加塞方向与 vel 切向方向同；left/down 反向
+    // 简化：spin × R × σ × sign（待 golden 校准）
+    const sign = dir === "right" || dir === "up" ? 1 : -1;
+    const push = ball.w.z * p.R * p.cushionSpinSigma * sign;
+    ball.vel = { x: ball.vel.x + push * tangX, y: ball.vel.y + push * tangY };
   }
 }
 

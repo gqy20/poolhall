@@ -4,7 +4,7 @@
  * 上游为 Dr. Dave（billiards.colostate.edu）物理参数页。
  */
 
-/** 球物理参数（v0：spin 相关量仅记录，ω_z 冻结；v1 解冻 u_sp） */
+/** 球物理参数（v0：spin 相关量仅记录，ω_z 冻结；v1 解冻 u_sp；v2 解冻 throw） */
 export interface BallParams {
   /** 质量 kg */
   m: number;
@@ -22,6 +22,10 @@ export interface BallParams {
   e_c: number;
   /** 库边切向保留系数（f_c=0.2 的简化折算） */
   tangentKeep: number;
+  /** 球-球 spin→vel 切向转化系数（v2 throw；0=v0 行为；参考 pooltool Mathavan 简化） */
+  throwSigma: number;
+  /** 库边 spin→vel 切向转化系数（v2 加塞） */
+  cushionSpinSigma: number;
   /** 重力 m/s² */
   g: number;
 }
@@ -35,6 +39,8 @@ export const DEFAULT_BALL: BallParams = {
   e_b: 0.95,
   e_c: 0.85,
   tangentKeep: 0.9,
+  throwSigma: 0.05, // v2: 球-球 spin→vel 切向（实验值，待 golden 校准）
+  cushionSpinSigma: 0.08, // v2: 库边 spin→vel 切向（加塞，实验值）
   g: 9.81,
 };
 

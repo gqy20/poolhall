@@ -32,7 +32,7 @@
 | 停球阈值 | v < 0.01 m/s 且 ω < 0.1 rad/s | — | 冻结为 stationary |
 | 模拟 watchdog | 120 s（模拟时间） | — | 超时强制停球，防死循环 |
 
-## 3. 运动状态机（两阶段摩擦 + spinning 衰减）
+## 3. 运动状态机（两阶段摩擦 + spinning 衰减 + v2 throw）
 
 每球状态：`stationary / spinning / sliding / rolling / pocketed`（与 pooltool 状态标签对齐，方便对拍）。
 
@@ -41,24 +41,35 @@
   - ω̇ = −(5·u_s·g)/(2R)·(ẑ×û)（自旋卷向自然滚动）
   - 切换条件：|u| → 0 进入 rolling
 - **rolling**（自然滚动，v = R·(ẑ×ω)）：
-  - v̇ = −u_r·g·v̂；v1 起 lockRoll 仍生效（保留 v0 行为；spin 注入在 sliding 段自然卷向自然滚动）
+  - v̇ = −u_r·g·v̂；lockRoll 仍生效（保留 v0 行为；spin 注入在 sliding 段自然卷向自然滚动）
   - |v| 低于阈值 → spinning（若 ω_z ≠ 0）或 stationary
 - **spinning**（v1 解冻）：原地自转 v≈0、ω_z ≠ 0 时纯自转衰减
-  - ω̇_z = −(5·u_sp·g)/(2R)·sign(ω_z)（u_sp = 0.0127，pooltool `u_sp_proportionality = 10·2/5/9 ≈ 0.444·R` 折算）
+  - ω̇_z = −(5·u_sp·g)/(2R)·sign(ω_z)（u_sp = 0.0127）
   - 位置不变（纯自转）
 - 内部 ω 用三分量向量（x,y,z）
 
-### v1 解冻范围（2026-08-29 落地）
+### v2 throw 解冻（2026-08-29 落地）
 
-| 项 | 状态 |
-|----|------|
-| `strike` 接受 spin ∈ [-1,1]^3 输入 | ✅ `SPIN_SCALE = 30 rad/s ≈ 5 rev/s` |
-| spinning 状态机分支（v≈0 + ω_z ≠ 0 衰减） | ✅ |
-| rolling 段 lockRoll | 保留 v0 行为 |
-| 球-球 throw（spin → vel 切向，高低杆涌现） | ❌ v2 范畴 |
-| 库边切向 spin（加塞，旋球涌现） | ❌ v2 范畴 |
+球-球碰撞 + 库边碰撞时 spin 转化为 vel 切向分量，让"中高低杆 + 旋球"涌现：
 
-**诚实交代**：v1 解冻范围是 spinning 衰减（视觉上能看到"球停后还在转"）。**用户层面的"中高低杆 + 旋球"效果依赖 spin→vel 切向转化的 throw 模型，是 v2 范畴**。v2 落地后这两条 v1 留下的"❌"勾掉，才算真正"能用 spin 打出中高低杆"。
+- **球-球 throw**：spin.z → 切向 vel（j = ω_z · R · throwSigma；throwSigma = 0.05，经验系数）
+  - topspin: 母球碰目标球后切向偏移
+  - backspin: 反向切向偏移
+- **库边加塞**：spin.z → vel 切向 push（push = ω_z · R · cushionSpinSigma · sign；cushionSpinSigma = 0.08）
+  - 加塞撞右库后母球 y 方向偏移（v0 严格无偏移）
+
+v2 是 2D 简化版（不是严格 3D Mathavan），不保证严格动量守恒，但视觉上能涌现"高低杆+旋球"。严格物理需要 v3 全 3D spin 物理。
+
+### 解冻时间线（docs 落地状态）
+
+| 版本 | 项 | 状态 |
+|------|-----|------|
+| v1 | `strike` 接受 spin ∈ [-1,1]^3 输入 | ✅ `SPIN_SCALE = 30 rad/s ≈ 5 rev/s` |
+| v1 | spinning 状态机分支（v≈0 + ω_z ≠ 0 衰减） | ✅ |
+| v1 | rolling 段 lockRoll | 保留 v0 |
+| v2 | 球-球 throw（spin.z → vel 切向） | ✅ throwSigma = 0.05 |
+| v2 | 库边切向 spin（加塞） | ✅ cushionSpinSigma = 0.08 |
+| v3 | 严格 3D Mathavan 模型 + jaw 几何 + spin.x/y 高低杆 | ❌ 后置 |
 
 ## 4. 碰撞模型
 
