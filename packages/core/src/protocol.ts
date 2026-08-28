@@ -45,6 +45,13 @@ export const ObservationMsg = z.object({
   targetPocket: z.string(),
   balls: z.array(z.object({ id: z.string(), x: z.number(), y: z.number() })),
   pockets: z.array(z.object({ id: z.string(), x: z.number(), y: z.number() })),
+  aimAssist: z
+    .object({
+      ghost: z.object({ x: z.number(), y: z.number() }),
+      suggestedAngle: z.number(),
+      cutAngleDeg: z.number(),
+    })
+    .optional(),
 });
 
 /** 服务 → Agent：出杆结果 */

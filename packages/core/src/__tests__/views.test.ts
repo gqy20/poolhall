@@ -8,6 +8,7 @@ describe("泄漏红线（docs/hand-model.md §6）", () => {
     const obs = s.observe();
     const keys = Object.keys(obs).sort();
     expect(keys).toEqual([
+      "aimAssist",
       "balls",
       "kind",
       "pockets",
@@ -17,6 +18,7 @@ describe("泄漏红线（docs/hand-model.md §6）", () => {
       "trialCount",
     ]);
     for (const b of obs.balls) expect(Object.keys(b).sort()).toEqual(["id", "x", "y"]);
+    expect(Object.keys(obs.aimAssist!).sort()).toEqual(["cutAngleDeg", "ghost", "suggestedAngle"]);
   });
 
   it("100 局 × 全部 trial 的观察 JSON 不含任何禁词（含漂移后的 bias 数值）", () => {

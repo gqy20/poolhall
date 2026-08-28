@@ -1,13 +1,15 @@
 /**
- * LLM agent 会话（AI SDK 驱动，M4 反馈规范化）
+ * LLM agent 会话（AI SDK 驱动 + v6 接口：aimAt 点坐标 + Reflexion 账本记忆）
  *
- * 用 generateText + messages 数组替代手写会话管理（交替约束/回滚全部交给 SDK）。
- * provider 用 createAnthropic({ baseURL })——兼容 ~/.mini 式 Anthropic 兼容端点；
- * 换 OpenAI 兼容模型 = 换 provider 一行（M5 多模型对战的扩展点）。
+ * 输出契约：模型给"瞄向点 (aimX, aimY)"，边界层换算出杆角——
+ * atan2/符号/象限/浮点整化三类错误在接口层结构性消除。
  *
- * 结构化输出演进位：generateObject({ schema: ShotOutput })（zod，core 契约复用）——
- * v5 先保持 text + parseShotJson（部分兼容端点对 tool/object 模式支持不齐）。
+ * 日志规范：两套体系分职责——
+ *   1) stderr 结构化调试日志（llmLog，JSON 行；POOLHALL_DEBUG=1 时含原文预览）：
+ *      充分利用 AI SDK 自带的 result.finishReason / result.usage（onStep 数据）；
+ *   2) 研究数据走 experiment.ts 的 JSONL 文件，stderr 不掺数据。
  */
+
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,12 +17,20 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import type { AgentObserve } from "@poolhall/core";
 import { generateText, type LanguageModel, type ModelMessage } from "ai";
 import { parseShotJson } from "./parser.ts";
-import { PROMPT_VERSION, renderFeedback, renderShotRequest, SYSTEM_PROMPT } from "./prompt.ts";
+import {
+  type LedgerRow,
+  PROMPT_VERSION,
+  renderFeedback,
+  renderShotRequest,
+  SYSTEM_PROMPT,
+} from "./prompt.ts";
 
 export interface LlmConfig {
   baseUrl: string;
   apiKey: string;
   model: string;
+  maxTokens?: number;
+  temperature?: number;
 }
 
 /** 解析仓库根 .env（支持 export 前缀与注释）；文件值优先于继承的 shell env */
@@ -55,16 +65,23 @@ export const configFromEnv = (): LlmConfig => {
   };
 };
 
-/** usage 摘要（每次请求入研究日志，token 成本可审计） */
-export interface LlmUsageRecord {
-  promptTokens?: number;
-  completionTokens?: number;
-  finishReason?: string;
+/** 结构化调试日志（stderr JSON 行；POOLHALL_DEBUG=1 时带模型原文预览） */
+const DEBUG = process.env.POOLHALL_DEBUG === "1";
+export function llmLog(event: string, data: Record<string, unknown>): void {
+  console.error(JSON.stringify({ ts: new Date().toISOString(), event, ...data }));
+}
+
+/** 出一杆的归一结果（aimAt 含"模型瞄的点"；仅 angle 兼容时为 null） */
+export interface ShotAndAim {
+  angle: number;
+  power: number;
+  aimAt: { x: number; y: number } | null;
 }
 
 export class LlmAgentSession {
   private messages: Array<ModelMessage> = [];
   private pendingFeedback: string | null = null;
+  private ledger: Array<LedgerRow> = [];
   private usageTotal = { prompt: 0, completion: 0 };
   private model: LanguageModel;
 
@@ -86,53 +103,103 @@ export class LlmAgentSession {
     return PROMPT_VERSION;
   }
 
-  /** 出一杆：观察 + 挂起反馈 → SDK 消息流（交替由追加顺序保证） */
-  async shot(obs: AgentObserve): Promise<{ angle: number; power: number } | null> {
+  /** 出一杆：观察(XML+账本) → 模型 → 解析 → aimAt→angle 边界换算 */
+  async shot(obs: AgentObserve): Promise<ShotAndAim | null> {
     this.messages.push({
       role: "user",
-      content: renderShotRequest(obs, this.pendingFeedback),
+      content: renderShotRequest(obs, this.pendingFeedback, this.ledger),
     });
     this.pendingFeedback = null;
 
     for (let retry = 0; retry < 2; retry++) {
+      const t0 = Date.now();
       try {
         const result = await generateText({
           model: this.model,
           system: SYSTEM_PROMPT,
           messages: this.messages,
           temperature: 0,
-          maxOutputTokens: 1024,
+          maxOutputTokens: 2048,
         });
+        const u = result.usage;
+        const latency = Date.now();
         const text = result.text ?? "";
-        const shot = parseShotJson(text);
-        if (shot) {
-          this.messages.push({ role: "assistant", content: text });
-          const u = result.usage;
-          this.usageTotal.prompt += u?.inputTokens ?? 0;
-          this.usageTotal.completion += u?.outputTokens ?? 0;
-          return shot;
-        }
-        // 无法解析：把原样回复留在会话里，显式纠偏一条 user
-        this.messages.push({ role: "assistant", content: text.slice(0, 800) });
-        this.messages.push({
-          role: "user",
-          content: '（无法解析。只输出一行 JSON：{"angle": <度数>, "power": <0到1>}）',
+        llmLog("llm.response", {
+          trial: obs.trial,
+          finishReason: result.finishReason,
+          tokensIn: u?.inputTokens ?? 0,
+          tokensOut: u?.outputTokens ?? 0,
+          textLen: text.length,
+          messageCount: this.messages.length,
+          latencyHint: process.env.POOLHALL_DEBUG ? Date.now() - t0 : undefined,
+          preview: DEBUG ? text.slice(0, 200) : undefined,
         });
+
+        const parsed = parseShotJson(text);
+        if (!parsed) {
+          this.messages.push({ role: "assistant", content: text.slice(0, 800) });
+          this.messages.push({
+            role: "user",
+            content:
+              '（无法解析。最后一行只输出：{"aimX": <瞄点x>, "aimY": <瞄点y>, "power": <0~1>}）',
+          });
+          llmLog("llm.parse_fail", { trial: obs.trial });
+          continue;
+        }
+
+        this.messages.push({ role: "assistant", content: text });
+        this.usageTotal.prompt += u?.inputTokens ?? 0;
+        this.usageTotal.completion += u?.outputTokens ?? 0;
+
+        const aim = this.aimOf(obs, { ...parsed, power: Number(parsed.power ?? 0) });
+        llmLog("llm.parsed", { trial: obs.trial, aim, aimAssist: obs.aimAssist?.suggestedAngle });
+        return aim;
       } catch (e) {
-        console.error(`[llm] 调用失败（${retry + 1}/2）: ${(e as Error).message}`);
+        llmLog("llm.call_error", {
+          trial: obs.trial,
+          error: (e as Error).message.slice(0, 200),
+          retry: retry + 1,
+        });
         await new Promise((r) => setTimeout(r, 1000));
       }
     }
+    llmLog("llm.give_up", { trial: obs.trial });
     return null;
   }
 
-  /** 结果反馈（渲染集中在 prompt.ts；挂起到下一杆的 user 消息） */
+  /** aimAt 点 → 出杆角（atan2/符号/象限唯一集中地） */
+  private aimOf(
+    obs: AgentObserve,
+    parsed: { aimX?: number; aimY?: number; angle?: number; power: number },
+  ): ShotAndAim {
+    const cue = obs.balls.find((b) => b.id === "cue");
+    const power = Math.min(1, Math.max(0, parsed.power));
+    if (cue && Number.isFinite(parsed.aimX) && Number.isFinite(parsed.aimY)) {
+      return {
+        angle: (Math.atan2(-(parsed.aimY! - cue.y), parsed.aimX! - cue.x) * 180) / Math.PI,
+        power,
+        aimAt: { x: parsed.aimX!, y: parsed.aimY! },
+      };
+    }
+    return { angle: Number(parsed.angle), power, aimAt: null };
+  }
+
+  /** 结果反馈 + 账本追加（账本随下一杆重放——"回忆"载体） */
   feedback(
     potted: boolean,
     pottedPocket: string | null,
     finalBalls: Array<{ id: string; x: number; y: number }>,
     missDesc: string | null = null,
+    ledgerRow?: Omit<LedgerRow, "sideNote"> & { sideNote?: string | null },
   ): void {
+    if (ledgerRow) {
+      this.ledger.push({ ...ledgerRow, sideNote: missDesc } as LedgerRow);
+    }
     this.pendingFeedback = renderFeedback(potted, pottedPocket, finalBalls, missDesc);
+  }
+
+  /** 会话账本快照（research 日志用） */
+  get ledgerSnapshot(): Array<LedgerRow> {
+    return [...this.ledger];
   }
 }

@@ -16,8 +16,16 @@ export interface AgentObserve {
   score: number;
   targetPocket: string;
   balls: Array<{ id: string; x: number; y: number }>;
-  /** 六袋坐标（公开台面几何，jiù 非隐藏状态；帮助 agent 免记袋位映射） */
+  /** 六袋坐标（公开台面几何，非隐藏状态；帮助 agent 免记袋位映射） */
   pockets: Array<{ id: string; x: number; y: number }>;
+  /** 几何参考（公开物理量，README 原文"它算得出完美轨迹"——几何属于"知"层）：
+   *  目标袋的 ghost 瞄点位与切角。agent 可采用、可修正（手感补偿时必须偏离它） */
+  aimAssist?: {
+    ghost: { x: number; y: number };
+    /** 直接采用 ghost 且零偏差时的出杆角（度，屏幕系） */
+    suggestedAngle: number;
+    cutAngleDeg: number;
+  };
 }
 
 /** Agent 出杆载荷（与 docs/proto.md §1.2 对齐） */
@@ -41,6 +49,12 @@ export interface ResearchShot {
 }
 
 /** AgentView 构造（唯一入口；白名单） */
+export interface AimAssist {
+  ghost: { x: number; y: number };
+  suggestedAngle: number;
+  cutAngleDeg: number;
+}
+
 export function agentObserve(
   trial: number,
   trialCount: number,
@@ -48,8 +62,9 @@ export function agentObserve(
   targetPocket: string,
   balls: Array<{ id: string; x: number; y: number }>,
   pockets: Array<{ id: string; x: number; y: number }> = [],
+  aimAssist?: AimAssist,
 ): AgentObserve {
-  return { kind: "observe", trial, trialCount, score, targetPocket, balls, pockets };
+  return { kind: "observe", trial, trialCount, score, targetPocket, balls, pockets, aimAssist };
 }
 
 /** 全量禁词（泄漏扫描测试用，docs/hand-model.md §6） */

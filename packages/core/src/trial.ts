@@ -1,13 +1,16 @@
 /**
  * 校准挑战 trial 协议（docs/hand-model.md §4 / docs/benchmark.md §1）
  *
- * 布局约束：目标球距选定袋 0.6–1.2m、母球距目标球 0.4–0.9m、切角 ≤ 40°、无遮挡。
+ * 布局约束：目标球距选定袋 0.5–1.0m、母球距目标球 0.3–0.7m、切角 ≤ 25°、无遮挡。
  * 由计数器 RNG 生成（单 trial 可独立重放）；切角直接由生成几何控制。
+ * 观察含 aimAssist（公开几何参考：ghost 位/建议角/切角）——"知"层可计算是 README
+ * 的设计本意，benchmark 测的是手感校准（"行"），不是三角心算。
  */
 import {
   type Ball,
   buildTable,
   DEFAULT_BALL,
+  ghostPos,
   makeBall,
   norm,
   simulate,
@@ -41,7 +44,7 @@ function rot(v: Vec2, deg: number): Vec2 {
   return vec2(v.x * c - v.y * s, v.x * s + v.y * c);
 }
 
-/** 生成第 index 个 trial 的清朗直局（单函数 ≤60 行） */
+/** 生成第 index 个 trial 的清朗布局（约束见文件头；64 次重抽兜底） */
 function genLayout(table: Table, g: ReturnType<typeof streamOf>): TrialLayout {
   const R = DEFAULT_BALL.R;
   for (let attempt = 0; attempt < 64; attempt++) {
@@ -55,9 +58,9 @@ function genLayout(table: Table, g: ReturnType<typeof streamOf>): TrialLayout {
       y: pocket.center.y + dirToObj.y * objDist,
     };
     if (!inBounds(objPos, table, R * 3)) continue;
-    // 母球：ghost 位后方锥内；切角 ≤25°（碰撞圆杠杆下大切角是"真实难"，控难度带宽）
+    // 母球：ghost 位后方锥内；中心距（cue↔obj）硬约束 0.3–0.7m，超界重抽
     const back = norm(sub(objPos, pocket.center)); // 袋 → 球
-    const ghost = { x: objPos.x + back.x * 2 * R, y: objPos.y + back.y * 2 * R };
+    const ghost = vec2(objPos.x + back.x * 2 * R, objPos.y + back.y * 2 * R);
     const cutDeg = rangeDot(g, -25, 25);
     const cueDir = rot(back, rangeDot(g, -5, 5));
     const cueDist = rangeDot(g, 0.25, 0.55);
@@ -65,9 +68,7 @@ function genLayout(table: Table, g: ReturnType<typeof streamOf>): TrialLayout {
       x: ghost.x + cueDir.x * cueDist,
       y: ghost.y + cueDir.y * cueDist,
     };
-    // 中心距收口：|cue−obj| ∈ [0.3, 0.7]（由切角实际几何决定，超界重抽）
     const cd = Math.hypot(cuePos.x - objPos.x, cuePos.y - objPos.y);
-    if (cueDist * cueDist < 1e-9) continue;
     if (cd < 0.3 || cd > 0.7) continue;
     if (!inBounds(cuePos, table, R * 3)) continue;
     return {
@@ -131,6 +132,9 @@ export class CalibSession {
 
   /** Agent 视图观察（白名单字段 + 断言无泄漏） */
   observe(): AgentObserve {
+    const target = this.table.pockets.find((pk) => pk.id === this.layout.pocketId)!;
+    const R = DEFAULT_BALL.R;
+    const suggested = solvePot(this.layout.cue.pos, this.layout.obj.pos, target.center, R);
     const obs = agentObserve(
       this.idx,
       this.trialCount,
@@ -142,6 +146,13 @@ export class CalibSession {
         y: b.pos.y,
       })),
       this.table.pockets.map((pk) => ({ id: pk.id, x: pk.center.x, y: pk.center.y })),
+      suggested === null
+        ? undefined
+        : {
+            ghost: ghostPos(this.layout.obj.pos, target.center, R),
+            suggestedAngle: suggested,
+            cutAngleDeg: this.layout.cutAngle,
+          },
     );
     return obs;
   }
@@ -193,3 +204,7 @@ export class CalibSession {
     return { score: this.score, trialCount: this.trialCount, records: this.records };
   }
 }
+
+// ghostOf：与 engine 的 ghostPos 同式（此处直接引出，避免重复实现漂移）
+const ghostOf = (obj: Vec2, pocket: Vec2): Vec2 => ghostPos(obj, pocket, DEFAULT_BALL.R);
+void sub;

@@ -139,12 +139,15 @@ export async function runCalibrate(opts: RunOpts): Promise<RunSummary> {
   while (!session.finished) {
     const obs = session.observe();
     let intent: { angle: number; power: number } | null;
+    let aimAt: { x: number; y: number } | null = null;
     if (llm) {
-      intent = await llm.shot(obs);
-      if (!intent) {
+      const d = await llm.shot(obs);
+      if (!d) {
         console.error("[llm] 本局中断（连续解析失败/调用失败）");
         break;
       }
+      intent = { angle: d.angle, power: d.power };
+      aimAt = d.aimAt;
     } else {
       intent = strategy!(obs, {
         cuePos: session.currentLayout.cue.pos,
@@ -154,7 +157,7 @@ export async function runCalibrate(opts: RunOpts): Promise<RunSummary> {
         bias: biasAtShot(session.hand, session.trial, session.seed, session.agent),
       });
     }
-    // shoot 前缓存引用（shoot 后 layout 换下一 trial）
+    // shoot 前缓存引用（shoot 后 layout 换下一 trial）；aimAt 由 LLM agent 返回
     const objInit = obs.balls.find((b) => b.id === "1") ?? { id: "1", x: 0, y: 0 };
     const pocketPt = obs.pockets.find((pk) => pk.id === obs.targetPocket) ?? { x: 0, y: 0 };
 
