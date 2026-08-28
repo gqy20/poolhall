@@ -76,6 +76,8 @@ export interface ShotAndAim {
   angle: number;
   power: number;
   aimAt: { x: number; y: number } | null;
+  /** v7 spin：模型输出的 spin ∈ [-1,1]^3；undefined 表示 v6 行为（全 0） */
+  spin: { x: number; y: number; z: number };
 }
 
 export class LlmAgentSession {
@@ -141,7 +143,7 @@ export class LlmAgentSession {
           this.messages.push({
             role: "user",
             content:
-              '（无法解析。最后一行只输出：{"aimX": <瞄点x>, "aimY": <瞄点y>, "power": <0~1>}）',
+              '（无法解析。最后一行只输出：{"aimX": <瞄点x>, "aimY": <瞄点y>, "power": <0~1>, "spin": [<x>, <y>, <z>]}）',
           });
           llmLog("llm.parse_fail", { trial: obs.trial });
           continue;
@@ -170,18 +172,20 @@ export class LlmAgentSession {
   /** aimAt 点 → 出杆角（atan2/符号/象限唯一集中地） */
   private aimOf(
     obs: AgentObserve,
-    parsed: { aimX?: number; aimY?: number; angle?: number; power: number },
+    parsed: { aimX?: number; aimY?: number; angle?: number; power: number; spin?: { x: number; y: number; z: number } },
   ): ShotAndAim {
     const cue = obs.balls.find((b) => b.id === "cue");
     const power = Math.min(1, Math.max(0, parsed.power));
+    const spin = parsed.spin ?? { x: 0, y: 0, z: 0 };
     if (cue && Number.isFinite(parsed.aimX) && Number.isFinite(parsed.aimY)) {
       return {
         angle: (Math.atan2(-(parsed.aimY! - cue.y), parsed.aimX! - cue.x) * 180) / Math.PI,
         power,
         aimAt: { x: parsed.aimX!, y: parsed.aimY! },
+        spin,
       };
     }
-    return { angle: Number(parsed.angle), power, aimAt: null };
+    return { angle: Number(parsed.angle), power, aimAt: null, spin };
   }
 
   /** 结果反馈 + 账本追加（账本随下一杆重放——"回忆"载体） */

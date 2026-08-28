@@ -15,6 +15,7 @@ export interface LedgerRow {
   trial: number;
   aim: { x: number; y: number };
   angleUsed: number;
+  spinUsed: { x: number; y: number; z: number } | null;
   potted: boolean;
   pottedPocket: string | null;
   sideNote: string | null;
@@ -129,6 +130,7 @@ export function renderLedgerBlock(rows: LedgerRow[]): string {
     a.ledger.row
       .replace("{trial}", String(r.trial + 1))
       .replace("{aim}", `(${r.aim.x.toFixed(3)}, ${r.aim.y.toFixed(3)})`)
+      .replace("{spin}", r.spinUsed ? `[${r.spinUsed.x.toFixed(2)},${r.spinUsed.y.toFixed(2)},${r.spinUsed.z.toFixed(2)}]` : "[0,0,0]")
       .replace("{angle}", r.angleUsed.toFixed(2))
       .replace(
         "{outcome}",

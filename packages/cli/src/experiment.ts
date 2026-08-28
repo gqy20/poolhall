@@ -140,7 +140,7 @@ export async function runCalibrate(opts: RunOpts): Promise<RunSummary> {
 
   while (!session.finished) {
     const obs = session.observe();
-    let intent: { angle: number; power: number } | null;
+    let intent: { angle: number; power: number; spin?: { x: number; y: number; z: number } } | null;
     let _aimAt: { x: number; y: number } | null = null;
     if (llm) {
       const d = await llm.shot(obs);
@@ -148,7 +148,7 @@ export async function runCalibrate(opts: RunOpts): Promise<RunSummary> {
         console.error("[llm] 本局中断（连续解析失败/调用失败）");
         break;
       }
-      intent = { angle: d.angle, power: d.power };
+      intent = { angle: d.angle, power: d.power, spin: d.spin };
       _aimAt = d.aimAt;
     } else {
       intent = strategy!(obs, {
@@ -164,16 +164,28 @@ export async function runCalibrate(opts: RunOpts): Promise<RunSummary> {
     const pocketPt = obs.pockets.find((pk) => pk.id === obs.targetPocket) ?? { x: 0, y: 0 };
 
     const rec = session.shoot(intent);
-    log(opts.out, { kind: "shot", seed: opts.seed, agent: opts.agentName, ...stripRec(rec) });
+    log(opts.out, { kind: "shot", seed: opts.seed, agent: opts.agentName, ...stripRec(rec), intentSpin: intent.spin ?? null });
 
     const objFinal = rec.finalPos["1"];
     const missDesc = !rec.pot && objFinal ? missNarrative(objInit, pocketPt, objFinal) : null;
-    llm?.feedback(
-      rec.pot,
-      rec.pottedPocket,
-      Object.entries(rec.finalPos).map(([id, p]) => ({ id, ...p })),
-      missDesc,
-    );
+    if (llm) {
+      // v7 spin: ledger 记录 spinUsed；feedback 推下一杆的 prompt
+      llm.feedback(
+        rec.pot,
+        rec.pottedPocket,
+        Object.entries(rec.finalPos).map(([id, p]) => ({ id, ...p })),
+        missDesc,
+        {
+          trial: rec.trial,
+          aim: _aimAt ?? { x: 0, y: 0 },
+          angleUsed: rec.intent.angle,
+          spinUsed: intent.spin ?? null,
+          potted: rec.pot,
+          pottedPocket: rec.pottedPocket,
+          sideNote: null,
+        },
+      );
+    }
   }
 
   const r = session.result();
