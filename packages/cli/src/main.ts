@@ -137,6 +137,7 @@ program
   .option("--seeds <list>", "逗号分隔种子", "42")
   .option("--trials <n>", "每局杆数", "20")
   .option("--bias0", "对照组：消除身份 bias", false)
+    .option("--bias-set <deg>", "强制注入指定 bias（度，正右偏）")
   .option("--out <file>", "研究日志 JSONL 输出", "experiments/results/calib.jsonl")
   .action(
     async (opts: {
@@ -145,6 +146,7 @@ program
       seeds: string;
       trials: string;
       bias0: boolean;
+      biasSet?: string;
       out: string;
     }) => {
       const seeds = parseSeeds(opts.seeds);
@@ -155,7 +157,7 @@ program
           agentName: opts.agentName ?? opts.agent.replaceAll(":", "-"),
           seed,
           trials,
-          biasOverride: opts.bias0 ? 0 : undefined,
+          biasOverride: opts.bias0 ? 0 : opts.biasSet !== undefined ? Number(opts.biasSet) : undefined,
           out: opts.out,
         };
         const r = await runCalibrate(o);
