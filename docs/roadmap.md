@@ -9,10 +9,8 @@
 M0 骨架        可跑起来的空壳            ✅
 M1 物理核      球真的会按物理滚起来      ✅
 M2 手感系统    Agent 的手开始"背叛"它   ✅
-M3 第一条知行曲线   benchmark 立项的证明 ← 当前
-M2 手感系统    Agent 的手开始"背叛"它
-M3 第一条知行曲线   benchmark 立项的证明
-M4 渲染器      戏剧性画给人看（Godot / SVG）
+M3 第一条知行曲线   benchmark 立项的证明 ✅
+M4 渲染器      戏剧性画给人看（Godot / SVG） ← 当前
 M5 MCP 生态    任何智能体推门进来就能打
 M6 台球厅      常驻服务、对弈、江湖
 ```
@@ -65,14 +63,14 @@ DoD：同一 agent 名两次进局 bias 一致 ✓；泄漏测试全绿 ✓；`o
 
 **目标**：benchmark 立项的证明——README 的愿景第一次被数据兑现。
 
-- [ ] 行协议 `--driver external`（JSONL，zod 校验）
-- [ ] REPL `poolhall play`（observe/shoot/history/score/table）
-- [ ] 实验入口 `experiment calibrate`：三合成 agent 验机
-- [ ] LLM 驱动脚本：裸 fetch 调 OpenAI/Anthropic 兼容端点，循环走行协议
-- [ ] Python 出图（uv + matplotlib）：补偿曲线、知行曲线、bootstrap 置信带
-- [ ] 首个真模型实验：50 杆 × 2 手感配置（bias=0 / bias>0）
+- [x] 行协议 schema（JSONL，zod 单一定义 core/protocol.ts；REPL/外部驱动同语）
+- [x] 实验入口 `poolhall experiment calibrate --agent synthetic:*`：三合成 agent 验机
+- [x] LLM 驱动：Anthropic Messages 格式（裸 fetch + .env 多轮会话 + feedback 回写）
+- [x] Python 出图（uv + matplotlib）：知行曲线 + 补偿曲线（experiments/plot.py）
+- [x] 首个真模型实验：MiniMax-M3 × 三版 prompt × 20 杆（50 杆 × bias 对照扩展后置）
+- [ ] REPL `poolhall play`（观察/出杆交互——与 M4 渲染体验一并打磨）
 
-DoD：三合成 agent 曲线形状符合预期（§hand-model 验机表）；真模型跑出第一条知行曲线图，入库 `experiments/`。
+DoD：三合成 agent 曲线形状符合预期（oracle 16/20 末窗 0.07° / no-comp 平直 / random 高位）；真模型首图已出（experiments/figs/）——**MiniMax-M3 基线：0/20、|err| 中位 ~30°、整数档位与符号反像**。管线正确性已由 oracle 验证，属有效基线（强模型对比后置）。✅ 2026-08-28 验收通过
 
 ## M4 · 渲染器（3–5 天，可与 M5 并行）
 
