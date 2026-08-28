@@ -4,9 +4,9 @@
  * --agent synthetic:oracle|no-comp|random   进程内合成 agent（零成本验机）
  * --agent llm                               走 Anthropic 兼容端点（真模型，会话式多轮）
  *
- * 输出：JSONL 研究日志（meta + 每杆三元组 + summary），出图交给 experiments/plot。
- * LLM 会话构成：observe(user) → shot(assistant) → feedback+下杆 observe(user)…
- * 反馈只用 AgentView 字段（进球与否/目标球终点），无 bias 提示（docs/hand-model.md §6）。
+ * 输出：JSONL 研究日志（meta + 每杆三元组 + summary），出图交给 experiments/plot.py。
+ * LLM 会话：observe(user) → shot(assistant) → 反馈(user，含横向偏差可读描述) → 下一杆。
+ * 反馈只用 AgentView 字段（进没进/目标球终点/横向偏了多少球径），无 bias 提示（红线）。
  */
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
@@ -28,7 +28,7 @@ const R = DEFAULT_BALL.R;
 export interface RunOpts {
   /** "synthetic:oracle" | "synthetic:no-comp" | "synthetic:random" | "llm" */
   agent: string;
-  /** 身份名（SQLite / 日志 key；llm 时建议带模型名） */
+  /** 身份名（SQLite / 日志 key） */
   agentName: string;
   seed: number;
   trials: number;
@@ -65,7 +65,7 @@ function pickStrategy(agent: string): {
   throw new Error(`未知 agent 规格: ${agent}`);
 }
 
-/** AgentView → 观察串（LLM 输入用；字段即 AgentObserve 白名单） */
+/** AgentView → 观察串（LLM 输入；字段即 AgentObserve 白名单） */
 export function renderObserve(obs: AgentObserve): string {
   return JSON.stringify(obs);
 }
@@ -91,7 +91,31 @@ function stripRec(r: ResearchShot): Record<string, unknown> {
   };
 }
 
-/** 跑一整局：合成 agent 零成本 / llm 会话式多轮；产出研究日志 */
+/**
+ * miss 偏差的球手可读渲染（AgentView 合规：只描述"结果"，绝不含 optimal/bias）。
+ * 以"目标球初始位 → 袋心"连线为轴：垂向偏移（左/右，球径数）+ 沿轴差。
+ */
+function missNarrative(
+  objInit: { x: number; y: number },
+  pocket: { x: number; y: number },
+  final: { x: number; y: number },
+): string {
+  const ux = pocket.x - objInit.x;
+  const uy = pocket.y - objInit.y;
+  const len = Math.hypot(ux, uy) || 1;
+  const uxN = ux / len;
+  const uyN = uy / len;
+  const dx = final.x - objInit.x;
+  const dy = final.y - objInit.y;
+  const along = dx * uxN + dy * uyN;
+  const side = dx * -uyN + dy * uxN; // >0 = 轴左侧（屏幕系）
+  const balls = (m: number): string => `${(Math.abs(m) / (2 * R)).toFixed(1)} 球径`;
+  return side > 0
+    ? `横向偏左 ${balls(side)}，距袋心沿瞄准线还差 ${balls(len - along)}`
+    : `横向偏右 ${balls(side)}，距袋心沿瞄准线还差 ${balls(len - along)}`;
+}
+
+/** 跑一整局；产出研究日志 */
 export async function runCalibrate(opts: RunOpts): Promise<RunSummary> {
   const { strategy, isLlm, display } = pickStrategy(opts.agent);
   const session = new CalibSession({
@@ -130,12 +154,20 @@ export async function runCalibrate(opts: RunOpts): Promise<RunSummary> {
         bias: biasAtShot(session.hand, session.trial, session.seed, session.agent),
       });
     }
+    // shoot 前缓存引用（shoot 后 layout 换下一 trial）
+    const objInit = obs.balls.find((b) => b.id === "1") ?? { id: "1", x: 0, y: 0 };
+    const pocketPt = obs.pockets.find((pk) => pk.id === obs.targetPocket) ?? { x: 0, y: 0 };
+
     const rec = session.shoot(intent);
     log(opts.out, { kind: "shot", seed: opts.seed, agent: opts.agentName, ...stripRec(rec) });
+
+    const objFinal = rec.finalPos["1"];
+    const missDesc = !rec.pot && objFinal ? missNarrative(objInit, pocketPt, objFinal) : null;
     llm?.feedback(
       rec.pot,
       rec.pottedPocket,
       Object.entries(rec.finalPos).map(([id, p]) => ({ id, ...p })),
+      missDesc,
     );
   }
 

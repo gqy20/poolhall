@@ -44,6 +44,7 @@ export const ObservationMsg = z.object({
   score: z.number().int().nonnegative(),
   targetPocket: z.string(),
   balls: z.array(z.object({ id: z.string(), x: z.number(), y: z.number() })),
+  pockets: z.array(z.object({ id: z.string(), x: z.number(), y: z.number() })),
 });
 
 /** 服务 → Agent：出杆结果 */

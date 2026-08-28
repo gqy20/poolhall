@@ -16,6 +16,8 @@ export interface AgentObserve {
   score: number;
   targetPocket: string;
   balls: Array<{ id: string; x: number; y: number }>;
+  /** 六袋坐标（公开台面几何，jiù 非隐藏状态；帮助 agent 免记袋位映射） */
+  pockets: Array<{ id: string; x: number; y: number }>;
 }
 
 /** Agent 出杆载荷（与 docs/proto.md §1.2 对齐） */
@@ -45,8 +47,9 @@ export function agentObserve(
   score: number,
   targetPocket: string,
   balls: Array<{ id: string; x: number; y: number }>,
+  pockets: Array<{ id: string; x: number; y: number }> = [],
 ): AgentObserve {
-  return { kind: "observe", trial, trialCount, score, targetPocket, balls };
+  return { kind: "observe", trial, trialCount, score, targetPocket, balls, pockets };
 }
 
 /** 全量禁词（泄漏扫描测试用，docs/hand-model.md §6） */

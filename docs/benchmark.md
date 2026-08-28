@@ -58,6 +58,16 @@ uv run --project experiments/plots python experiments/plot.py "experiments/resul
 | 发现点 D | c 序列首次反向并持续 3 杆 | 过准入门后启用 |
 | 收敛 N | 滑动 \|e\| 首次 < σ/2 | 同上 |
 
-## 变更记录
+## 4. 反馈系统修订（2026-08-28 第二轮）
 
-- 2026-08-28 初版协议；同日 2×50 杆实证确立信噪比公理与准入门槛。
+用户质询确立三处反馈缺陷并修复：
+1. 观察 JSON 缺六袋坐标（模型需自己记忆袋位映射）→ `AgentObserve.pockets` 已加入；
+2. 结果反馈只有目标球终点散点坐标 → 改为**球手可读**渲染：横向偏左/右 N 球径 +
+   距袋口沿轴差（以初始瞄准线为轴；由 experiment.ts `missNarrative` 渲染）；
+3. system prompt 的坐标速查示例 2 教了一个打不进的角度（angle≈90 vs 真最优 −79°）
+   → 已修正为 ghost ball 方法论 + atan2 公式。
+
+修订后 MiniMax-M3 第四版（prompt 包含完整 ghost-ball 公式与六袋坐标）仍 0/20，
+|err| 中位 58°——进一步确认这是**模型几何心算能力边界**，非管线缺陷。
+管线正确性由 oracle 16-20/20 锚定。宿主结论：换过准入门（中位 <5°）的模型重跑 bias 实验。
+

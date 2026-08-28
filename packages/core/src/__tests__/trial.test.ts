@@ -79,6 +79,7 @@ describe("oracle 验机（M2 DoD）", () => {
           score: 0,
           targetPocket: L.pocketId,
           balls: [],
+          pockets: [],
         },
         info,
       );
@@ -101,17 +102,13 @@ describe("oracle 验机（M2 DoD）", () => {
       while (!s.finished) {
         const L = s.currentLayout;
         const bias = biasAtShot(s.hand, s.trial, s.seed, s.agent);
-        const d = oracleStrategy(
-          {
-            kind: "observe",
-            trial: s.trial,
-            trialCount: s.trialCount,
-            score: s.result().score,
-            targetPocket: L.pocketId,
-            balls: [],
-          },
-          { cuePos: L.cue.pos, objPos: L.obj.pos, pocketCenter: L.pocketCenter, R, bias },
-        );
+        const d = oracleStrategy(s.observe(), {
+          cuePos: L.cue.pos,
+          objPos: L.obj.pos,
+          pocketCenter: L.pocketCenter,
+          R,
+          bias,
+        });
         s.shoot(d);
       }
       const r = s.result();
@@ -133,6 +130,7 @@ describe("oracle 验机（M2 DoD）", () => {
           score: 0,
           targetPocket: L.pocketId,
           balls: [],
+          pockets: [],
         },
         { cuePos: L.cue.pos, objPos: L.obj.pos, pocketCenter: L.pocketCenter, R, bias: 0 },
       );

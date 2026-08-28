@@ -7,7 +7,15 @@ describe("泄漏红线（docs/hand-model.md §6）", () => {
     const s = new CalibSession({ seed: 42, agent: "leak-test" });
     const obs = s.observe();
     const keys = Object.keys(obs).sort();
-    expect(keys).toEqual(["balls", "kind", "score", "targetPocket", "trial", "trialCount"]);
+    expect(keys).toEqual([
+      "balls",
+      "kind",
+      "pockets",
+      "score",
+      "targetPocket",
+      "trial",
+      "trialCount",
+    ]);
     for (const b of obs.balls) expect(Object.keys(b).sort()).toEqual(["id", "x", "y"]);
   });
 

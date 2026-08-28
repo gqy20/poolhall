@@ -141,6 +141,7 @@ export class CalibSession {
         x: b.pos.x,
         y: b.pos.y,
       })),
+      this.table.pockets.map((pk) => ({ id: pk.id, x: pk.center.x, y: pk.center.y })),
     );
     return obs;
   }
