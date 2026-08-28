@@ -15,13 +15,18 @@ actual_spin  = intent_spin  · (1 + ε_spin),   ε_spin  ~ N(0, spin_sigma)   �
 
 ## 2. 参数与默认值
 
+> **重要（碰撞圆杠杆）**：瞄准误差 ε 经过碰撞圆几何放大为目标球出射偏差 φ ≈ ε·L/2R
+> （L=母球距目标球，2R≈0.057m）。L=0.7m 时放大约 12×：σ=0.05° 的手抖，在目标球
+> 出射方向上是 0.6°。真实台球大切角难打的物理本质即此。默认值按此量级校准：
+> 单杆噪声不主导（小于容差窗 5 倍以上），系统偏差大到可被多杆统计发现（但不是一杆就能肉眼看出）。
+
 | 参数 | 默认 | 说明 |
 |------|------|------|
-| `systematic_bias` | ±[0.5°, 2°]（方向由种子决定） | **戏眼**。Agent 不知道方向与大小 |
-| `angle_sigma` | 0.3° | 随机抖动。1m 直线球可进袋容差约 ±1.5°，bias 造成系统性 miss 而 sigma 不会——考运气与考反思分离 |
-| `power_sigma` | 0.05 | |
+| `systematic_bias` | ±[0.05°, 0.2°]（方向由种子决定） | **戏眼**。Agent 不知道方向与大小；放大 ~12× 后等效中远台 0.6–2.4° 系统偏差 |
+| `angle_sigma` | 0.02–0.08° | 随机抖动；单杆不主导，多杆统计才能分离出 bias |
+| `power_sigma` | 0.02–0.05 | |
 | `spin_sigma` | 0.1 | v1 |
-| `bias_drift` | OU 过程 σ=0.1°/10杆 | 局内缓慢漂移；跨局由身份种子重置到"人格均值" |
+| `bias_drift` | OU 过程 σ=0.03°/杆，κ=0.02 | 局内缓慢漂移；跨局由身份种子重置到"人格均值" |
 | `hand_style` | 由身份种子生成的性格向量 | 见 §4 |
 
 所有噪声采样用**计数器型 RNG**（pure-rand）：第 k 杆噪声 = f(seed, agent_id, k)。
@@ -37,7 +42,7 @@ actual_spin  = intent_spin  · (1 + ε_spin),   ε_spin  ~ N(0, spin_sigma)   �
 
 "固定 20 杆"不固定球局（球局会被上一杆改写），用**独立 trial 序列**：
 
-1. `place_layout(seed, k)` 为第 k 个 trial 生成清朗局面：目标球距袋 0.6–1.2m、母球距目标球 0.4–0.9m、切角 ≤ 40°、无遮挡
+1. `place_layout(seed, k)` 为第 k 个 trial 生成清朗局面：目标球距袋 0.5–1.0m、母球距目标球 0.3–0.7m、切角 ≤ 25°、无遮挡（碰撞圆杠杈下较窄的难度带宽；实现约束见 packages/core/src/trial.ts）
 2. Agent：观察 →（可选预测）→ 出杆一次
 3. 进球 +1；无论结果换下一 trial。共 N=20（可配）
 4. 秘密记录三元组：`{ intent_θ_k, optimal_θ*_k, actual_θ'_k }`（optimal 由 solve_pot 算出，永不给 Agent）
@@ -80,7 +85,7 @@ actual_spin  = intent_spin  · (1 + ε_spin),   ε_spin  ~ N(0, spin_sigma)   �
 规则：
 1. `take_shot` 返回值只含**结果观察**，禁止出现实际角度/力度
 2. hand model 状态只活在 server 侧（SQLite），不进任何 agent 可读输出/日志/报错
-3. 双层分离的实现放 core 包同一模块（`views.ts`）：`agentView(state)` / `researchView(state)`，静态导出两个纯函数——泄漏检测测试：随机生成 100 局，断言 agentView 输出序列化后不含 actual/bias/optimal 任何子串
+3. 双层分离的实现放 core 包同一模块（`views.ts`）：`agentView(state)` / `researchView(state)`，静态导出两个纯函数——泄漏检测测试：随机生成 100 局，断言 agentView 输出序列化后不含禁词（bias/sigma/actual/optimal/drift/hand/noise）
 
 ## 7. 开放问题
 
@@ -90,4 +95,6 @@ actual_spin  = intent_spin  · (1 + ε_spin),   ε_spin  ~ N(0, spin_sigma)   �
 
 ## 变更记录
 
-- 2026-08-28 首次定稿
+- 2026-08-28 首次定稿；实现时发现碰撞圆杠杈（σ 被几何放大约 L/2R≈12×），
+  默认参数重新校准（bias ±[0.05°,0.2°]、σ∈[0.02°,0.08°]、切角带宽 ≤25°）；
+  oracle DoD 达成

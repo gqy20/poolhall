@@ -8,7 +8,8 @@
 ```
 M0 骨架        可跑起来的空壳            ✅
 M1 物理核      球真的会按物理滚起来      ✅
-M2 手感系统    Agent 的手开始"背叛"它   ← 当前
+M2 手感系统    Agent 的手开始"背叛"它   ✅
+M3 第一条知行曲线   benchmark 立项的证明 ← 当前
 M2 手感系统    Agent 的手开始"背叛"它
 M3 第一条知行曲线   benchmark 立项的证明
 M4 渲染器      戏剧性画给人看（Godot / SVG）
@@ -46,14 +47,19 @@ DoD：直线球/切角球/吃库/进袋四场景 golden 全绿；`render` 肉眼
 
 **目标**：注入层成型，泄漏防线就位。
 
-- [ ] Hand model（bias/sigma/drift + OU 漂移）+ 计数器型 RNG（pure-rand）
-- [ ] 身份种子：`hash(server_seed, name)` → bias（跨局肌肉记忆）
-- [ ] trial 协议：`place_layout` 生成清朗局面，N=20 可配
-- [ ] 双层视图：`agentView` / `researchView` + 泄漏检测测试（100 局随机断言）
-- [ ] `debug hand` / `debug solve`（research 专用）
-- [ ] SQLite 持久化（node:sqlite）：agent 身份、战绩、hand model 状态
+- [x] Hand model（bias/sigma/drift + OU 漂移）+ 计数器型 RNG（pure-rand）
+- [x] 身份种子：`hash(server_seed, name)` → bias（跨局肌肉记忆）
+- [x] trial 协议：`place_layout` 生成清朗局面，N=20 可配
+- [x] 双层视图：`agentView` / `researchView` + 泄漏检测测试（100 局随机断言）
+- [x] `debug hand` / `debug solve`（research 专用）
+- [x] SQLite 持久化（node:sqlite）：agent 身份、战绩、hand model 状态
 
-DoD：同一 agent 名两次进局 bias 一致；泄漏测试全绿；`oracle` 合成 agent 稳定 90%+ 进球率。
+DoD：同一 agent 名两次进局 bias 一致 ✓；泄漏测试全绿 ✓；`oracle` 合成 agent 稳定 90%+ 进球率（实测 >95%）✅ 2026-08-28 验收通过
+
+> 实现修正：碰撞圆杠杈（瞄准误差 ε → 目标球出射 φ≈ε·L/2R 放大 ~12×）便得 docs 原默认
+> σ=0.3°/bias ±2°过大，已重新校准（bias ±[0.05°,0.2°]、σ∈[0.02°,0.08°]、
+> trial 切角带宽 ≤25°）。碰撞圆杠杆本身是真实物理（大切角难打的本质），
+> 已写入 docs/hand-model.md §2。
 
 ## M3 · 第一条知行曲线（1 天）⭐ 里程碑
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { CORE_VERSION } from "@poolhall/core";
+import { biasAtShot, CalibSession, CORE_VERSION } from "@poolhall/core";
 import {
   type Ball,
   buildTable,
@@ -61,7 +61,9 @@ program
     const balls: Ball[] = [];
     for (const part of opts.balls.split(";")) {
       const [id, xy] = part.split(":");
-      const [x, y] = (xy ?? "0,0").split(",").map(Number);
+      const nums = (xy ?? "0,0").split(",").map(Number);
+      const x = nums[0] ?? 0;
+      const y = nums[1] ?? 0;
       if (id && Number.isFinite(x) && Number.isFinite(y)) {
         balls.push(makeBall(id, vec2(x, y)));
       }
@@ -116,6 +118,40 @@ program
     console.log(`fnv1a32 = ${h.toString(16).padStart(8, "0")}`);
     console.log(`bytes = ${serialized.length}`);
   });
+
+program
+  .command("debug")
+  .description("research 视图专用（绝不可能用于 Agent 输入，docs/hand-model.md §6）")
+  .addCommand(
+    new Command("hand")
+      .description("查看某 agent 的隐藏手感参数（跨局记忆 + 本局特性）")
+      .requiredOption("--agent <name>", "agent 身份名")
+      .option("--seed <n>", "server 种子", "42")
+      .option("--trials <n>", "预演杆数", "20")
+      .action((opts: { agent: string; seed: string; trials: string }) => {
+        const seed = Number(opts.seed);
+        const session = new CalibSession({
+          seed,
+          agent: opts.agent,
+          trialCount: Number(opts.trials),
+        });
+        const h = session.hand;
+        console.log(`agent: ${opts.agent}  server_seed: ${seed}`);
+        console.log(`  bias_base  = ${h.biasBase.toFixed(4)}°  （身份偏差，跨局稳定）`);
+        console.log(`  angle_σ    = ${h.angleSigma.toFixed(4)}°`);
+        console.log(`  power_σ    = ${h.powerSigma.toFixed(4)}`);
+        console.log(`  drift      = κ=${h.driftKappa} σ=${h.driftSigma}°`);
+        // 预演若干杆的漂移轨迹（research 用途）
+        const rows: string[] = [];
+        for (let k = 0; k <= Math.min(10, Number(opts.trials)); k++) {
+          rows.push(
+            `    b(${String(k).padStart(2)}) = ${biasAtShot(h, k, seed, opts.agent).toFixed(4)}°`,
+          );
+        }
+        console.log("  bias 漂移轨迹（OU 闭式）:");
+        console.log(rows.join("\n"));
+      }),
+  );
 
 void CORE_VERSION;
 void ENGINE_VERSION;
