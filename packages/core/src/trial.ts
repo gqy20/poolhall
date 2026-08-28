@@ -206,5 +206,5 @@ export class CalibSession {
 }
 
 // ghostOf：与 engine 的 ghostPos 同式（此处直接引出，避免重复实现漂移）
-const ghostOf = (obj: Vec2, pocket: Vec2): Vec2 => ghostPos(obj, pocket, DEFAULT_BALL.R);
+const _ghostOf = (obj: Vec2, pocket: Vec2): Vec2 => ghostPos(obj, pocket, DEFAULT_BALL.R);
 void sub;

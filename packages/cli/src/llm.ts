@@ -19,10 +19,10 @@ import { generateText, type LanguageModel, type ModelMessage } from "ai";
 import { parseShotJson } from "./parser.ts";
 import {
   type LedgerRow,
-  PROMPT_VERSION,
+  promptFingerprint,
   renderFeedback,
   renderShotRequest,
-  SYSTEM_PROMPT,
+  systemPrompt,
 } from "./prompt.ts";
 
 export interface LlmConfig {
@@ -100,7 +100,7 @@ export class LlmAgentSession {
   }
 
   get promptVersion(): string {
-    return PROMPT_VERSION;
+    return promptFingerprint().version;
   }
 
   /** 出一杆：观察(XML+账本) → 模型 → 解析 → aimAt→angle 边界换算 */
@@ -116,13 +116,13 @@ export class LlmAgentSession {
       try {
         const result = await generateText({
           model: this.model,
-          system: SYSTEM_PROMPT,
+          system: systemPrompt(),
           messages: this.messages,
           temperature: 0,
           maxOutputTokens: 2048,
         });
         const u = result.usage;
-        const latency = Date.now();
+        const _latency = Date.now();
         const text = result.text ?? "";
         llmLog("llm.response", {
           trial: obs.trial,

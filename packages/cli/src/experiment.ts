@@ -139,7 +139,7 @@ export async function runCalibrate(opts: RunOpts): Promise<RunSummary> {
   while (!session.finished) {
     const obs = session.observe();
     let intent: { angle: number; power: number } | null;
-    let aimAt: { x: number; y: number } | null = null;
+    let _aimAt: { x: number; y: number } | null = null;
     if (llm) {
       const d = await llm.shot(obs);
       if (!d) {
@@ -147,7 +147,7 @@ export async function runCalibrate(opts: RunOpts): Promise<RunSummary> {
         break;
       }
       intent = { angle: d.angle, power: d.power };
-      aimAt = d.aimAt;
+      _aimAt = d.aimAt;
     } else {
       intent = strategy!(obs, {
         cuePos: session.currentLayout.cue.pos,

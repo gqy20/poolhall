@@ -18,7 +18,8 @@
     "@poolhall/core": "workspace:*",
     "@poolhall/engine": "workspace:*",
     "ai": "^7.0.83",
-    "commander": "catalog:"
+    "commander": "catalog:",
+    "js-yaml": "catalog:"
   },
   "devDependencies": {
     "vitest": "catalog:"
