@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@poolhall/core": "workspace:*",
-    "@poolhall/engine": "workspace:*"
+    "@poolhall/engine": "workspace:*",
+    "commander": "catalog:"
   },
   "devDependencies": {
     "vitest": "catalog:"

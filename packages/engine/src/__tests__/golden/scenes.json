@@ -1,0 +1,384 @@
+[
+  {
+    "name": "straight",
+    "desc": "直线球",
+    "setup": {
+      "balls": [
+        {
+          "id": "cue",
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "id": "1",
+          "x": 1.2,
+          "y": 0.5
+        }
+      ],
+      "shot": {
+        "angle": 0,
+        "power": 0.5
+      }
+    },
+    "expect": {
+      "stopReason": "stopped",
+      "simTime": 5.974,
+      "finals": [
+        {
+          "id": "cue",
+          "x": 1.351915,
+          "y": 0.5,
+          "pocketed": false,
+          "pocket": null
+        },
+        {
+          "id": "1",
+          "x": 1.619532,
+          "y": 0.5,
+          "pocketed": false,
+          "pocket": null
+        }
+      ],
+      "events": [
+        {
+          "t": 0.156983,
+          "kind": "ball-ball",
+          "a": "cue",
+          "b": "1"
+        },
+        {
+          "t": 0.36377,
+          "kind": "ball-cushion",
+          "a": "1",
+          "cushion": "right"
+        },
+        {
+          "t": 0.601608,
+          "kind": "ball-ball",
+          "a": "cue",
+          "b": "1"
+        },
+        {
+          "t": 1.266696,
+          "kind": "ball-cushion",
+          "a": "cue",
+          "cushion": "left"
+        },
+        {
+          "t": 3.791313,
+          "kind": "ball-ball",
+          "a": "cue",
+          "b": "1"
+        }
+      ]
+    }
+  },
+  {
+    "name": "cut",
+    "desc": "切角球",
+    "setup": {
+      "balls": [
+        {
+          "id": "cue",
+          "x": 0.6,
+          "y": 0.5
+        },
+        {
+          "id": "1",
+          "x": 1.3,
+          "y": 0.4
+        }
+      ],
+      "shot": {
+        "angle": 6.5,
+        "power": 0.5
+      }
+    },
+    "expect": {
+      "stopReason": "stopped",
+      "simTime": 4.425,
+      "finals": [
+        {
+          "id": "cue",
+          "x": 1.563338,
+          "y": 0.403146,
+          "pocketed": false,
+          "pocket": null
+        },
+        {
+          "id": "1",
+          "x": 0,
+          "y": 0.9906,
+          "pocketed": true,
+          "pocket": "lb"
+        }
+      ],
+      "events": [
+        {
+          "t": 0.159644,
+          "kind": "ball-ball",
+          "a": "cue",
+          "b": "1"
+        },
+        {
+          "t": 0.376624,
+          "kind": "ball-cushion",
+          "a": "1",
+          "cushion": "right"
+        },
+        {
+          "t": 0.405538,
+          "kind": "ball-cushion",
+          "a": "1",
+          "cushion": "up"
+        },
+        {
+          "t": 0.774585,
+          "kind": "ball-cushion",
+          "a": "cue",
+          "cushion": "down"
+        },
+        {
+          "t": 1.180236,
+          "kind": "ball-cushion",
+          "a": "cue",
+          "cushion": "right"
+        },
+        {
+          "t": 1.7134,
+          "kind": "pocket",
+          "a": "1",
+          "pocket": "lb"
+        }
+      ]
+    }
+  },
+  {
+    "name": "cushion",
+    "desc": "吃库反弹",
+    "setup": {
+      "balls": [
+        {
+          "id": "cue",
+          "x": 0.5,
+          "y": 0.3
+        }
+      ],
+      "shot": {
+        "angle": 90,
+        "power": 0.4
+      }
+    },
+    "expect": {
+      "stopReason": "stopped",
+      "simTime": 4.145,
+      "finals": [
+        {
+          "id": "cue",
+          "x": 0.5,
+          "y": 0.499794,
+          "pocketed": false,
+          "pocket": null
+        }
+      ],
+      "events": [
+        {
+          "t": 0.079336,
+          "kind": "ball-cushion",
+          "a": "cue",
+          "cushion": "up"
+        },
+        {
+          "t": 0.457076,
+          "kind": "ball-cushion",
+          "a": "cue",
+          "cushion": "down"
+        },
+        {
+          "t": 1.296282,
+          "kind": "ball-cushion",
+          "a": "cue",
+          "cushion": "up"
+        }
+      ]
+    }
+  },
+  {
+    "name": "pot",
+    "desc": "直线进袋",
+    "setup": {
+      "balls": [
+        {
+          "id": "cue",
+          "x": 1.7,
+          "y": 0.75
+        }
+      ],
+      "shot": {
+        "angle": 23.805944,
+        "power": 0.5
+      }
+    },
+    "expect": {
+      "stopReason": "stopped",
+      "simTime": 5.387,
+      "finals": [
+        {
+          "id": "cue",
+          "x": 1.81456,
+          "y": 0.768907,
+          "pocketed": false,
+          "pocket": null
+        }
+      ],
+      "events": [
+        {
+          "t": 0.065989,
+          "kind": "ball-cushion",
+          "a": "cue",
+          "cushion": "right"
+        },
+        {
+          "t": 0.523457,
+          "kind": "ball-cushion",
+          "a": "cue",
+          "cushion": "up"
+        },
+        {
+          "t": 0.835981,
+          "kind": "ball-cushion",
+          "a": "cue",
+          "cushion": "left"
+        },
+        {
+          "t": 2.698195,
+          "kind": "ball-cushion",
+          "a": "cue",
+          "cushion": "down"
+        },
+        {
+          "t": 3.739466,
+          "kind": "ball-cushion",
+          "a": "cue",
+          "cushion": "right"
+        }
+      ]
+    }
+  },
+  {
+    "name": "combo",
+    "desc": "三球组合",
+    "setup": {
+      "balls": [
+        {
+          "id": "cue",
+          "x": 0.4,
+          "y": 0.5
+        },
+        {
+          "id": "1",
+          "x": 0.9,
+          "y": 0.5
+        },
+        {
+          "id": "2",
+          "x": 1.4,
+          "y": 0.5
+        }
+      ],
+      "shot": {
+        "angle": 0,
+        "power": 0.7
+      }
+    },
+    "expect": {
+      "stopReason": "stopped",
+      "simTime": 3.974,
+      "finals": [
+        {
+          "id": "cue",
+          "x": 1.309496,
+          "y": 0.5,
+          "pocketed": false,
+          "pocket": null
+        },
+        {
+          "id": "1",
+          "x": 1.67732,
+          "y": 0.5,
+          "pocketed": false,
+          "pocket": null
+        },
+        {
+          "id": "2",
+          "x": 1.875592,
+          "y": 0.5,
+          "pocketed": false,
+          "pocket": null
+        }
+      ],
+      "events": [
+        {
+          "t": 0.078071,
+          "kind": "ball-ball",
+          "a": "cue",
+          "b": "1"
+        },
+        {
+          "t": 0.16046,
+          "kind": "ball-ball",
+          "a": "1",
+          "b": "2"
+        },
+        {
+          "t": 0.269789,
+          "kind": "ball-cushion",
+          "a": "2",
+          "cushion": "right"
+        },
+        {
+          "t": 0.394037,
+          "kind": "ball-ball",
+          "a": "1",
+          "b": "2"
+        },
+        {
+          "t": 0.502873,
+          "kind": "ball-ball",
+          "a": "cue",
+          "b": "1"
+        },
+        {
+          "t": 0.775381,
+          "kind": "ball-cushion",
+          "a": "cue",
+          "cushion": "left"
+        },
+        {
+          "t": 1.185783,
+          "kind": "ball-ball",
+          "a": "cue",
+          "b": "1"
+        },
+        {
+          "t": 1.484225,
+          "kind": "ball-ball",
+          "a": "1",
+          "b": "2"
+        },
+        {
+          "t": 2.042451,
+          "kind": "ball-cushion",
+          "a": "2",
+          "cushion": "right"
+        },
+        {
+          "t": 2.541739,
+          "kind": "ball-ball",
+          "a": "1",
+          "b": "2"
+        }
+      ]
+    }
+  }
+]

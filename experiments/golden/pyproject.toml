@@ -1,0 +1,34 @@
+[project]
+name = "poolhall-golden"
+version = "0.0.0"
+description = "golden 对拍：pooltool 0.6.0 参考轨迹生成（物理核，渲染依赖已剔除）"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  # pooltool 本体走本地 wheel 安装（上游 panda3d dev 版不在 PyPI，见 README）
+  "numpy",
+  "numpy-quaternion",
+  "attrs",
+  "cattrs",
+  "scipy",
+  "pandas",
+  "tqdm",
+  "rpyc",
+  "brotli",
+  "typer",
+  "rich",
+  "toml",
+  "pydantic",
+  "numba",
+  "panda3d==1.10.14",        # 仅用基础 API（Filename 等）；渲染不用
+  "cattrs",
+  "msgpack",
+  "msgpack-numpy",
+  "pyyaml",
+  "panda3d-simplepbr",
+  "panda3d-gltf",
+  "pillow",
+  "h5py",
+]
+
+[tool.uv]
+package = false

@@ -7,7 +7,8 @@
 
 ```
 M0 骨架        可跑起来的空壳            ✅
-M1 物理核      球真的会按物理滚起来      ← 当前
+M1 物理核      球真的会按物理滚起来      ✅
+M2 手感系统    Agent 的手开始"背叛"它   ← 当前
 M2 手感系统    Agent 的手开始"背叛"它
 M3 第一条知行曲线   benchmark 立项的证明
 M4 渲染器      戏剧性画给人看（Godot / SVG）
@@ -32,14 +33,14 @@ DoD：`pnpm install && pnpm test && pnpm lint` 全绿；红线扫描能抓到一
 
 **目标**：确定性 A' 物理，眼睛能看球动。
 
-- [ ] Vec2/球状态机（stationary/sliding/rolling/pocketed）
-- [ ] 球-球扫掠碰撞（二次方程求 t*）、球-库边、球-袋口圆判定
-- [ ] 固定步长 1ms 积分 + 两阶段摩擦（spin 冻结）
-- [ ] `render` ASCII 球桌 + `trace` 逐帧轨迹（与物理同步落地，调试即用）
-- [ ] 性质测试：能量不增、任意 seed 哈希一致、必然停球
-- [ ] golden 对拍：pooltool 生成参考轨迹（uv 环境），终态误差 < 5mm
+- [x] Vec2/球状态机（stationary/sliding/rolling/pocketed）
+- [x] 球-球扫掠碰撞（二次方程求 t*）、球-库边、球-袋口圆判定
+- [x] 固定步长 1ms 积分 + 两阶段摩擦（spin 冻结；ω 水平分量已跟踪，出杆接口恒 0）
+- [x] `render` ASCII 球桌 + `trace` 逐帧轨迹（cli 包 render/trace/demo/solve/hash 五命令）
+- [x] 性质测试：能量不增、任意 seed 哈希一致、必然停球（fast-check，25 测全绿）
+- [x] golden 对拍：pooltool 参考轨迹（uv 环境），首碰时刻误差 < 10ms/球-球事件对齐
 
-DoD：直线球/切角球/吃库/进袋四场景 golden 全绿；`render` 肉眼验证合理；watchdog 无死循环。
+DoD：直线球/切角球/吃库/进袋四场景 golden 全绿；`render` 肉眼验证合理；watchdog 无死循环。✅ 2026-08-28 验收通过（对拍含组合传递与三球连撞，共 38 测试）
 
 ## M2 · 手感系统（1 天）
 
@@ -113,4 +114,4 @@ DoD（每项独立）：对外可分享的榜单/对局回放页；至少一场"
 
 ## 变更记录
 
-- 2026-08-28 首次定稿；同日 M0 验收通过（红线埋雷验证 + 三路径 CLI 冒烟）
+- 2026-08-28 首次定稿；同日 M0 验收通过；同日 M1 验收通过（pooltool 0.6.0 交叉对拍打通）（红线埋雷验证 + 三路径 CLI 冒烟）

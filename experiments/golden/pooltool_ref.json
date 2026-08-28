@@ -1,0 +1,1863 @@
+{
+  "cases": [
+    {
+      "name": "straight",
+      "finals": {
+        "cue": [0.747337, 0.5],
+        "1": [1.81635, 0.5]
+      },
+      "events": [
+        {
+          "t": 0.156944,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.269047,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.357917,
+          "kind": "ball_linear_cushion",
+          "agents": ["1", "9"]
+        },
+        {
+          "t": 0.6371,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.925602,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.971373,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 1.392719,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "18"]
+        },
+        {
+          "t": 1.581478,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 2.335858,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 2.472351,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 2.472351,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 2.716433,
+          "kind": "rolling_stationary",
+          "agents": ["cue"]
+        },
+        {
+          "t": 6.811215,
+          "kind": "rolling_stationary",
+          "agents": ["1"]
+        }
+      ]
+    },
+    {
+      "name": "cut",
+      "finals": {
+        "cue": [1.495591, 0.094187],
+        "1": [2.010686, -0.029486]
+      },
+      "events": [
+        {
+          "t": 0.159604,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.353302,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.373982,
+          "kind": "ball_circular_cushion",
+          "agents": ["1", "8t"]
+        },
+        {
+          "t": 0.389512,
+          "kind": "ball_pocket",
+          "agents": ["1", "lt"]
+        },
+        {
+          "t": 0.750328,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "12"]
+        },
+        {
+          "t": 0.88096,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 1.426781,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "9"]
+        },
+        {
+          "t": 1.489866,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 5.335123,
+          "kind": "rolling_stationary",
+          "agents": ["cue"]
+        }
+      ]
+    },
+    {
+      "name": "cushion",
+      "finals": {
+        "cue": [0.5, 0.783753]
+      },
+      "events": [
+        {
+          "t": 0.079313,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "3"]
+        },
+        {
+          "t": 0.356868,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.527066,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "15"]
+        },
+        {
+          "t": 0.78095,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 1.387599,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "3"]
+        },
+        {
+          "t": 1.51741,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 3.484537,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "15"]
+        },
+        {
+          "t": 3.529217,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 5.380994,
+          "kind": "rolling_stationary",
+          "agents": ["cue"]
+        }
+      ]
+    },
+    {
+      "name": "pot",
+      "finals": {
+        "cue": [1.022947, 0.296466]
+      },
+      "events": [
+        {
+          "t": 0.06596,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "9"]
+        },
+        {
+          "t": 0.431947,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.757085,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "3"]
+        },
+        {
+          "t": 0.906564,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.925545,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "18"]
+        },
+        {
+          "t": 1.199146,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 2.636372,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "12"]
+        },
+        {
+          "t": 2.720545,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 2.974491,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "9"]
+        },
+        {
+          "t": 3.073538,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 7.701894,
+          "kind": "rolling_stationary",
+          "agents": ["cue"]
+        }
+      ]
+    },
+    {
+      "name": "combo",
+      "finals": {
+        "cue": [0.657165, 0.5],
+        "1": [1.044933, 0.5],
+        "2": [1.129072, 0.5]
+      },
+      "events": [
+        {
+          "t": 0.078057,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.133812,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.158311,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 0.215635,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.215635,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.215726,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.215765,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.215765,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.215765,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.215862,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.215903,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.215903,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.215903,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.216004,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.216084,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.216383,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.216383,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.216383,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.216474,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.216512,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.216512,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.216512,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.216608,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.216648,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.216648,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.216648,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.216749,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.216829,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.217112,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.217112,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.217112,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.217203,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.217242,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.217242,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.217242,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.217337,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.217378,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.217378,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.217378,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.217479,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.217559,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.217848,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 0.217848,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.26184,
+          "kind": "ball_linear_cushion",
+          "agents": ["2", "9"]
+        },
+        {
+          "t": 0.465014,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 0.465799,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 0.466878,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.524564,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 0.539423,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.545309,
+          "kind": "rolling_stationary",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.60217,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 0.613646,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.659986,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 0.66897,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.705257,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 0.712293,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.740721,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 0.746235,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.768524,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 0.772848,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.790346,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 0.793742,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.807507,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 0.808019,
+          "kind": "ball_linear_cushion",
+          "agents": ["cue", "18"]
+        },
+        {
+          "t": 0.81018,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 0.81263,
+          "kind": "sliding_rolling",
+          "agents": ["2"]
+        },
+        {
+          "t": 1.106629,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 1.363437,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.364394,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 1.364653,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.406729,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.417999,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.467195,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.475718,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.512937,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.519386,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.542622,
+          "kind": "rolling_stationary",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.54546,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.550478,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.570771,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.574708,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.59065,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.593745,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.606298,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.60833,
+          "kind": "sliding_rolling",
+          "agents": ["2"]
+        },
+        {
+          "t": 1.608738,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.618662,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.620594,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.628487,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.630027,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.636363,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.636425,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.63647,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.636536,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.636584,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.636594,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.636693,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.636729,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.636805,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.636813,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.636915,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.63694,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.637026,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.63704,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.637136,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.637157,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.637247,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.637264,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.637357,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.637376,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.637467,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.637485,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.637577,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.637596,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.637687,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.637705,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.637797,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.637815,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.637906,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.637925,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.638016,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.638034,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.638125,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.638144,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.638235,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.638253,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.638344,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.638362,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.638453,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.638471,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.638562,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.63858,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.638671,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.638689,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.63878,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.638798,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.638889,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.638907,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.638997,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.639015,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.639106,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.639124,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.639214,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.639232,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.639323,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.639341,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.639431,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.639449,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.639539,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.639557,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.639647,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.639665,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.639755,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.639773,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.639863,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.63988,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.63997,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.639988,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.640078,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.640096,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.640185,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.640203,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.640293,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.640311,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.6404,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.640418,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.640507,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.640525,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.640614,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.640632,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.640721,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.640739,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.640828,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.640846,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.640935,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.640953,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.641042,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.641059,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.641148,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.641166,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.641255,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.641272,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.641361,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.641379,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.641467,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.641485,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.641574,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.641591,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.64168,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.641697,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.641786,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.641803,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.641892,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.641909,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.641997,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.642015,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.642103,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.642121,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.642209,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.642226,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.642314,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.642332,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.64242,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.642437,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.642525,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.642543,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.64263,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.642648,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.642735,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.642753,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.64284,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.642858,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.642945,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.642963,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.64305,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.643068,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.643155,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.643172,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.64326,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.643277,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.643364,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.643382,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.643469,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.643486,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.643573,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.64359,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.643677,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.643695,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.643782,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.643799,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.643886,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.643903,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.64399,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.644007,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.644094,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.644111,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.644197,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.644215,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.644301,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.644319,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.644405,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.644422,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.644508,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.644526,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.644612,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.644629,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.644715,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.644733,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.644819,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.644836,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.644922,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.644939,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.645025,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.645042,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.645128,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.645145,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.645231,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.645248,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.645334,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.645351,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.645436,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.645454,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.645539,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.645556,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.645642,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.645659,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.645744,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.645761,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.645847,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.645864,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.645949,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.645966,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.646051,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.646068,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.646153,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.64617,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.646255,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.646272,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.646357,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.646374,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.646459,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.646476,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.646561,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.646578,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.646663,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.64668,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.646764,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.646781,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.646866,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.646883,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.646967,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.646984,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.647069,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.647086,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.64717,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.647187,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.647271,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.647288,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.647372,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.647389,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.647473,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.64893,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.654937,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.655016,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 1.656603,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 1.657041,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 2.131884,
+          "kind": "ball_linear_cushion",
+          "agents": ["2", "9"]
+        },
+        {
+          "t": 2.266083,
+          "kind": "sliding_rolling",
+          "agents": ["2"]
+        },
+        {
+          "t": 2.648935,
+          "kind": "rolling_stationary",
+          "agents": ["cue"]
+        },
+        {
+          "t": 2.704898,
+          "kind": "rolling_stationary",
+          "agents": ["1"]
+        },
+        {
+          "t": 3.787516,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 3.802225,
+          "kind": "ball_ball",
+          "agents": ["cue", "1"]
+        },
+        {
+          "t": 3.812731,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 3.845236,
+          "kind": "sliding_rolling",
+          "agents": ["2"]
+        },
+        {
+          "t": 3.855742,
+          "kind": "sliding_rolling",
+          "agents": ["cue"]
+        },
+        {
+          "t": 3.877337,
+          "kind": "ball_ball",
+          "agents": ["1", "2"]
+        },
+        {
+          "t": 3.891291,
+          "kind": "sliding_rolling",
+          "agents": ["1"]
+        },
+        {
+          "t": 3.891291,
+          "kind": "sliding_rolling",
+          "agents": ["2"]
+        },
+        {
+          "t": 4.315891,
+          "kind": "rolling_stationary",
+          "agents": ["2"]
+        },
+        {
+          "t": 4.734512,
+          "kind": "rolling_stationary",
+          "agents": ["1"]
+        },
+        {
+          "t": 6.531623,
+          "kind": "rolling_stationary",
+          "agents": ["cue"]
+        }
+      ]
+    }
+  ]
+}
