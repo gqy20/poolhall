@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-import { createInterface } from "node:readline";
-import { biasAtShot, CalibSession, CORE_VERSION, decodeAgentLine, encode } from "@poolhall/core";
+import { biasAtShot, CalibSession, CORE_VERSION } from "@poolhall/core";
 import {
   type Ball,
   buildTable,
@@ -21,7 +20,7 @@ import {
 import { Command } from "commander";
 import { type RunOpts, runCalibrate } from "./experiment.ts";
 import { versionBanner } from "./index.ts";
-import { anthropicMessage, configFromEnv } from "./llm.ts";
+import { configFromEnv } from "./llm.ts";
 import { renderTable, renderTrace } from "./render.ts";
 import { demoScenes } from "./scenes.ts";
 
@@ -170,15 +169,33 @@ program
   .description("LLM 连通性自测（读 .env 的 ANTHROPIC_*）")
   .action(async () => {
     const cfg = configFromEnv();
-    console.log(`base=${cfg.baseUrl} model=${cfg.model} token=${cfg.token ? "***" : "缺失"}`);
-    if (!cfg.token) {
+    console.log(`base=${cfg.baseUrl} model=${cfg.model} key=${cfg.apiKey ? "***" : "缺失"}`);
+    if (!cfg.apiKey) {
       console.error("缺少 ANTHROPIC_AUTH_TOKEN（检查 .env）");
       process.exit(1);
     }
-    const text = await anthropicMessage(cfg, "只用 JSON 回答。", [
-      { role: "user", content: String.raw`1+1=? 输出 {"sum": n}` },
-    ]);
-    console.log(`回复: ${text.slice(0, 200)}`);
+    const { LlmAgentSession } = await import("./llm.ts");
+    const s = new LlmAgentSession(cfg);
+    const shot = await s.shot({
+      kind: "observe",
+      trial: 0,
+      trialCount: 1,
+      score: 0,
+      targetPocket: "rt",
+      balls: [
+        { id: "cue", x: 1.2, y: 0.4953 },
+        { id: "1", x: 1.5, y: 0.4953 },
+      ],
+      pockets: [
+        { id: "lt", x: 0, y: 0 },
+        { id: "rt", x: 1.9812, y: 0 },
+        { id: "lb", x: 0, y: 0.9906 },
+        { id: "rb", x: 1.9812, y: 0.9906 },
+        { id: "ct", x: 0.9906, y: 0 },
+        { id: "cb", x: 0.9906, y: 0.9906 },
+      ],
+    });
+    console.log(`自测出杆（cue(1.2,0.5)→1(1.5,0.5)→rt：正解 angle≈0）：${JSON.stringify(shot)}`);
   });
 
 program

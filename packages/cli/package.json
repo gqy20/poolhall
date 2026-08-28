@@ -14,8 +14,10 @@
     "poolhall": "./src/main.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.44",
     "@poolhall/core": "workspace:*",
     "@poolhall/engine": "workspace:*",
+    "ai": "^7.0.83",
     "commander": "catalog:"
   },
   "devDependencies": {

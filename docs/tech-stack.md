@@ -81,6 +81,31 @@ poolhall/
 - CI 最小闭环：`pnpm lint` → `pnpm test` → 确定性红线扫描（engine 包文本扫描 `Math.random|Date.now|performance.now|fetch|node:fs|process.env`）
 - 提交规范见 AGENTS.md §4
 
+## 10. Agent 框架接入（M4 起启用）
+
+**决策：接入 Vercel AI SDK（`ai` + `@ai-sdk/anthropic`）**，替代手写 fetch 会话循环。
+
+触发条件已达成：手写会话管理在 90+ 杆实验中暴露真实脆弱性（消息交替约束、
+失败回滚、参数属性踩 Node 可擦除语法限制、两份文件补丁互写污染）。
+"框架替你处理标准问题"的价值证据成立。
+
+| 维度 | 说明 |
+|------|------|
+| froce 结构 | `generateText({ system, messages, onStepFinish })`——消息交替/回滚交给 SDK |
+| 提供商 | `createAnthropic({ baseURL })` 兼容 ~/.mini 式端点；换 OpenAI 兼容模型 = 换 provider 一行 |
+| 结构化输出演进位 | `generateObject({ schema })` + zod——core 的 schema 三端复用在此兑现（部分兼容端点 object 模式不稳，v5 暂保留 text+parse） |
+| 审计 | result.usage（input/output tokens）入研究日志；请求原文仍逐条 JSONL 落盘 |
+| 版本 | ai 7.0.83 / @ai-sdk/anthropic 4.0.44（catalog 集中） |
+
+评估存档：
+- **LangChain.js / LangGraph 否决**：依赖树 3–6MB+；LangGraph 图执行对"每请求原文入日志"
+  的 benchmark 审计不透明；API 漂移史差。by 理念相近的官方轻量路线（AI SDK）覆盖
+  我们的真实需求面（provider 抽象 + 消息管理 + 结构化输出），无需引入。
+- **pi（coding agent harness）不适用**：pi 的扩展机制是"往 harness 加能力"，
+  不是"被实验 runner 调用的 LLM 编排库"。定位错位。
+- 提示词与反馈渲染集中在 `packages/cli/src/prompt.ts`（PROMPT_VERSION 标注，
+  修改文案 = 修改实验变量 → meta 必须记录版本）。
+
 ## 变更记录
 
 - 2026-08-28 首次定稿
