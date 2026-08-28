@@ -34,3 +34,6 @@ Thumbs.db
 # misc
 coverage/
 *.log
+
+# 可视化生成物（可再生成；不入库）
+experiments/figs/*.html
