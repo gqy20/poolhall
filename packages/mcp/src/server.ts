@@ -55,7 +55,11 @@ function observeOf(state: SessionState): ObserveResult {
 
 /** 出杆并落研究日志（完整三元组 + 轨迹） */
 function shootOf(state: SessionState, args: ShotInput, out?: string): ShotResult {
-  const rec: ResearchShot = state.session.shoot({ angle: args.angle, power: args.power });
+  const rec: ResearchShot = state.session.shoot({
+    angle: args.angle,
+    power: args.power,
+    spin: args.spin ? { x: args.spin[0], y: args.spin[1], z: args.spin[2] } : undefined,
+  });
   state.log.push({
     trial: rec.trial,
     intentAngle: rec.intent.angle,

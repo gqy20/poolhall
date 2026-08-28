@@ -20,6 +20,17 @@ export function integrateBall(ball: Ball, p: BallParams, dt: number): void {
   const uMag = len(u);
   const vMag = len(ball.vel);
 
+  // spinning（v1 解冻）：v ≈ 0 且 ω_z 显著 → 纯自转衰减，位置不变
+  if (vMag < SIM.stopV && Math.abs(ball.w.z) > SIM.spinStop) {
+    const dec = ((5 * p.u_sp * p.g) / (2 * p.R)) * dt;
+    if (Math.abs(ball.w.z) <= dec) {
+      ball.w.z = 0;
+    } else {
+      ball.w.z -= Math.sign(ball.w.z) * dec;
+    }
+    return;
+  }
+
   if (uMag < SIM.uStop) {
     // 自然滚动（或停球）
     if (vMag < SIM.stopV) {
@@ -30,6 +41,8 @@ export function integrateBall(ball: Ball, p: BallParams, dt: number): void {
     const dec = p.u_r * p.g * dt;
     const nv = Math.max(0, vMag - dec);
     ball.vel = scale(norm(ball.vel), nv);
+    // v1: rolling 仍 lockRoll（v0 行为保留）；spin 注入通过 sliding 卷向
+    // 自然滚动 + 库边/碰撞 throw 转化的复杂路径是 v2 范畴
     lockRoll(ball, p);
   } else {
     // 滑动：û 方向摩擦减速 + 力矩卷入角速度

@@ -15,6 +15,10 @@ export const TOOL_SCORE = "get_score";
 export const ShotInputSchema = z.object({
   angle: z.number().finite().describe("出杆角（度，0=+x，屏幕逆时针为正）"),
   power: z.number().min(0).max(1).describe("力度 0~1（0.05 轻推/0.5 中速/1 满力）"),
+  spin: z
+    .tuple([z.number().min(-1).max(1), z.number().min(-1).max(1), z.number().min(-1).max(1)])
+    .optional()
+    .describe("可选 spin (x, y, z)，各分量 ∈ [-1,1]；v0 默认全 0，v1 解冻（x/y 高低杆，z 加塞）"),
   prediction: z.string().max(2000).optional().describe("可选：对轨迹/进袋的预测文本（研究用）"),
 });
 export type ShotInput = z.infer<typeof ShotInputSchema>;

@@ -4,7 +4,7 @@
  * 上游为 Dr. Dave（billiards.colostate.edu）物理参数页。
  */
 
-/** 球物理参数（v0：spin 相关量仅记录，ω_z 冻结） */
+/** 球物理参数（v0：spin 相关量仅记录，ω_z 冻结；v1 解冻 u_sp） */
 export interface BallParams {
   /** 质量 kg */
   m: number;
@@ -14,6 +14,8 @@ export interface BallParams {
   u_s: number;
   /** 滚动阻力系数 */
   u_r: number;
+  /** 自转衰减系数（v1 解冻，pooltool u_sp_proportionality = 10·2/5/9 ≈ 0.444·R） */
+  u_sp: number;
   /** 球-球恢复系数 */
   e_b: number;
   /** 球-库边恢复系数 */
@@ -29,11 +31,19 @@ export const DEFAULT_BALL: BallParams = {
   R: 0.028575,
   u_s: 0.2,
   u_r: 0.01,
+  u_sp: 0.0127, // v1: spinning 状态机启用
   e_b: 0.95,
   e_c: 0.85,
   tangentKeep: 0.9,
   g: 9.81,
 };
+
+/**
+ * spin 输入缩放：API 输入 spin ∈ [-1, 1] 映射到 ω 角速度 rad/s。
+ * 30 rad/s ≈ 5 rev/s，是人类能施加的最大 spin 估算值。
+ * v1 校准值，golden 对拍在 v0 spin=0 场景不受影响。
+ */
+export const SPIN_SCALE = 30 as const;
 
 /** 台面规格（胶边内沿尺寸 + 袋口宽，v0 袋口为圆判定区） */
 export interface TableSpecs {
@@ -65,6 +75,8 @@ export const SIM = {
   stopW: 0.1,
   /** 滑动→滚动切换阈值（接触点相对速度 m/s） */
   uStop: 0.01,
+  /** 自转存活阈值 rad/s（v1 spinning 分支判停） */
+  spinStop: 0.1,
   /** 模拟 watchdog（模拟时间秒），防死循环 */
   watchdog: 120,
   /** 单步内最大碰撞解算次数（挤夹死循环保护） */

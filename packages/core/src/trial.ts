@@ -158,7 +158,7 @@ export class CalibSession {
   }
 
   /** 出杆：注入手感 → 模拟 → 记录三元组 */
-  shoot(intent: { angle: number; power: number }): ResearchShot {
+  shoot(intent: { angle: number; power: number; spin?: { x: number; y: number; z: number } }): ResearchShot {
     if (this.finished) throw new Error("本局已结束");
     const idx = this.idx;
     const noise = noiseAtShot(this.hand, idx, this.seed, this.agent);
@@ -172,7 +172,7 @@ export class CalibSession {
 
     const cue = { ...this.layout.cue, pos: { ...this.layout.cue.pos } };
     const obj = { ...this.layout.obj, pos: { ...this.layout.obj.pos } };
-    strike(cue, actual.angle, actual.power);
+    strike(cue, actual.angle, actual.power, intent.spin);
     const r = simulate([cue, obj], this.table);
     const objFinal = r.balls.find((b) => b.id === "1")!;
     const pot = objFinal.pocketed && objFinal.pocket === this.layout.pocketId;
