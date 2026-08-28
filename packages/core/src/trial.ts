@@ -190,6 +190,8 @@ export class CalibSession {
       pot,
       pottedPocket: objFinal.pocketed ? (objFinal.pocket ?? null) : null,
       finalPos: finals,
+      samples: r.samples,
+      events: r.events,
     };
     this.records.push(rec);
 

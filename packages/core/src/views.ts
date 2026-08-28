@@ -46,6 +46,16 @@ export interface ResearchShot {
   pot: boolean;
   pottedPocket: string | null;
   finalPos: Record<string, { x: number; y: number }>;
+  /** 轨迹样本（10ms 采样，docs/physics.md §5 主循环的 samples）——回放可视化原料 */
+  samples?: Array<{ t: number; pos: Record<string, { x: number; y: number }> }>;
+  events?: Array<{
+    t: number;
+    kind: string;
+    a: string;
+    b?: string;
+    pocket?: string;
+    cushion?: string;
+  }>;
 }
 
 /** AgentView 构造（唯一入口；白名单） */

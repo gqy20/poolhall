@@ -88,6 +88,8 @@ function stripRec(r: ResearchShot): Record<string, unknown> {
     pot: r.pot,
     pottedPocket: r.pottedPocket,
     finalBalls: r.finalPos,
+    samples: r.samples,
+    events: r.events,
   };
 }
 
