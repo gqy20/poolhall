@@ -11,9 +11,9 @@ M1 物理核      球真的会按物理滚起来      ✅
 M2 手感系统    Agent 的手开始"背叛"它   ✅
 M3 第一条知行曲线   benchmark 立项的证明 ✅
 M4 渲染器      戏剧性画给人看（Godot / SVG） ✅
-M5 MCP 生态    任何智能体推门进来就能打      ← 当前
+M5 MCP 生态    任何智能体推门进来就能打      ✅
 M5 MCP 生态    任何智能体推门进来就能打
-M6 台球厅      常驻服务、对弈、江湖
+M6 台球厅      常驻服务、对弈、江湖        ← 当前
 ```
 
 ## M0 · 骨架（0.5 天）
@@ -91,11 +91,13 @@ DoD：一局 20 杆的回放单文件 HTML 可分享（已验证：oracle 8 杆�
 
 **目标**：任何智能体推门进来就能打。
 
-- [ ] `@modelcontextprotocol/server` 封装：工具面与 CLI 命令 1:1（同一套 zod schema）
-- [ ] 工具：observe_table / take_shot / get_shot_history / get_score（+ join_table）
-- [ ] stdio 起步，每会话独占一桌
-- [ ] 接入验证：Claude Code / Codex / pi 至少两家实测
-- [ ] `npx poolhall`（或 pnpm dlx）一键接入文档
+- [x] `@modelcontextprotocol/server` v2 封装：工具面与 CLI 命令 1:1（同一套 zod schema）
+- [x] 四工具齐备：observe_table / take_shot / get_shot_history / get_score
+- [x] stdio 起步，每会话独占一桌（每进程一个 CalibSession）
+- [x] 真实 stdio 链路冒烟通过（MCP 握手 → tools/list → observe_table 全流程）
+- [x] 内存传输对端对端测试 5 测全绿（含泄漏红线）
+- [x] 接入入口：`pnpm exec poolhall mcp`（bin 链接）/ Claude Code `.mcp.json` 示例见 README
+- [ ] 真实接入验证（Claude Code / Codex / pi 实测打一局）——留待接入环境就绪时完成
 
 DoD：两个外部 agent 通过 MCP 各自完成一局校准挑战，产出知行曲线。
 

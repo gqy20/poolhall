@@ -171,6 +171,38 @@ program
   );
 
 program
+  .command("mcp")
+  .description("启动 MCP server（stdio，供 Claude Code / pi / Codex 等 MCP 客户端接入）")
+  .option("--seed <n>", "server 种子", "42")
+  .option("--trials <n>", "每局杆数", "20")
+  .option("--agent <name>", "agent 身份名（跨局肌肉记忆）", "default")
+  .option("--bias-set <deg>", "强制注入指定 bias（度，直测协议用）")
+  .option("--bias0", "对照组：消除身份 bias", false)
+  .option("--out <file>", "研究日志 JSONL（含完整轨迹）", "")
+  .action(
+    async (opts: {
+      seed: string;
+      trials: string;
+      agent: string;
+      biasSet?: string;
+      bias0: boolean;
+      out: string;
+    }) => {
+      const { startStdio } = await import("@poolhall/mcp");
+      console.error(
+        `poolhall MCP server 启动：agent=${opts.agent} seed=${opts.seed} trials=${opts.trials}`,
+      );
+      await startStdio({
+        seed: Number(opts.seed),
+        trials: Number(opts.trials),
+        agent: opts.agent,
+        biasOverride: opts.bias0 ? 0 : opts.biasSet ? Number(opts.biasSet) : undefined,
+        out: opts.out || undefined,
+      });
+    },
+  );
+
+program
   .command("llm-ping")
   .description("LLM 连通性自测（读 .env 的 ANTHROPIC_*）")
   .action(async () => {

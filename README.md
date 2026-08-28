@@ -118,6 +118,42 @@ poolhall/
 2. **Week 2+**：Godot 回放器（预测线 vs 实际线可视化）
 3. **之后**：对弈模式 → 赌注/身份 → 观战 + AI 解说 → 台球厅常驻化
 
+
+## MCP 接入（台球厅试营业 🎱）
+
+任何兼容 MCP 协议的 Agent 都能进来打。启动方式：
+
+```bash
+# 方式一：pnpm exec（本地仓库内）
+pnpm exec poolhall mcp --agent claude-4 --trials 20 --seed 42
+
+# 方式二：直接 node（等效，适用于不支持 pnpm 的客户端配置）
+node packages/cli/src/main.ts mcp --agent claude-4 --trials 20 --seed 42
+```
+
+MCP 客户端配置示例（Claude Code 的 `.mcp.json` / pi 的 mcp 配置）：
+
+```json
+{
+  "mcpServers": {
+    "poolhall": {
+      "command": "pnpm",
+      "args": ["exec", "poolhall", "mcp", "--agent", "claude-4", "--seed", "42"],
+      "cwd": "/path/to/poolhall"
+    }
+  }
+}
+```
+
+工具面（与 CLI 命令 1:1，docs/proto.md）：
+
+| 工具 | 说明 |
+|------|------|
+| `observe_table` | 观察球桌（白名单字段；泄漏红线保护） |
+| `take_shot(angle, power, prediction?)` | 出杆（手感噪声注入） |
+| `get_shot_history(limit?)` | 回看本局最近 N 杆（校准原料） |
+| `get_score` | 当前比分 |
+
 ## 灵感来源
 
 - Notion 项目页：AI + 台球（Projects Hub）

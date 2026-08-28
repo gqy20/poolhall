@@ -11,10 +11,16 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
     "@poolhall/core": "workspace:*",
-    "@poolhall/engine": "workspace:*"
+    "@poolhall/engine": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
     "vitest": "catalog:"
+  },
+  "bin": {
+    "poolhall-mcp": "./src/main.ts"
   }
 }

@@ -12,7 +12,8 @@
     "test": "pnpm scan && vitest run && pnpm --filter './packages/*' test",
     "scan": "node scripts/redline.ts",
     "lint": "biome check --write .",
-    "typecheck": "tsc -p . && pnpm --filter './packages/*' typecheck"
+    "typecheck": "tsc -p . && pnpm --filter './packages/*' typecheck",
+    "mcp": "node packages/mcp/src/main.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
