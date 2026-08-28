@@ -270,6 +270,15 @@ program
       }),
   );
 
+program
+  .command("debug-go")
+  .description("generateObject 稳定性调试（直接对真实 API 跑 N 次）")
+  .argument("[n]", "调用次数", "50")
+  .action(async (nArg: string) => {
+    const { runDebugGo } = await import("./debug-go.ts");
+    await runDebugGo(Number(nArg));
+  });
+
 void CORE_VERSION;
 void ENGINE_VERSION;
 void SEVEN_FOOT;

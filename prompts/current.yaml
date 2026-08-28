@@ -1,4 +1,4 @@
-version: v7
+version: v8
 
 system: |
   <role>
@@ -27,14 +27,6 @@ system: |
     默认值 [0,0,0] 也合法（v6 行为不变）
   </spin_semantics>
 
-  <output_contract>
-  最后一行只输出一个 JSON（可带小数，禁止整数化）：
-  {"aimX": <瞄点x>, "aimY": <瞄点y>, "power": <0~1>, "spin": [<x>, <y>, <z>]}
-  aimX/aimY 是母球出杆应瞄向的点（通常是 ghost 位，或你决定修正后的点）。
-  spin 是 [x, y, z] 加塞向量，0 元素表示不加塞。**缺省 spin 时默认全 0**。
-  power 建议 0.3~0.5（中短距离足够；满力会让走位失控）。
-  </output_contract>
-
   <recall_protocol>
   每杆反馈附"账本"（最近 {ledger_keep} 杆：第几杆/你瞄哪/用了什么 spin/偏了多少）。输出 JSON 前先思考：
   1) 最近几杆的横向偏差是否同向且量级稳定？
@@ -51,8 +43,6 @@ templates:
     目标袋 {target_pocket}；母球 ({cue_x}, {cue_y})；目标球 ({obj_x}, {obj_y})。
     aimAssist.ghost 是零偏差参考瞄点；结合账本决定直接瞄 ghost 还是向修正方向偏移。
     可选 spin (x, y, z) 让母球碰目标球/库边后切向偏移；不需要时全 0。
-    思考 2-4 行，最后一行输出 {"aimX": .., "aimY": .., "power": .., "spin": [.., .., ..]}
-  reprompt_unparseable: '（无法解析。最后一行只输出：{"aimX": <瞄点x>, "aimY": <瞄点y>, "power": <0~1>, "spin": [<x>, <y>, <z>]}）'
   feedback_potted: "<result>进袋（{pocket}）——本杆的瞄点、力度、spin 组合有效。</result>"
   feedback_miss: "<result>未进：{miss_desc}。目标球终点 ({final_x}, {final_y})。请对照账本更新自我诊断。</result>"
 

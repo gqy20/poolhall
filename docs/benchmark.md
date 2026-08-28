@@ -205,6 +205,41 @@ v6 prompt + 反馈系统的校准机制在 4 个独立 seed 下**全部收敛**�
 
 **v7 结论**：engine v2 spin 物理已就绪（demo HTML 验证 23mm/80mm/119mm 涌现），但 LLM 层尚未学会使用 spin。这是 prompt 工程问题，不是物理问题。
 
+## 7. v8 结构化输出调查（2026-08-29：AI SDK generateObject 对此端点的完整画像）
+
+**问题**：v6-v7 都靠 prompt 写死"最后一行输出 JSON"+正则解析。改用框架原生
+`generateObject`（zod schema 即契约）后经历一轮系统调试，结论如下。
+
+### 7.1 源码核实（node_modules/ai@7.0.83 + @ai-sdk/anthropic@4.0.44）
+
+- `generateObject` → provider 收到 `responseFormat:{type:'json'}`（**不是 tool call 直传**）
+- anthropic provider：查模型能力表，MiniMax-M3 不在表内 → `structuredOutputMode:'auto'`
+  落到 **伪造 json tool + `tool_choice:required`** 路径（anthropic-language-model.ts:428/864）
+- `'outputFormat'` 模式（response_format:json_schema）→ 该端点 **0/20 全挂**（不支持）
+- `"No object generated: the model did not return a response"` = HTTP 成功但响应无
+  tool_use 文本块（generate-object.ts:425）
+
+### 7.2 五轮对照实验（同 seed=42, 50 杆，v6 基线 41/50=82%）
+
+| 版本 | 形态 | 调用成功率 | 进球 | 失败机制 |
+|------|------|-----------|------|---------|
+| v6 | generateText + prompt 格式约束 + 多轮历史 | 稳 | **41/50 (82%)** | — |
+| v8.0 | generateObject 无状态（仅账本） | 95-100%* | 23/50 (46%) | 补偿序列震荡 ±14°（看不见自己之前的决定） |
+| v8.1 | generateObject + messages 多轮历史 | **2/50 崩** | 中断 | **端点 bug**：多轮历史下 tool_use 路径崩 |
+| v8.2 | generateObject 单轮 + 历史内嵌 `<history>` 文本块 | 稳 | **34/50 (68%)** | late 段仍有残余过补偿 |
+| v8.3 | v8.2 + "偏 ghost N 球径"标注 | 稳 | 30/50 (60%) | 标注诱发更多补偿动作，负优化 |
+
+\* 端点偶发时间窗抖动（曾测得 46%），由 shot() 内 3 次重试覆盖。
+
+### 7.3 结论
+
+1. **原生结构化输出在此端点的天花板 = 68%**（v8.2），瓶颈是端点 tool-call 不支持多轮
+   历史 → 模型看不到自己的推理连续性 → 补偿决策质量下降 14pp。
+2. schema 字段语义用 `.describe()` 是正确姿势（曾丢语义导致 32° 垃圾瞄点，max 降到 1.1°）。
+3. **v6 的"prompt 格式约束"不是冗余**——它同时承担了语义锚定与连续性，这两点 schema
+   只能部分替代。换支持多轮 tool-call 的端点（如官方 Anthropic）后预期差距消失。
+4. 代码保留 v8.2 形态（generateObject + `<history>` 内嵌 + 3 次重试），便于换端点即用。
+
 ## 变更记录
 
 - 2026-08-28 首次定稿（v4 实证 + 准入门条款 + 三轮反馈修订）

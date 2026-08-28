@@ -77,6 +77,9 @@ importers:
       js-yaml:
         specifier: 'catalog:'
         version: 5.4.1
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
     devDependencies:
       vitest:
         specifier: 'catalog:'
