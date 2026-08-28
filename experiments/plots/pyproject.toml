@@ -1,0 +1,8 @@
+[project]
+name = "poolhall-plots"
+version = "0.0.0"
+requires-python = ">=3.11"
+dependencies = ["matplotlib", "numpy"]
+
+[tool.uv]
+package = false

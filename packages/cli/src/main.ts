@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { biasAtShot, CalibSession, CORE_VERSION } from "@poolhall/core";
+import { createInterface } from "node:readline";
+import { biasAtShot, CalibSession, CORE_VERSION, decodeAgentLine, encode } from "@poolhall/core";
 import {
   type Ball,
   buildTable,
@@ -18,7 +19,9 @@ import {
  * M1 提供：demo / render / trace / solve；play/run/replay/experiment M2/M3 接入。
  */
 import { Command } from "commander";
+import { type RunOpts, runCalibrate } from "./experiment.ts";
 import { versionBanner } from "./index.ts";
+import { anthropicMessage, configFromEnv } from "./llm.ts";
 import { renderTable, renderTrace } from "./render.ts";
 import { demoScenes } from "./scenes.ts";
 
@@ -117,6 +120,65 @@ program
     }
     console.log(`fnv1a32 = ${h.toString(16).padStart(8, "0")}`);
     console.log(`bytes = ${serialized.length}`);
+  });
+
+const parseSeeds = (s: string): number[] =>
+  s
+    .split(",")
+    .map((x) => Number(x.trim()))
+    .filter(Number.isFinite);
+
+program
+  .command("experiment")
+  .description("校准挑战实验（M3：合成 agent 验机 / LLM 真模型）")
+  .command("calibrate")
+  .description("跑校准挑战（docs/benchmark.md）")
+  .requiredOption("--agent <spec>", "synthetic:oracle|no-comp|random 或 llm")
+  .option("--agent-name <name>", "身份名（默认取 spec）")
+  .option("--seeds <list>", "逗号分隔种子", "42")
+  .option("--trials <n>", "每局杆数", "20")
+  .option("--bias0", "对照组：消除身份 bias", false)
+  .option("--out <file>", "研究日志 JSONL 输出", "experiments/results/calib.jsonl")
+  .action(
+    async (opts: {
+      agent: string;
+      agentName?: string;
+      seeds: string;
+      trials: string;
+      bias0: boolean;
+      out: string;
+    }) => {
+      const seeds = parseSeeds(opts.seeds);
+      const trials = Number(opts.trials);
+      for (const seed of seeds) {
+        const o: RunOpts = {
+          agent: opts.agent,
+          agentName: opts.agentName ?? opts.agent.replaceAll(":", "-"),
+          seed,
+          trials,
+          biasOverride: opts.bias0 ? 0 : undefined,
+          out: opts.out,
+        };
+        const r = await runCalibrate(o);
+        console.log(`seed=${seed} ${o.agentName}: ${r.score}/${r.trials} → ${r.log}`);
+      }
+    },
+  );
+
+program
+  .command("llm-ping")
+  .description("LLM 连通性自测（读 .env 的 ANTHROPIC_*）")
+  .action(async () => {
+    const cfg = configFromEnv();
+    console.log(`base=${cfg.baseUrl} model=${cfg.model} token=${cfg.token ? "***" : "缺失"}`);
+    if (!cfg.token) {
+      console.error("缺少 ANTHROPIC_AUTH_TOKEN（检查 .env）");
+      process.exit(1);
+    }
+    const text = await anthropicMessage(cfg, "只用 JSON 回答。", [
+      { role: "user", content: String.raw`1+1=? 输出 {"sum": n}` },
+    ]);
+    console.log(`回复: ${text.slice(0, 200)}`);
   });
 
 program

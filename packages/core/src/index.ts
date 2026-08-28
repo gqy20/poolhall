@@ -17,9 +17,19 @@ export {
   traitFrom,
   unitUniform,
 } from "./hand.ts";
+export type {
+  AgentMsg,
+  EndMsg,
+  HelloMsg,
+  ObservationMsg,
+  ResultMsg,
+  ShotMsgT,
+} from "./protocol.ts";
+export { decodeAgentLine, encode } from "./protocol.ts";
 export type { Rng } from "./rng.ts";
 export { gaussian, hash32, nextDouble, nextInt, rangeDot, streamOf } from "./rng.ts";
 export type { AgentStats, ShotRow } from "./store.ts";
+
 export { Store } from "./store.ts";
 export type { CalibOpts, TrialLayout } from "./trial.ts";
 export { CalibSession } from "./trial.ts";
