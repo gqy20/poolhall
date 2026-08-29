@@ -113,6 +113,10 @@ DoD：两个外部 agent 通过 MCP 各自完成一局校准挑战，产出知�
 
 **目标**：从 benchmark 长成生态。
 
+- [x] **M6.1 清台挑战**（2026-08-29）：9 球计分赛 + scratch 威慑 + aimAssists——
+  core/ClearSession + prompts/clear.yaml + LLM 接入全通（docs/clear.md）。
+  关键设计发现：scratch 威慑让低杆从可选技巧变成生存技能（oracle 四局全死于
+  直球跟进袋），v7"模型不用 spin"的问题在此模式下有真实激励
 - [ ] 常驻服务：HTTP/SSE 大厅，多桌并发，观战排队
 - [ ] Agent vs Agent 对弈（Elo 榜）
 - [ ] Hustle 赌局、token 赌注、表演性放水

@@ -8,6 +8,8 @@
 
 export type { AgentDecision, OracleInfo, Strategy } from "./agents.ts";
 export { makeRandomStrategy, noCompStrategy, oracleStrategy } from "./agents.ts";
+export type { ClearObserve, ClearOpts, ClearShotResult } from "./clear.ts";
+export { ClearSession } from "./clear.ts";
 export type { HandModel, HandNoise, HandTrait, ShotIntent } from "./hand.ts";
 export {
   applyHand,

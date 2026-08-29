@@ -270,6 +270,44 @@ program
       }),
   );
 
+// 清台挑战（M6）：挂到 experiment 命令下 —— experiment clear
+const expCmd = program.commands.find((c) => c.name() === "experiment");
+expCmd
+  ?.command("clear")
+  .description("清台挑战实验（9 球计分赛，30 杆预算）")
+  .requiredOption("--agent <spec>", "synthetic:oracle 或 llm")
+  .option("--agent-name <name>", "身份名（默认取 spec）")
+  .option("--seeds <list>", "逗号分隔种子", "42")
+  .option("--max-shots <n>", "杆数预算", "30")
+  .option("--bias0", "对照组：消除身份 bias", false)
+  .option("--out <file>", "研究日志 JSONL", "experiments/results/clear.jsonl")
+  .action(
+    async (opts: {
+      agent: string;
+      agentName?: string;
+      seeds: string;
+      maxShots: string;
+      bias0: boolean;
+      out: string;
+    }) => {
+      const { runClear } = await import("./clear-run.ts");
+      for (const seed of parseSeeds(opts.seeds)) {
+        const r = await runClear({
+          agent: opts.agent,
+          agentName: opts.agentName ?? opts.agent.replaceAll(":", "-"),
+          seed,
+          maxShots: Number(opts.maxShots),
+          biasOverride: opts.bias0 ? 0 : undefined,
+          out: opts.out,
+        });
+        console.log(
+          `seed=${seed} ${r.agentName}: ${r.potted}/${r.total} 杆${r.shots}` +
+            `${r.scratches > 0 ? ` scratch×${r.scratches}` : ""}${r.cleared ? " 🏆清台" : ""} → ${opts.out}`,
+        );
+      }
+    },
+  );
+
 program
   .command("debug-go")
   .description("generateObject 稳定性调试（直接对真实 API 跑 N 次）")

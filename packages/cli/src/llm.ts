@@ -14,11 +14,12 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import type { AgentObserve } from "@poolhall/core";
+import type { AgentObserve, ClearObserve } from "@poolhall/core";
 import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
 import {
   type LedgerRow,
+  type PromptTask,
   promptFingerprint,
   renderFeedback,
   renderShotRequest,
@@ -37,10 +38,7 @@ const ShotOutputSchema = z.object({
     .number()
     .finite()
     .describe("母球出杆应瞄向的点 x（米）。通常在 aimAssist.ghost 附近，或按账本修正后的点"),
-  aimY: z
-    .number()
-    .finite()
-    .describe("母球出杆应瞄向的点 y（米）。与 aimX 同一点"),
+  aimY: z.number().finite().describe("母球出杆应瞄向的点 y（米）。与 aimX 同一点"),
   power: z.number().min(0).max(1).describe("力度 0~1。建议 0.3~0.5，满力走位失控"),
   spin: z
     .object({
@@ -58,6 +56,31 @@ const ShotOutputSchema = z.object({
       "校准笔记（核心记忆，改写制）：一句话维护你对自身系统偏差的结论与当前修正策略" +
         "（方向/量级/是否有效），每杆按最新证据改写；无结论时省略",
     ),
+});
+
+/** 清台挑战输出 schema（c1）：选球-袋组合 + 瞄点 + 走位参数 */
+const ClearOutputSchema = z.object({
+  targetBall: z.string().describe("本轮瞄准的目标球 id（观察 JSON balls 里的数字 id）"),
+  targetPocket: z.string().describe("目标袋 id（lt/rt/lb/rb/ct/cb）"),
+  aimX: z
+    .number()
+    .finite()
+    .describe("母球出杆应瞄向的点 x（米）。通常 = 所选组合的 aimAssists ghost，或你的修正点"),
+  aimY: z.number().finite().describe("母球出杆应瞄向的点 y（米）"),
+  power: z.number().min(0).max(1).describe("力度 0~1。走位宁小勿大；直线球防跟进用低杆或轻力"),
+  spin: z
+    .object({
+      x: z.number().min(-1).max(1),
+      y: z.number().min(-1).max(1).describe("低杆/高杆：-1=强缩杆防跟进，+1=跟进走位"),
+      z: z.number().min(-1).max(1).describe("加塞：碰库/碰球后切向偏移"),
+    })
+    .optional()
+    .describe("旋球向量，可选；防 scratch 用 spin.y 负值（低杆）"),
+  note: z
+    .string()
+    .max(300)
+    .optional()
+    .describe("策略笔记（改写制）：清台策略/力度教训/spin 是否有效的一句话结论"),
 });
 
 export interface LlmConfig {
@@ -105,6 +128,17 @@ export function llmLog(event: string, data: Record<string, unknown>): void {
   console.error(JSON.stringify({ ts: new Date().toISOString(), event, ...data }));
 }
 
+/** 两任务输出 schema 的公共结构（callModel 外壳按此读 obj） */
+interface ShotObjCommon {
+  aimX: number;
+  aimY: number;
+  power: number;
+  spin?: { x: number; y: number; z: number };
+  note?: string;
+  targetBall?: string;
+  targetPocket?: string;
+}
+
 /** 出一杆的归一结果（aimAt 含"模型瞄的点"；仅 angle 兼容时为 null） */
 export interface ShotAndAim {
   angle: number;
@@ -141,7 +175,10 @@ export class LlmAgentSession {
   private usageTotal = { prompt: 0, completion: 0 };
   private model: LanguageModel;
 
-  constructor(cfg: LlmConfig = configFromEnv()) {
+  private task: PromptTask;
+
+  constructor(cfg: LlmConfig = configFromEnv(), task: PromptTask = "calibrate") {
+    this.task = task;
     const anthropic = createAnthropic({
       // AI SDK 的 anthropic provider 在 baseURL 后直接拼 /messages；
       // 兼容端点按官方约定挂 /v1 下（curl 语义同 {base}/v1/messages）
@@ -156,7 +193,7 @@ export class LlmAgentSession {
   }
 
   get promptVersion(): string {
-    return promptFingerprint().version;
+    return promptFingerprint(this.task).version;
   }
 
   /** 上次成功调用的用量明细（experiment 落研究日志用；SDK LanguageModelUsage 全字段） */
@@ -200,19 +237,51 @@ export class LlmAgentSession {
   private usageCacheWrite = 0;
   private latencyTotalMs = 0;
 
-  /** 出一杆：观察+账本 → generateObject（schema 即契约）→ aimAt→angle 边界换算。
+  /** 出一杆（校准）：观察+账本 → generateObject（schema 即契约）→ aimAt→angle 边界换算。
    *  端点偶发抖动（NoObjectGeneratedError）由 3 次重试覆盖。 */
   async shot(obs: AgentObserve): Promise<ShotAndAim | null> {
-    // v9 两层记忆：结论层（模型自写校准笔记，改写制——Reflexion/Letta core memory 同构）
-    // + 证据层（近窗 6 杆明细，滑动）。分层的轴是"结论/证据"而非"旧/新"。
+    const aim = await this.callModel(ShotOutputSchema, obs, (obj) => this.aimOf(obs, obj));
+    return aim;
+  }
+
+  /** 出一杆（清台）：选球-袋 + 瞄点 + 走位参数 */
+  async shotClear(
+    obs: ClearObserve,
+  ): Promise<(ShotAndAim & { targetBall: string; targetPocket: string }) | null> {
+    return this.callModel(ClearOutputSchema, obs, (obj) => {
+      const cue = obs.balls.find((b) => b.id === "cue");
+      const spin = obj.spin ?? { x: 0, y: 0, z: 0 };
+      if (!cue || !obj.targetBall || !obj.targetPocket) return null;
+      const angle = (Math.atan2(-(obj.aimY - cue.y), obj.aimX - cue.x) * 180) / Math.PI;
+      return {
+        angle,
+        power: obj.power,
+        aimAt: { x: obj.aimX, y: obj.aimY },
+        spin,
+        targetBall: obj.targetBall,
+        targetPocket: obj.targetPocket,
+      };
+    });
+  }
+
+  /** 任务共用的模型调用外壳（记忆块拼装 + generateObject + 重试 + usage 统计） */
+  private async callModel<T>(
+    schema: z.ZodTypeAny,
+    obs: AgentObserve | ClearObserve,
+    toAim: (obj: ShotObjCommon) => T | null,
+  ): Promise<T | null> {
     const noteBlock = this.note
-      ? `<calibration_note>（你自己维护的校准结论，可按最新证据改写）\n${this.note}\n</calibration_note>\n`
+      ? `<calibration_note>（你自己维护的策略结论，可按最新证据改写）\n${this.note}\n</calibration_note>\n`
       : "";
     const histBlock =
       this.history.length > 0
         ? `<history>（你之前的决定与结果，从旧到新）\n${this.history.slice(-6).join("\n")}\n</history>\n`
         : "";
-    const userMessage = noteBlock + histBlock + renderShotRequest(obs, this.pendingFeedback, this.ledger);
+    const trialKey = "shot" in obs ? obs.shot : obs.trial;
+    const userMessage =
+      noteBlock +
+      histBlock +
+      renderShotRequest(obs as never, this.pendingFeedback, this.ledger, this.task);
     this.pendingFeedback = null;
 
     for (let retry = 0; retry < 3; retry++) {
@@ -220,14 +289,14 @@ export class LlmAgentSession {
       try {
         const result = await generateObject({
           model: this.model,
-          schema: ShotOutputSchema,
-          system: systemPrompt(),
+          schema,
+          system: systemPrompt(this.task),
           messages: [{ role: "user", content: userMessage }],
           temperature: 0,
           maxOutputTokens: 2048,
         });
         const u = result.usage;
-        const obj = result.object;
+        const obj = result.object as ShotObjCommon;
         this.lastObj = obj;
         if (obj.note !== undefined && obj.note.trim().length > 0) this.note = obj.note.trim();
         const latencyMs = Date.now() - t0;
@@ -244,7 +313,7 @@ export class LlmAgentSession {
           tokensPerSec: latencyMs > 0 ? Math.round(outTok / (latencyMs / 1000)) : 0,
         };
         llmLog("llm.response", {
-          trial: obs.trial,
+          trial: trialKey,
           finishReason: result.finishReason ?? "stop",
           tokensIn: u?.inputTokens ?? 0,
           tokensOut: outTok,
@@ -260,26 +329,36 @@ export class LlmAgentSession {
         this.callCount += 1;
         this.latencyTotalMs += latencyMs;
 
-        const aim = this.aimOf(obs, obj);
-        llmLog("llm.parsed", { trial: obs.trial, aim, aimAssist: obs.aimAssist?.suggestedAngle });
+        const aim = toAim(obj);
+        if (!aim) {
+          llmLog("llm.invalid_aim", { trial: trialKey });
+          return null;
+        }
+        llmLog("llm.parsed", { trial: trialKey, aim });
         return aim;
       } catch (e) {
         llmLog("llm.call_error", {
-          trial: obs.trial,
+          trial: trialKey,
           error: (e as Error).message.slice(0, 200),
           retry: retry + 1,
         });
         await new Promise((r) => setTimeout(r, 500));
       }
     }
-    llmLog("llm.give_up", { trial: obs.trial });
+    llmLog("llm.give_up", { trial: trialKey });
     return null;
   }
 
   /** aimAt 点 → 出杆角（atan2/符号/象限唯一集中地） */
   private aimOf(
     obs: AgentObserve,
-    parsed: { aimX?: number; aimY?: number; angle?: number; power: number; spin?: { x: number; y: number; z: number } },
+    parsed: {
+      aimX?: number;
+      aimY?: number;
+      angle?: number;
+      power: number;
+      spin?: { x: number; y: number; z: number };
+    },
   ): ShotAndAim {
     const cue = obs.balls.find((b) => b.id === "cue");
     const power = Math.min(1, Math.max(0, parsed.power));

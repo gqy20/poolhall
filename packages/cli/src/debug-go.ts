@@ -10,8 +10,8 @@
  * 目的：用数据定哪种模式对这个端点最稳。
  */
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { generateObject } from "ai";
 import type { LanguageModel } from "ai";
+import { generateObject } from "ai";
 import { z } from "zod";
 import { configFromEnv } from "./llm.ts";
 

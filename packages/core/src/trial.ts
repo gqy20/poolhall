@@ -158,7 +158,11 @@ export class CalibSession {
   }
 
   /** 出杆：注入手感 → 模拟 → 记录三元组 */
-  shoot(intent: { angle: number; power: number; spin?: { x: number; y: number; z: number } }): ResearchShot {
+  shoot(intent: {
+    angle: number;
+    power: number;
+    spin?: { x: number; y: number; z: number };
+  }): ResearchShot {
     if (this.finished) throw new Error("本局已结束");
     const idx = this.idx;
     const noise = noiseAtShot(this.hand, idx, this.seed, this.agent);
