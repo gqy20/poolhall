@@ -114,7 +114,7 @@ function ballFill(id) {
   return "#FFFFFF";
 }
 
-function renderTable(finalBalls, highlightBy) {
+function renderTable(finalBalls, highlightBy, playerColor) {
   const root = el("svg", { viewBox: `0 0 ${TABLE_W} ${TABLE_H}`, preserveAspectRatio: "xMidYMid meet" });
   root.appendChild(el("rect", { x: 0, y: 0, width: TABLE_W, height: TABLE_H, fill: "var(--felt)" }));
   const pockets = [
@@ -131,7 +131,10 @@ function renderTable(finalBalls, highlightBy) {
   for (const [id, p] of Object.entries(finalBalls)) {
     const isCue = id === "cue";
     const stroke = isCue ? "#000" : ballFill(id) === "#fff" ? "#222" : "rgba(0,0,0,.3)";
-    root.appendChild(el("circle", { cx: p.x, cy: p.y, r: R, fill: ballFill(id), stroke, "stroke-width": 0.002 }));
+    // 击球方球员色描边（区分本杆是谁打的）
+    const strokeColor = playerColor && !isCue ? playerColor : stroke;
+    const strokeWidth = playerColor && !isCue ? 0.005 : 0.002;
+    root.appendChild(el("circle", { cx: p.x, cy: p.y, r: R, fill: ballFill(id), stroke: strokeColor, "stroke-width": strokeWidth }));
     if (!isCue) {
       root.appendChild(el("circle", { cx: p.x, cy: p.y, r: R * 0.55, fill: "rgba(255,255,255,.6)" }));
       root.appendChild(el("text", { x: p.x, y: p.y + R * 0.3, "text-anchor": "middle",
@@ -167,7 +170,6 @@ function appendLog(by, text, cls) {
 
 function renderShot(s) {
   tableFrame.innerHTML = "";
-  tableFrame.appendChild(renderTable(s.finalBalls, s.by));
   kpi.shot = s.trial;
   kpi.turn = s.nextTurn;
   if (s.pottedBalls && s.pottedBalls.length > 0) {
@@ -191,6 +193,66 @@ function renderShot(s) {
   else if (s.foul) cls = "foul";
   else if (s.pottedBalls && s.pottedBalls.length > 0) cls = "pot";
   appendLog(s.by, `杆${s.trial} ${s.targetBall ?? "?"}→${s.targetPocket ?? "?"} 瞄${(s.intentAngle ?? 0).toFixed(0)}° ${label}`, cls);
+  animateShot(s);
+}
+
+/**
+ * 轨迹插值播放（samples 按 t 推进；rate 倍速可调）
+ * - 30ms 帧步（≈33fps）
+ * - 命中 / pocket 时该球在下一个 sample 就从 pos 中消失，做"消失"动画
+ */
+let animFrame = null;
+function animateShot(s) {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  const samples = s.samples || [];
+  if (samples.length < 2) {
+    tableFrame.innerHTML = "";
+    tableFrame.appendChild(renderTable(s.finalBalls, s.by));
+    return;
+  }
+  const t0 = samples[0].t;
+  const tEnd = samples[samples.length - 1].t;
+  const dur = Math.max(1.5, Math.min(8, tEnd - t0)); // 1.5-8s
+  const tStart = performance.now();
+  // 球员色：A 蓝、B 橙；瞄准线虚色用同色
+  const playerColor = s.by === "A" ? "var(--A)" : "var(--B)";
+
+  function frame() {
+    const elapsed = (performance.now() - tStart) / 1000;
+    const tv = elapsed / dur;
+    if (tv >= 1) {
+      // 结束：定格到 finalBalls
+      tableFrame.innerHTML = "";
+      tableFrame.appendChild(renderTable(s.finalBalls, s.by));
+      animFrame = null;
+      return;
+    }
+    // 找到当前 tv 对应 sample（线性插值 t0 → tEnd）
+    const targetT = t0 + tv * (tEnd - t0);
+    // 二分定位最近 sample（samples 100-200 个，二分足够）
+    let lo = 0, hi = samples.length - 1;
+    while (lo < hi - 1) {
+      const mid = (lo + hi) >> 1;
+      if (samples[mid].t <= targetT) lo = mid;
+      else hi = mid;
+    }
+    const s0 = samples[lo], s1 = samples[hi];
+    const f = (targetT - s0.t) / Math.max(1e-6, s1.t - s0.t);
+    // 取 lo 和 hi 之间的 pos 插值
+    const liveBalls = {};
+    for (const id of new Set([...Object.keys(s0.pos), ...Object.keys(s1.pos)])) {
+      const a = s0.pos[id], b = s1.pos[id];
+      if (a && b) liveBalls[id] = { x: a.x + f * (b.x - a.x), y: a.y + f * (b.y - a.y) };
+      else if (a) liveBalls[id] = a;
+      else if (b) liveBalls[id] = b;
+    }
+    // 高亮本次击球方：所有球轻微描边 cue/8 外环，击球方走过的球（finalPos 与 initPos 不同）高亮
+    tableFrame.innerHTML = "";
+    tableFrame.appendChild(renderTable(liveBalls, s.by, playerColor));
+    animFrame = requestAnimationFrame(frame);
+  }
+  animFrame = requestAnimationFrame(frame);
+}
 }
 
 function handle(msg) {

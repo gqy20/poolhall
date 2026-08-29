@@ -49,6 +49,8 @@ export type Broadcast =
       over: boolean;
       winner: "A" | "B" | null;
       reason: string | null;
+      /** 完整轨迹（10ms 采样）——浏览器按时间戳内插出平滑移动 */
+      samples: Array<{ t: number; pos: Record<string, { x: number; y: number }> }>;
       cueFinal: { x: number; y: number } | null;
       finalBalls: Record<string, { x: number; y: number }>;
     }

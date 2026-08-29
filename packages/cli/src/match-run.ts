@@ -145,6 +145,7 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
         reason: rec.reason,
         cueFinal: rec.cueFinal,
         finalBalls: rec.finalPos,
+        samples: rec.samples,
       });
     }
 
