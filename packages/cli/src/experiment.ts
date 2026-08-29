@@ -170,6 +170,7 @@ export async function runCalibrate(opts: RunOpts): Promise<RunSummary> {
       agent: opts.agentName,
       ...stripRec(rec),
       intentSpin: intent.spin ?? null,
+      calibNote: llm?.currentNote ?? null,
       usage: llm?.lastUsage ?? null,
     });
 

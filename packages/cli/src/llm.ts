@@ -50,6 +50,14 @@ const ShotOutputSchema = z.object({
     })
     .optional()
     .describe("旋球向量，可选；不确定时省略或全 0"),
+  note: z
+    .string()
+    .max(300)
+    .optional()
+    .describe(
+      "校准笔记（核心记忆，改写制）：一句话维护你对自身系统偏差的结论与当前修正策略" +
+        "（方向/量级/是否有效），每杆按最新证据改写；无结论时省略",
+    ),
 });
 
 export interface LlmConfig {
@@ -120,6 +128,8 @@ export class LlmAgentSession {
    *   （全量明细永驻会供燃料过补偿，v8.5b 实测 68%→54%，崩坏集中在 trial 20-27）
    */
   private history: string[] = [];
+  /** v9 结论层：模型自写校准笔记（改写制；null=模型尚未形成结论） */
+  private note: string | null = null;
   private lastObj: {
     aimX: number;
     aimY: number;
@@ -193,12 +203,16 @@ export class LlmAgentSession {
   /** 出一杆：观察+账本 → generateObject（schema 即契约）→ aimAt→angle 边界换算。
    *  端点偶发抖动（NoObjectGeneratedError）由 3 次重试覆盖。 */
   async shot(obs: AgentObserve): Promise<ShotAndAim | null> {
-    // 近窗滑动（keep 6）：长程历史（即使仅结果行）会拉低精度（22-28 vs 34，五形态对照）
+    // v9 两层记忆：结论层（模型自写校准笔记，改写制——Reflexion/Letta core memory 同构）
+    // + 证据层（近窗 6 杆明细，滑动）。分层的轴是"结论/证据"而非"旧/新"。
+    const noteBlock = this.note
+      ? `<calibration_note>（你自己维护的校准结论，可按最新证据改写）\n${this.note}\n</calibration_note>\n`
+      : "";
     const histBlock =
       this.history.length > 0
         ? `<history>（你之前的决定与结果，从旧到新）\n${this.history.slice(-6).join("\n")}\n</history>\n`
         : "";
-    const userMessage = histBlock + renderShotRequest(obs, this.pendingFeedback, this.ledger);
+    const userMessage = noteBlock + histBlock + renderShotRequest(obs, this.pendingFeedback, this.ledger);
     this.pendingFeedback = null;
 
     for (let retry = 0; retry < 3; retry++) {
@@ -215,6 +229,7 @@ export class LlmAgentSession {
         const u = result.usage;
         const obj = result.object;
         this.lastObj = obj;
+        if (obj.note !== undefined && obj.note.trim().length > 0) this.note = obj.note.trim();
         const latencyMs = Date.now() - t0;
         const cacheRead = u?.inputTokenDetails?.cacheReadTokens ?? 0;
         const cacheWrite = u?.inputTokenDetails?.cacheWriteTokens ?? 0;
@@ -306,6 +321,11 @@ export class LlmAgentSession {
       this.ledger.push({ ...ledgerRow, sideNote: missDesc } as LedgerRow);
     }
     this.pendingFeedback = renderFeedback(potted, pottedPocket, finalBalls, missDesc);
+  }
+
+  /** 当前校准笔记（research 日志用） */
+  get currentNote(): string | null {
+    return this.note;
   }
 
   /** 会话账本快照（research 日志用） */
