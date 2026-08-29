@@ -240,6 +240,20 @@ v6 prompt + 反馈系统的校准机制在 4 个独立 seed 下**全部收敛**�
    只能部分替代。换支持多轮 tool-call 的端点（如官方 Anthropic）后预期差距消失。
 4. 代码保留 v8.2 形态（generateObject + `<history>` 内嵌 + 3 次重试），便于换端点即用。
 
+### 7.4 端点多轮 bug 归因闭环（v8.4 判别实验）
+
+v8.1 的"多轮历史崩溃"曾有混杂疑点：同期无状态单消息调用也崩过（17:40 trial 14 /
+17:42 trial 4，均 retry=2 + 端点抖动窗口）。v8.4 判别实验排除混杂：**多轮 messages +
+retry 3 + 稳定窗口**重跑 → **1/50，trial 1 即崩，3 次重试全灭**，错误同为
+"No object generated"。
+
+结论坐实：MiniMax Anthropic 兼容端点的 tool-call 路径（伪造 json tool +
+`tool_choice:required`）在 messages 含 assistant 历史轮时**确定性失败**，
+与抖动窗口无关。SDK 设施盘点（ai@7.0.83）：`ToolLoopAgent` 是单次调用内的
+tool 循环（跨调用无状态）；会话管理的设计立场是**调用方持有 messages 数组**，
+SDK 仅提供 `ResponseMessage` 类型与 `pruneMessages` 裁剪工具——无现成会话管理器，
+`<history>` 文本内嵌是此端点下的合理替代。
+
 ## 变更记录
 
 - 2026-08-28 首次定稿（v4 实证 + 准入门条款 + 三轮反馈修订）

@@ -108,19 +108,19 @@ export interface ShotAndAim {
 
 export class LlmAgentSession {
   /**
-   * 历史以文本内嵌（非 messages 多轮）——端点的 tool-call 路径在多轮
-   * assistant 历史下崩溃（实测 2/50），但完全无历史又导致补偿决策震荡（46%）。
-   * 折中：单 user message + <history> 块（最近几轮"我瞄了什么→结果"）。
+   * 历史以文本内嵌（非 messages 多轮）——**已两次实证**：该端点 tool-call 路径
+   * （generateObject 走伪造 json tool + tool_choice:required）在 messages 含
+   * assistant 历史轮时必崩（v8.1: 2/50；v8.4 判别实验排除时间窗混杂后 1/50，
+   * 3 次重试全灭）；完全无历史又致补偿震荡（46%）。
+   * 最终形态：单 user message + <history> 文本块（最近几轮"我瞄了什么→结果"）= 68%。
    */
   private history: string[] = [];
-  /** 本杆模型输出 + ghost 参考（feedback 时算相对偏移落 history） */
   private lastObj: {
     aimX: number;
     aimY: number;
     power: number;
     spin?: { x: number; y: number; z: number };
   } | null = null;
-  private lastGhost: { x: number; y: number } | null = null;
   private pendingFeedback: string | null = null;
   private ledger: Array<LedgerRow> = [];
   private usageTotal = { prompt: 0, completion: 0 };
@@ -151,8 +151,7 @@ export class LlmAgentSession {
       this.history.length > 0
         ? `<history>（你之前的决定与结果，从旧到新）\n${this.history.slice(-6).join("\n")}\n</history>\n`
         : "";
-    const userMessage =
-      histBlock + renderShotRequest(obs, this.pendingFeedback, this.ledger);
+    const userMessage = histBlock + renderShotRequest(obs, this.pendingFeedback, this.ledger);
     this.pendingFeedback = null;
 
     for (let retry = 0; retry < 3; retry++) {
@@ -169,7 +168,6 @@ export class LlmAgentSession {
         const u = result.usage;
         const obj = result.object;
         this.lastObj = obj;
-        this.lastGhost = obs.aimAssist?.ghost ?? null;
         llmLog("llm.response", {
           trial: obs.trial,
           finishReason: result.finishReason ?? "stop",
@@ -236,7 +234,6 @@ export class LlmAgentSession {
         }`,
       );
       this.lastObj = null;
-      this.lastGhost = null;
     }
     if (ledgerRow) {
       this.ledger.push({ ...ledgerRow, sideNote: missDesc } as LedgerRow);
