@@ -19,6 +19,8 @@ export {
   traitFrom,
   unitUniform,
 } from "./hand.ts";
+export type { Group, MatchObserve, MatchOpts, MatchShotResult, PlayerId } from "./match.ts";
+export { MatchSession } from "./match.ts";
 export type {
   AgentMsg,
   EndMsg,

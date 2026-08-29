@@ -9,6 +9,7 @@
 | [proto.md](proto.md) | 行协议（JSONL）与回放格式（.phl）契约 | 草稿（实现期验证） |
 | [benchmark.md](benchmark.md) | 校准挑战协议、信噪比公理与准入门（2×50 杆实证） | 已定稿 |
 | [clear.md](clear.md) | 清台挑战：9 球计分赛规则、scratch 威慑、aimAssists | 已定稿（M6.1） |
+| [match.md](match.md) | 中式八球对局：v1 规则、双选手 hand model、Agent vs Agent | 已定稿（M6.2） |
 | [roadmap.md](roadmap.md) | 里程碑 M0–M6、每阶段完成定义（DoD）、节奏与止损线 | 已定稿 |
 
 规范类见根目录 [AGENTS.md](../AGENTS.md)；项目愿景见 [README.md](../README.md)。

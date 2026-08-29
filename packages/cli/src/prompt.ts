@@ -22,7 +22,7 @@ export interface LedgerRow {
 }
 
 /** 任务类型 → 提示词文件（按任务分文件管理；每文件独立版本） */
-export type PromptTask = "calibrate" | "clear";
+export type PromptTask = "calibrate" | "clear" | "match";
 
 interface PromptAsset {
   version: string;

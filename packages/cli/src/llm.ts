@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import type { AgentObserve, ClearObserve } from "@poolhall/core";
+import type { AgentObserve, ClearObserve, MatchObserve } from "@poolhall/core";
 import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
 import {
@@ -264,10 +264,30 @@ export class LlmAgentSession {
     });
   }
 
+  /** 出一杆（对局）：与清台同构（选球-袋 + 瞄点 + 走位），prompt 用 match.yaml */
+  async shotMatch(
+    obs: import("@poolhall/core").MatchObserve,
+  ): Promise<(ShotAndAim & { targetBall: string; targetPocket: string }) | null> {
+    return this.callModel(ClearOutputSchema, obs, (obj) => {
+      const cue = obs.balls.find((b) => b.id === "cue");
+      const spin = obj.spin ?? { x: 0, y: 0, z: 0 };
+      if (!cue || !obj.targetBall || !obj.targetPocket) return null;
+      const angle = (Math.atan2(-(obj.aimY - cue.y), obj.aimX - cue.x) * 180) / Math.PI;
+      return {
+        angle,
+        power: obj.power,
+        aimAt: { x: obj.aimX, y: obj.aimY },
+        spin,
+        targetBall: obj.targetBall,
+        targetPocket: obj.targetPocket,
+      };
+    });
+  }
+
   /** 任务共用的模型调用外壳（记忆块拼装 + generateObject + 重试 + usage 统计） */
   private async callModel<T>(
     schema: z.ZodTypeAny,
-    obs: AgentObserve | ClearObserve,
+    obs: AgentObserve | ClearObserve | MatchObserve,
     toAim: (obj: ShotObjCommon) => T | null,
   ): Promise<T | null> {
     const noteBlock = this.note
@@ -277,7 +297,12 @@ export class LlmAgentSession {
       this.history.length > 0
         ? `<history>（你之前的决定与结果，从旧到新）\n${this.history.slice(-6).join("\n")}\n</history>\n`
         : "";
-    const trialKey = "shot" in obs ? obs.shot : obs.trial;
+    const trialKey =
+      "shot" in obs && !("trial" in obs)
+        ? obs.shot
+        : "trial" in obs
+          ? obs.trial
+          : (obs as MatchObserve).shot;
     const userMessage =
       noteBlock +
       histBlock +

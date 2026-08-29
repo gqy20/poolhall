@@ -270,8 +270,45 @@ program
       }),
   );
 
-// 清台挑战（M6）：挂到 experiment 命令下 —— experiment clear
+// 清台挑战（M6）：挂到 experiment 命令下 —— experiment clear / experiment match
 const expCmd = program.commands.find((c) => c.name() === "experiment");
+expCmd
+  ?.command("match")
+  .description("中式八球对局（Agent vs Agent）")
+  .requiredOption("--a <spec>", "选手A：synthetic:oracle 或 llm")
+  .requiredOption("--b <spec>", "选手B：synthetic:oracle 或 llm")
+  .option("--name-a <name>", "选手A身份名（跨局手感记忆）", "playerA")
+  .option("--name-b <name>", "选手B身份名", "playerB")
+  .option("--seed <n>", "种子", "42")
+  .option("--max-shots <n>", "杆数预算", "60")
+  .option("--out <file>", "研究日志 JSONL", "experiments/results/match.jsonl")
+  .action(
+    async (opts: {
+      a: string;
+      b: string;
+      nameA: string;
+      nameB: string;
+      seed: string;
+      maxShots: string;
+      out: string;
+    }) => {
+      const { runMatch } = await import("./match-run.ts");
+      const r = await runMatch({
+        specA: opts.a,
+        specB: opts.b,
+        nameA: opts.nameA,
+        nameB: opts.nameB,
+        seed: Number(opts.seed),
+        maxShots: Number(opts.maxShots),
+        out: opts.out,
+      });
+      console.log(
+        `seed=${opts.seed} ${opts.nameA}(${opts.a}) vs ${opts.nameB}(${opts.b}): ` +
+          `${r.winner === "A" ? `${opts.nameA} 胜` : r.winner === "B" ? `${opts.nameB} 胜` : "平局"}——${r.reason ?? ""}（${r.shots} 杆）→ ${opts.out}`,
+      );
+    },
+  );
+
 expCmd
   ?.command("clear")
   .description("清台挑战实验（9 球计分赛，30 杆预算）")

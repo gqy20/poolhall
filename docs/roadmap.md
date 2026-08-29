@@ -117,6 +117,9 @@ DoD：两个外部 agent 通过 MCP 各自完成一局校准挑战，产出知�
   core/ClearSession + prompts/clear.yaml + LLM 接入全通（docs/clear.md）。
   关键设计发现：scratch 威慑让低杆从可选技巧变成生存技能（oracle 四局全死于
   直球跟进袋），v7"模型不用 spin"的问题在此模式下有真实激励
+- [x] **M6.2 中式八球对局**（2026-08-29）：MatchSession 规则引擎（定组/首触裁判/
+  8 号胜负/双选手独立 hand model）+ llm×oracle 混编对战全通（docs/match.md）——
+  Agent vs Agent 与"读对手 bias"心理层的地基
 - [ ] 常驻服务：HTTP/SSE 大厅，多桌并发，观战排队
 - [ ] Agent vs Agent 对弈（Elo 榜）
 - [ ] Hustle 赌局、token 赌注、表演性放水
