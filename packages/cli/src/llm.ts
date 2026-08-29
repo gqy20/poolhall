@@ -112,7 +112,12 @@ export class LlmAgentSession {
    * （generateObject 走伪造 json tool + tool_choice:required）在 messages 含
    * assistant 历史轮时必崩（v8.1: 2/50；v8.4 判别实验排除时间窗混杂后 1/50，
    * 3 次重试全灭）；完全无历史又致补偿震荡（46%）。
-   * 最终形态：单 user message + <history> 文本块（最近几轮"我瞄了什么→结果"）= 68%。
+   *
+   * v8.6 两全设计（缓存 × 精度）：历史分两区——
+   * - 归档区：旧杆压缩成一行"第N杆: 进袋/未进"（append-only，写后永不改写 → 前缀
+   *   稳定可缓存，打 ephemeral 断点）
+   * - 近窗区：最近 6 杆完整明细（瞄点/力度/偏差），窗口滑出即衰减 → 行为阻尼
+   *   （全量明细永驻会供燃料过补偿，v8.5b 实测 68%→54%，崩坏集中在 trial 20-27）
    */
   private history: string[] = [];
   private lastObj: {
@@ -188,8 +193,7 @@ export class LlmAgentSession {
   /** 出一杆：观察+账本 → generateObject（schema 即契约）→ aimAt→angle 边界换算。
    *  端点偶发抖动（NoObjectGeneratedError）由 3 次重试覆盖。 */
   async shot(obs: AgentObserve): Promise<ShotAndAim | null> {
-    // 滑动窗口（keep 最近 6 杆）：行为阻尼——全量历史会让早期 miss 持续供燃料，
-    // 过补偿加剧（实测 68%→54%）；缓存代价见 docs/benchmark.md §7.5（6.1% vs 31.9% 权衡）
+    // 近窗滑动（keep 6）：长程历史（即使仅结果行）会拉低精度（22-28 vs 34，五形态对照）
     const histBlock =
       this.history.length > 0
         ? `<history>（你之前的决定与结果，从旧到新）\n${this.history.slice(-6).join("\n")}\n</history>\n`
