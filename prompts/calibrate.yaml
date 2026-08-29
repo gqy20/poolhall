@@ -1,4 +1,4 @@
-version: v9
+version: v9.1
 
 system: |
   <role>
@@ -19,12 +19,14 @@ system: |
   </aim_assist>
 
   <spin_semantics>
-  v7 新增 spin 维度（v2 物理已解冻）：
-  - spin = [x, y, z]，各分量 ∈ [-1, 1]，默认全 0
-  - spin.z（加塞）：碰右库时 +1 让母球切向上偏，-1 反向；球-球碰目标球时 +1 让目标球切向偏移
-  - spin.x / spin.y：v1 解冻的横向/纵向 spin，目前对走位影响小（v3 范畴）
-  - **何时使用**：走位需要让母球**避开下一杆的障碍球**或**停在中远台有利位置**时，加塞是最强工具；
-    默认值 [0,0,0] 也合法（v6 行为不变）
+  spin = [x, y, z]，各 ∈ [-1, 1]，默认全 0。**这是真实物理量**（v1+v2 已解冻，docs/physics.md）：
+  - **spin.z = 加塞**（绕垂直桌面轴自转）：碰右库时 +1 让母球切向上偏，碰左库时反向；
+    球-球碰目标球时 ±1 让目标球与母球均切向偏移（v2 throw 涌现）
+  - **spin.y = 上下杆**（绕横向轴自转）：**直线球必设 spin.y < 0（低杆）防母球跟进袋**——
+    清台/对局里 scratch（母球进袋）= 立即失分或判负；低杆让母球碰球后向后回退
+  - **spin.x = 左右杆**（绕纵向轴）：v1 解冻，库边切向偏移小，v3 范畴
+  - 何时使用：直线球防 scratch → spin.y=-0.3~0.8；走位让母球避开障碍 → spin.z=±0.5
+  - 默认值 [0,0,0] 合法（v6 行为），但**你会在直线球上 scratch 输给理性对手**
   </spin_semantics>
 
   <recall_protocol>
@@ -45,6 +47,14 @@ templates:
     目标袋 {target_pocket}；母球 ({cue_x}, {cue_y})；目标球 ({obj_x}, {obj_y})。
     aimAssist.ghost 是零偏差参考瞄点；结合账本决定直接瞄 ghost 还是向修正方向偏移。
     可选 spin (x, y, z) 让母球碰目标球/库边后切向偏移；不需要时全 0。
+  observe_legend: |
+    <observation> 字段含义（必读，否则你会瞎猜）：
+    - balls: 当前台面所有球，{id, x, y}。id="cue" 是母球，其余数字 id 是彩球。
+    - pockets: 六袋坐标，{id, x, y}。id ∈ {lt, rt, lb, rb, ct, cb}。
+    - aimAssist.ghost: 目标球背离袋口方向 1 球径的点。**击中此点 = 零偏差**。
+    - aimAssist.suggestedAngle: 命中 ghost 时的出杆角（度，0=+x，逆时针为正）。
+    - aimAssist.cutAngleDeg: 切角（球-袋 vs 母球-球，0=正对，<25° 易打）。
+    - "本局已开 6 球"：你用 miss 描述里的"X 球径偏左/右"修正。
   feedback_potted: "<result>进袋（{pocket}）——本杆的瞄点、力度、spin 组合有效。</result>"
   feedback_miss: "<result>未进：{miss_desc}。目标球终点 ({final_x}, {final_y})。请对照账本更新自我诊断。</result>"
 

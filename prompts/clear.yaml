@@ -1,4 +1,4 @@
-version: c1
+version: c2
 
 system: |
   <role>
@@ -40,6 +40,15 @@ templates:
     <observation shot="{trial}" potted="{score}/{total}" remaining="{remaining}">{observation}</observation>
     aimAssists 为每球最容易组合的参考瞄点。
     选择球-袋组合，决定瞄点、力度与可选 spin；思考走位（母球停哪）。
+  observe_legend: |
+    <observation> 字段含义（必读）：
+    - balls: 当前台面所有球，{id, x, y}。id="cue" 是母球，1-7 全色，9-15 花色。
+    - pockets: 六袋坐标 {id, x, y}。id ∈ {lt, rt, lb, rb, ct, cb}。
+    - aimAssists: 每颗剩余球"最容易球-袋组合"的参考列表，每项含 ball/pocket/ghost/cutAngleDeg。
+      ghost = 目标球背离袋口方向 1 球径的点；击中 ghost = 零偏差。
+      cutAngleDeg < 25° 易打。
+    - spin 物理（v1+v2 解冻）：spin.y 上下杆（直线球防 scratch→spin.y<0 必用），
+      spin.z 加塞（走位切向偏移），spin.x 横向（v3 范畴）。
   feedback_potted: "<result>进袋（{ball}→{pocket}）。母球停在 ({cue_x}, {cue_y})。</result>"
   feedback_miss: "<result>未进：{miss_desc}。已用 {shots}/{budget} 杆，进 {potted}/{total} 球。</result>"
   feedback_scratch: "<result>母球进袋（scratch）——严重失误，本局结束。共用 {shots} 杆清 {potted}/{total} 球。</result>"
