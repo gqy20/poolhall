@@ -378,6 +378,105 @@ program
     },
   );
 
+program
+  .command("web-match")
+  .description("B 路线：实时对局可视化（WS 推送每杆 + 静态前端）")
+  .option("--host <host>", "WS host", "0.0.0.0")
+  .option("--port <n>", "WS port（前端也用此端口拉 index.html）", "8787")
+  .option("--seed <n>", "种子", "42")
+  .option("--name-a <name>", "选手A身份名", "playerA")
+  .option("--name-b <name>", "选手B身份名", "playerB")
+  .requiredOption("--a <spec>", "选手A：synthetic:oracle 或 llm")
+  .requiredOption("--b <spec>", "选手B：synthetic:oracle 或 llm")
+  .option("--max-shots <n>", "杆数预算", "60")
+  .option("--out <file>", "研究日志 JSONL", "")
+  .action(
+    async (opts: {
+      host: string;
+      port: string;
+      seed: string;
+      nameA: string;
+      nameB: string;
+      a: string;
+      b: string;
+      maxShots: string;
+      out: string;
+    }) => {
+      const { WsHub } = await import("./match-ws/server.ts");
+      const { runMatch } = await import("./match-run.ts");
+      const port = Number(opts.port);
+      const hub = new WsHub(port, opts.host);
+      await hub.start();
+      // 静态前端：serve experiments/web/
+      const { createReadStream, statSync } = await import("node:fs");
+      const { join, dirname } = await import("node:path");
+      const { fileURLToPath } = await import("node:url");
+      const webDir = join(dirname(fileURLToPath(import.meta.url)), "../../experiments/web");
+      const { createServer } = await import("node:http");
+      const http = createServer((req, res) => {
+        if (!req.url) return;
+        if (req.url === "/" || req.url === "/index.html") {
+          const p = join(webDir, "index.html");
+          try {
+            statSync(p);
+            res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+            createReadStream(p).pipe(res);
+          } catch {
+            res.writeHead(404).end("experiments/web/index.html not found");
+          }
+          return;
+        }
+        if (req.url?.startsWith("/?")) {
+          // / 路径已被上面覆盖
+        }
+        res.writeHead(404).end();
+      });
+      http.listen(port + 1, opts.host, () => {
+        console.error(
+          `poolhall web-match 启动：WS ws://${opts.host}:${port}  HTTP http://${opts.host}:${port + 1}`,
+        );
+      });
+
+      // hello：客户端连上即推元信息
+      const { promptFingerprint } = await import("./prompt.ts");
+      hub.broadcast({
+        type: "hello",
+        seed: Number(opts.seed),
+        nameA: opts.nameA,
+        nameB: opts.nameB,
+        promptA: opts.a === "llm" ? promptFingerprint("match").version : null,
+        promptB: opts.b === "llm" ? promptFingerprint("match").version : null,
+      });
+
+      const matchPromise = runMatch({
+        specA: opts.a,
+        specB: opts.b,
+        nameA: opts.nameA,
+        nameB: opts.nameB,
+        seed: Number(opts.seed),
+        maxShots: Number(opts.maxShots),
+        out: opts.out || "/dev/null",
+        hub,
+      });
+      matchPromise.then((r) => {
+        hub.broadcast({ type: "summary", winner: r.winner, reason: r.reason, shots: r.shots });
+        console.error(`对局结束：${r.winner ? `${r.winner} 胜` : "平局"}——${r.reason}（${r.shots} 杆）`);
+      });
+      // 长驻：等对局结束 + 等客户端断开或用户 Ctrl-C
+      const shutdown = new Promise<void>((resolve) => {
+        const onSig = () => {
+          console.error("收到信号，关闭 hub...");
+          hub.close();
+          resolve();
+        };
+        process.on("SIGINT", onSig);
+        process.on("SIGTERM", onSig);
+      });
+      await Promise.race([matchPromise, shutdown]);
+      hub.close();
+    },
+  );
+
 void CORE_VERSION;
 void ENGINE_VERSION;
 void SEVEN_FOOT;

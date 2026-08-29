@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<title>PoolHall 中式八球对局 · 实时</title>
+<style>
+:root {
+  --bg: #f7f4ee; --bg-alt: #ece8dc; --ink: #2b2b2b; --ink-soft: #5a5d61;
+  --felt: #1B4D3E; --felt-light: #d4e2dc;
+  --A: #2D5E8A; --B: #C76B2D;
+  --miss: #B94A48; --pot: #1B4D3E;
+  --grid: #d4cfba;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+  font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 14px; line-height: 1.5; }
+header { padding: 16px 24px; border-bottom: 1px solid var(--grid); display: flex;
+  justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; }
+h1 { font-size: 18px; margin: 0; }
+.meta { color: var(--ink-soft); font-size: 13px; }
+.meta .A { color: var(--A); font-weight: 700; }
+.meta .B { color: var(--B); font-weight: 700; }
+.status { font-size: 13px; }
+.main { padding: 16px 24px; display: grid; grid-template-columns: 1fr 360px; gap: 16px; }
+@media (max-width: 1000px) { .main { grid-template-columns: 1fr; } }
+.table-frame { background: var(--felt); border-radius: 6px; padding: 8px; position: relative; aspect-ratio: 2.04; }
+.table-frame svg { width: 100%; height: 100%; display: block; }
+.legend { padding: 8px 12px; font-size: 12px; color: var(--ink-soft); display: flex; gap: 16px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 1.5px; }
+.side { display: flex; flex-direction: column; gap: 12px; }
+.kpi { background: #fff; border: 1px solid var(--grid); border-radius: 6px; padding: 10px 12px; }
+.kpi h3 { margin: 0 0 6px; font-size: 12px; color: var(--ink-soft); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi .v { font-size: 18px; font-weight: 700; font-family: "JetBrains Mono", monospace; }
+.kpi .sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+.kpi .row { display: flex; gap: 8px; align-items: baseline; }
+.kpi .row > div { flex: 1; }
+.log { background: #fff; border: 1px solid var(--grid); border-radius: 6px; flex: 1;
+  overflow-y: auto; max-height: 380px; font-family: "JetBrains Mono", monospace; font-size: 12px; }
+.log-entry { padding: 6px 12px; border-bottom: 1px solid var(--grid); display: flex; gap: 8px; align-items: baseline; }
+.log-entry:last-child { border-bottom: none; }
+.log-entry .who { font-weight: 700; min-width: 32px; }
+.log-entry.A .who { color: var(--A); }
+.log-entry.B .who { color: var(--B); }
+.log-entry .pot { color: var(--pot); font-weight: 700; }
+.log-entry .miss { color: var(--miss); }
+.log-entry .foul { color: var(--miss); font-weight: 700; }
+.placeholder { color: var(--felt-light); padding: 20px; text-align: center; font-style: italic; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>PoolHall · 中式八球对局</h1>
+    <div class="meta" id="meta">连接中...</div>
+  </div>
+  <div class="status" id="status">⏳ 等待连接</div>
+</header>
+
+<div class="main">
+  <div>
+    <div class="table-frame" id="table">
+      <div class="placeholder">球台将在第一杆时激活</div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--A)"></i>A 击球</span>
+      <span><i style="background:var(--B)"></i>B 击球</span>
+      <span><i style="background:var(--pot)"></i>进球</span>
+      <span><i style="background:var(--miss)"></i>未中/犯规</span>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="kpi">
+      <h3>当前局况</h3>
+      <div class="row">
+        <div><div class="v" id="kpi-shot">-</div><div class="sub">杆数</div></div>
+        <div><div class="v" id="kpi-turn">-</div><div class="sub">轮到</div></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><div class="v" id="kpi-A">0</div><div class="sub">A 进球</div></div>
+        <div><div class="v" id="kpi-B">0</div><div class="sub">B 进球</div></div>
+      </div>
+    </div>
+    <div class="kpi">
+      <h3>最近事件</h3>
+      <div id="last-event" class="v" style="font-size:14px">—</div>
+      <div id="last-event-detail" class="sub">—</div>
+    </div>
+    <div class="log" id="log">
+      <div class="placeholder">等待首杆...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TABLE_W = 1.9812, TABLE_H = 0.9906, R = 0.0286;
+const svgNS = "http://www.w3.org/2000/svg";
+const kpi = { shot: 0, turn: "-", A: 0, B: 0 };
+
+function el(tag, attrs = {}, children = []) {
+  const n = document.createElementNS(svgNS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === undefined || v === null) continue;
+    n.setAttribute(k, v);
+  }
+  for (const c of children) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  return n;
+}
+
+function ballFill(id) {
+  if (id === "cue") return "#fff";
+  if (id === "8") return "#222";
+  if (["1","2","3","4","5","6","7"].includes(id)) return "#FFD93D";
+  return "#FFFFFF";
+}
+
+function renderTable(finalBalls, highlightBy) {
+  const root = el("svg", { viewBox: `0 0 ${TABLE_W} ${TABLE_H}`, preserveAspectRatio: "xMidYMid meet" });
+  root.appendChild(el("rect", { x: 0, y: 0, width: TABLE_W, height: TABLE_H, fill: "var(--felt)" }));
+  const pockets = [
+    { id: "lt", x: 0, y: 0 }, { id: "rt", x: TABLE_W, y: 0 },
+    { id: "lb", x: 0, y: TABLE_H }, { id: "rb", x: TABLE_W, y: TABLE_H },
+    { id: "ct", x: TABLE_W / 2, y: 0 }, { id: "cb", x: TABLE_W / 2, y: TABLE_H },
+  ];
+  for (const p of pockets) {
+    root.appendChild(el("circle", { cx: p.x, cy: p.y, r: 0.072, fill: "var(--bg)", stroke: "var(--ink-soft)", "stroke-width": 0.003 }));
+    root.appendChild(el("text", { x: p.x, y: p.y + 0.022, "text-anchor": "middle",
+      "font-size": 0.04, fill: "var(--ink-soft)" }, [p.id.toUpperCase()]));
+  }
+  if (!finalBalls) return root;
+  for (const [id, p] of Object.entries(finalBalls)) {
+    const isCue = id === "cue";
+    const stroke = isCue ? "#000" : ballFill(id) === "#fff" ? "#222" : "rgba(0,0,0,.3)";
+    root.appendChild(el("circle", { cx: p.x, cy: p.y, r: R, fill: ballFill(id), stroke, "stroke-width": 0.002 }));
+    if (!isCue) {
+      root.appendChild(el("circle", { cx: p.x, cy: p.y, r: R * 0.55, fill: "rgba(255,255,255,.6)" }));
+      root.appendChild(el("text", { x: p.x, y: p.y + R * 0.3, "text-anchor": "middle",
+        "font-size": 0.025, fill: "#222", "font-weight": 700 }, [id]));
+    }
+  }
+  return root;
+}
+
+function setKpi() {
+  document.getElementById("kpi-shot").textContent = kpi.shot;
+  document.getElementById("kpi-turn").textContent = kpi.turn;
+  document.getElementById("kpi-A").textContent = kpi.A;
+  document.getElementById("kpi-B").textContent = kpi.B;
+}
+
+function appendLog(by, text, cls) {
+  const empty = logEl.querySelector(".placeholder");
+  if (empty) empty.remove();
+  const div = document.createElement("div");
+  div.className = "log-entry " + by + (cls ? " " + cls : "");
+  const who = document.createElement("span");
+  who.className = "who";
+  who.textContent = by;
+  const tx = document.createElement("span");
+  tx.className = cls || "";
+  tx.textContent = text;
+  div.appendChild(who);
+  div.appendChild(tx);
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function renderShot(s) {
+  tableFrame.innerHTML = "";
+  tableFrame.appendChild(renderTable(s.finalBalls, s.by));
+  kpi.shot = s.trial;
+  kpi.turn = s.nextTurn;
+  if (s.pottedBalls && s.pottedBalls.length > 0) {
+    if (s.by === "A") kpi.A += s.pottedBalls.length;
+    else kpi.B += s.pottedBalls.length;
+  }
+  setKpi();
+  let label = "";
+  if (s.scratch) label = "母球进袋";
+  else if (s.foul) label = "犯规：" + s.foul;
+  else if (s.pottedBalls && s.pottedBalls.length > 0) label = "进袋：" + s.pottedBalls.join("/");
+  else label = "未进";
+  lastEventEl.textContent = `杆 ${s.trial} · ${s.by} ${label}`;
+  const spinStr = s.intentSpin
+    ? ` spin(${s.intentSpin.x.toFixed(2)},${s.intentSpin.y.toFixed(2)},${s.intentSpin.z.toFixed(2)})`
+    : "";
+  lastEventDetail.textContent =
+    `${s.targetBall ?? "?"}→${s.targetPocket ?? "?"} 瞄 ${(s.intentAngle ?? 0).toFixed(1)}° 力 ${(s.intentPower ?? 0).toFixed(2)}${spinStr}`;
+  let cls = "";
+  if (s.scratch) cls = "miss";
+  else if (s.foul) cls = "foul";
+  else if (s.pottedBalls && s.pottedBalls.length > 0) cls = "pot";
+  appendLog(s.by, `杆${s.trial} ${s.targetBall ?? "?"}→${s.targetPocket ?? "?"} 瞄${(s.intentAngle ?? 0).toFixed(0)}° ${label}`, cls);
+}
+
+function handle(msg) {
+  if (msg.type === "hello") {
+    document.getElementById("meta").innerHTML =
+      `seed <b>${msg.seed}</b> · <span class="A">A: ${msg.nameA}</span> vs <span class="B">B: ${msg.nameB}</span>` +
+      (msg.promptA ? `<br/><span style="font-size:11px">promptA=${msg.promptA} · promptB=${msg.promptB}</span>` : "");
+    status.textContent = "🔵 等待首杆";
+    tableFrame.innerHTML = "";
+    tableFrame.appendChild(renderTable(null));
+  } else if (msg.type === "shot") {
+    renderShot(msg);
+  } else if (msg.type === "summary") {
+    const w = msg.winner === "A" ? "A 胜" : msg.winner === "B" ? "B 胜" : "平局";
+    const color = msg.winner === "A" ? "var(--A)" : msg.winner === "B" ? "var(--B)" : "var(--ink-soft)";
+    status.innerHTML = `<b style="color:${color}">${w}</b>——${msg.reason ?? ""}（${msg.shots} 杆）`;
+  }
+}
+
+const meta = document.getElementById("meta");
+const status = document.getElementById("status");
+const tableFrame = document.getElementById("table");
+const lastEventEl = document.getElementById("last-event");
+const lastEventDetail = document.getElementById("last-event-detail");
+const logEl = document.getElementById("log");
+
+const proto = location.protocol === "https:" ? "wss:" : "ws:";
+const wsPort = parseInt(location.port || "8788") - 1;
+const wsUrl = `${proto}//${location.hostname}:${wsPort}`;
+const ws = new WebSocket(wsUrl);
+ws.addEventListener("open", () => { status.textContent = "🟢 已连接，等待首杆"; });
+ws.addEventListener("close", () => { status.textContent = "🔴 连接断开"; });
+ws.addEventListener("error", () => { status.textContent = "⚠️ 连接错误"; });
+ws.addEventListener("message", (e) => {
+  try { handle(JSON.parse(e.data)); } catch (err) { console.error("parse error", err); }
+});
+setKpi();
+</script>
+</body>
+</html>

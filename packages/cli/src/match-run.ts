@@ -14,6 +14,7 @@ import {
   type PlayerId,
 } from "@poolhall/core";
 import { DEFAULT_BALL } from "@poolhall/engine";
+import type { Broadcast } from "./match-ws/server.ts";
 import { LlmAgentSession } from "./llm.ts";
 import { promptFingerprint } from "./prompt.ts";
 
@@ -26,6 +27,8 @@ export interface MatchRunOpts {
   seed: number;
   maxShots: number;
   out: string;
+  /** B.实时对局可视化：每杆 broadcast 给 WS hub（可选） */
+  hub?: { broadcast: (msg: Broadcast) => void };
 }
 
 function log(out: string, obj: object): void {
@@ -99,8 +102,12 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
       extra = { targetBall: d.targetBall, targetPocket: d.targetPocket };
     } else {
       intent = oracleIntent(session);
+      // oracle 路径无 targetBall/pocket（直接走 aimAssists 优选）—— 用 obs 取最优
+      const obs0 = session.observe();
+      const best0 = obs0.aimAssists.reduce((a, b) => (b.cutAngleDeg < a.cutAngleDeg ? b : a));
+      extra = { targetBall: best0.ball, targetPocket: best0.pocket };
     }
-    const rec = session.shoot(intent);
+    const rec: MatchShotResult = session.shoot(intent);
     log(opts.out, {
       kind: "shot",
       shot: rec.shot,
@@ -114,6 +121,32 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
       over: rec.over,
       finalBalls: rec.finalPos,
     });
+
+    // B.实时对局可视化：每杆 broadcast
+    if (opts.hub) {
+      const extra2 = extra as { targetBall?: string; targetPocket?: string };
+      opts.hub.broadcast({
+        type: "shot",
+        trial: rec.shot,
+        by: rec.byPlayer,
+        targetBall: extra2.targetBall ?? null,
+        targetPocket: extra2.targetPocket ?? null,
+        intentAngle: intent.angle,
+        intentPower: intent.power,
+        intentSpin: intent.spin ?? null,
+        pottedBalls: rec.pottedBalls,
+        pottedPockets: rec.pottedPockets,
+        scratch: rec.scratch,
+        firstContact: rec.firstContact,
+        foul: rec.foul,
+        nextTurn: rec.nextTurn,
+        over: rec.over,
+        winner: rec.winner,
+        reason: rec.reason,
+        cueFinal: rec.cueFinal,
+        finalBalls: rec.finalPos,
+      });
+    }
 
     // 反馈只给击打方（v1；观战视角后置）
     if (llm) {

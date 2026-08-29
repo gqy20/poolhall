@@ -72,6 +72,8 @@ export interface MatchShotResult {
   over: boolean;
   winner: PlayerId | null;
   reason: string | null;
+  /** 母球本杆后位置（scratch 时为 null）——便于前端实时定位母球 */
+  cueFinal: { x: number; y: number } | null;
   finalPos: Record<string, { x: number; y: number }>;
   samples: Array<{ t: number; pos: Record<string, { x: number; y: number }> }>;
   events: Array<{ t: number; kind: string; a: string; b?: string; pocket?: string }>;
@@ -373,6 +375,12 @@ export class MatchSession {
 
     const finalPos: Record<string, { x: number; y: number }> = {};
     for (const b of r.balls) finalPos[b.id] = { x: b.pos.x, y: b.pos.y };
+    const cueFinal = scratch
+      ? null
+      : {
+          x: r.balls.find((b) => b.id === "cue")!.pos.x,
+          y: r.balls.find((b) => b.id === "cue")!.pos.y,
+        };
 
     return {
       shot: idx,
@@ -382,6 +390,7 @@ export class MatchSession {
       scratch,
       firstContact,
       foul,
+      cueFinal,
       nextTurn: this.turn,
       continueTurn: continueTurn,
       over: this.over_,
