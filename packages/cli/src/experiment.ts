@@ -164,7 +164,14 @@ export async function runCalibrate(opts: RunOpts): Promise<RunSummary> {
     const pocketPt = obs.pockets.find((pk) => pk.id === obs.targetPocket) ?? { x: 0, y: 0 };
 
     const rec = session.shoot(intent);
-    log(opts.out, { kind: "shot", seed: opts.seed, agent: opts.agentName, ...stripRec(rec), intentSpin: intent.spin ?? null });
+    log(opts.out, {
+      kind: "shot",
+      seed: opts.seed,
+      agent: opts.agentName,
+      ...stripRec(rec),
+      intentSpin: intent.spin ?? null,
+      usage: llm?.lastUsage ?? null,
+    });
 
     const objFinal = rec.finalPos["1"];
     const missDesc = !rec.pot && objFinal ? missNarrative(objInit, pocketPt, objFinal) : null;
@@ -195,6 +202,7 @@ export async function runCalibrate(opts: RunOpts): Promise<RunSummary> {
     agent: opts.agentName,
     score: r.score,
     trials: r.trialCount,
+    usage: llm?.usageSummary() ?? null,
   });
   return {
     agentName: opts.agentName,

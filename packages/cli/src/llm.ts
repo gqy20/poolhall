@@ -144,6 +144,47 @@ export class LlmAgentSession {
     return promptFingerprint().version;
   }
 
+  /** 上次成功调用的用量明细（experiment 落研究日志用；SDK LanguageModelUsage 全字段） */
+  lastUsage: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    reasoningTokens: number;
+    latencyMs: number;
+    tokensPerSec: number;
+  } | null = null;
+
+  /** 会话累计用量（summary 落研究日志用） */
+  usageSummary(): {
+    calls: number;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    cacheHitRate: number;
+    latencyMsMean: number;
+    tokensPerSecMean: number;
+  } {
+    const n = this.callCount || 1;
+    return {
+      calls: this.callCount,
+      inputTokens: this.usageTotal.prompt,
+      outputTokens: this.usageTotal.completion,
+      cacheReadTokens: this.usageCacheRead,
+      cacheWriteTokens: this.usageCacheWrite,
+      cacheHitRate: this.usageTotal.prompt > 0 ? this.usageCacheRead / this.usageTotal.prompt : 0,
+      latencyMsMean: Math.round(this.latencyTotalMs / n),
+      tokensPerSecMean:
+        this.latencyTotalMs > 0 ? this.usageTotal.completion / (this.latencyTotalMs / 1000) : 0,
+    };
+  }
+
+  private callCount = 0;
+  private usageCacheRead = 0;
+  private usageCacheWrite = 0;
+  private latencyTotalMs = 0;
+
   /** 出一杆：观察+账本 → generateObject（schema 即契约）→ aimAt→angle 边界换算。
    *  端点偶发抖动（NoObjectGeneratedError）由 3 次重试覆盖。 */
   async shot(obs: AgentObserve): Promise<ShotAndAim | null> {
@@ -168,15 +209,35 @@ export class LlmAgentSession {
         const u = result.usage;
         const obj = result.object;
         this.lastObj = obj;
+        const latencyMs = Date.now() - t0;
+        const cacheRead = u?.inputTokenDetails?.cacheReadTokens ?? 0;
+        const cacheWrite = u?.inputTokenDetails?.cacheWriteTokens ?? 0;
+        const outTok = u?.outputTokens ?? 0;
+        this.lastUsage = {
+          inputTokens: u?.inputTokens ?? 0,
+          outputTokens: outTok,
+          cacheReadTokens: cacheRead,
+          cacheWriteTokens: cacheWrite,
+          reasoningTokens: u?.outputTokenDetails?.reasoningTokens ?? 0,
+          latencyMs,
+          tokensPerSec: latencyMs > 0 ? Math.round(outTok / (latencyMs / 1000)) : 0,
+        };
         llmLog("llm.response", {
           trial: obs.trial,
           finishReason: result.finishReason ?? "stop",
           tokensIn: u?.inputTokens ?? 0,
-          tokensOut: u?.outputTokens ?? 0,
-          latencyHint: process.env.POOLHALL_DEBUG ? Date.now() - t0 : undefined,
+          tokensOut: outTok,
+          cacheRead,
+          cacheWrite,
+          latencyMs,
+          tokensPerSec: this.lastUsage.tokensPerSec,
         });
         this.usageTotal.prompt += u?.inputTokens ?? 0;
-        this.usageTotal.completion += u?.outputTokens ?? 0;
+        this.usageTotal.completion += outTok;
+        this.usageCacheRead += cacheRead;
+        this.usageCacheWrite += cacheWrite;
+        this.callCount += 1;
+        this.latencyTotalMs += latencyMs;
 
         const aim = this.aimOf(obs, obj);
         llmLog("llm.parsed", { trial: obs.trial, aim, aimAssist: obs.aimAssist?.suggestedAngle });
