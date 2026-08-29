@@ -94,6 +94,7 @@
 | 图表风格 | Minimal Tufte：极细线条、类桌面色 | 避开视觉 gewgaws；干货优先 |
 | 交付 | `experiments/render-html.ts` → `experiments/figs/index.html` | docker-free、file:// 打开、可 GitHub Pages |
 | Godot | M4.2 后做（可选） | 专做"台球桌面真实渲染"体验（播放/暂停/拖动），但只针对有 samples 的回放 |
+| **Match 对局双视图**（**M6.2 2026-08-29 落地**）| `experiments/lib/match-html.ts` + `experiments/render-match.ts` | 中式八球对局 A vs B 并列回放：每杆同行两列（选球/瞄点/力度/spin + 球台轨迹），同 trial 同步展示。Oracle vs Oracle + Minimax-M3 自战均已生成。 |
 
 ## 6. 待办（周次草案）
 

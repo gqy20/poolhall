@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PoolHall 中式八球对局 · seed 42</title>
+<style>
+
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #f7f4ee; color: #2b2b2b; font-family: "Inter", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
+a { color: #2d5e8a; }
+header { padding: 20px 24px; border-bottom: 1px solid #ece8dc; }
+h1 { font-size: 18px; margin: 0; font-weight: 600; }
+.meta { color: #5a5d61; font-size: 13px; }
+.kpi { display: flex; gap: 24px; margin-top: 6px; }
+.kpi b { font-family: "JetBrains Mono", "IBM Plex Mono", monospace; font-size: 20px; font-weight: 600; }
+.kpi span { color: #5a5d61; font-size: 12px; }
+section { padding: 24px; max-width: 1180px; margin: 0 auto; }
+.grid { display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: start; }
+.table-frame { background: #1b4d3e; border: 3px solid #7c4a18; border-radius: 4px; padding: 8px; }
+svg { display: block; width: 100%; height: auto; }
+.legend { display: flex; gap: 16px; padding: 8px 0; font-size: 12px; color: #5a5d61; }
+.legend i { display: inline-block; width: 14px; height: 2px; margin-right: 6px; vertical-align: middle; }
+.legend .line-dash { border-top: 2px dashed; height: 0; width: 20px; }
+.legend .line-solid { border-top: 2px solid; height: 0; width: 20px; }
+.trial-list { margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.trial-card { background: #fff; border: 1px solid #ece8dc; border-radius: 4px; padding: 12px; }
+.trial-card.miss { border-left: 3px solid #b7402c; }
+.trial-card.pot { border-left: 3px solid #1b4d3e; }
+.trial-head { display: flex; justify-content: space-between; font-size: 12px; color: #5a5d61; margin-bottom: 6px; }
+.trial-head b { font-family: "JetBrains Mono", "IBM Plex Mono", monospace; }
+table { border-collapse: collapse; width: 100%; font-family: "JetBrains Mono", "IBM Plex Mono", monospace; font-size: 11px; }
+th, td { text-align: right; padding: 2px 4px; }
+th { font-weight: 400; color: #5a5d61; border-bottom: 1px solid #ece8dc; }
+td.num { font-variant-numeric: tabular-nums; }
+.miss-note { font-size: 12px; color: #b7402c; margin-top: 4px; }
+.curve-panel { background: #fff; border: 1px solid #ece8dc; border-radius: 4px; padding: 12px; margin-bottom: 16px; }
+.curve-panel h3 { margin: 0 0 8px; font-size: 12px; color: #5a5d61; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+
+.match-body{padding:24px;max-width:1280px;margin:0 auto}
+.match-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;gap:24px;flex-wrap:wrap}
+.match-title{font-size:24px;margin:0 0 4px 0;color:#2b2b2b}
+.match-meta{font-size:13px;color:#5a5d61}
+.match-kpis{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:18px}
+.match-kpi{background:undefined;padding:10px 16px;border-radius:4px;min-width:120px}
+.match-kpi b{font-size:22px;display:block;font-family:"JetBrains Mono", "IBM Plex Mono", monospace;color:#2b2b2b}
+.match-kpi span{font-size:12px;color:#5a5d61}
+.match-table{width:100%;border-collapse:collapse;background:undefined;border:1px solid #d6d0c4;border-radius:4px;overflow:hidden}
+.match-table th{background:undefined;padding:10px 14px;font-size:12px;text-align:left;color:#5a5d61;font-weight:600;border-bottom:1px solid #d6d0c4}
+.match-table td{padding:0;vertical-align:top;border-top:1px solid #d6d0c4}
+.match-table tr:first-child td{border-top:none}
+.match-table tr.over{background:rgba(180,140,60,0.06)}
+.trial-num{width:48px;text-align:center;font-family:"JetBrains Mono", "IBM Plex Mono", monospace;font-size:18px;color:#5a5d61;background:undefined;font-weight:700}
+.cell{width:50%;padding:10px 14px;vertical-align:top}
+.cell.empty{background:repeating-linear-gradient(45deg,undefined,undefined 8px,undefined 8px,undefined 16px);opacity:0.4}
+.cell-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px}
+.cell-head .name{font-weight:700;font-size:14px}
+.cell-head .name.A{color:#d9730d}
+.cell-head .name.B{color:#C76B2D}
+.badge{font-size:11px;font-weight:600;letter-spacing:0.5px}
+.cell-pick{font-size:14px;margin-bottom:4px;color:#2b2b2b}
+.cell-param{font-size:12px;color:#5a5d61;font-family:"JetBrains Mono", "IBM Plex Mono", monospace;margin-bottom:8px}
+.cell-svg svg{width:100%;max-width:360px;height:auto;display:block}
+</style>
+</head>
+<body>
+<div class="match-body">
+  <div class="match-header">
+    <div>
+      <h1 class="match-title">PoolHall · 中式八球对局</h1>
+      <div class="match-meta">seed <b>42</b> · <span class="A" style="color:#d9730d;font-weight:700">A: A-m2-s7</span> vs <span class="B" style="color:#C76B2D;font-weight:700">B: B-m2-s7</span> · <span style="font-family:"JetBrains Mono", "IBM Plex Mono", monospace;font-size:12px">llm / llm</span></div>
+    </div>
+    <div class="match-meta"></div>
+  </div>
+
+  <div class="match-kpis">
+    <div class="match-kpi"><b>30</b><span>总杆数</span></div>
+    <div class="match-kpi"><b style="color:#d9730d">6</b><span>A 进球</span></div>
+    <div class="match-kpi"><b style="color:#C76B2D">6</b><span>B 进球</span></div>
+    <div class="match-kpi"><b style="color:#b7402c">3</b><span>A 失误（scratch/犯规）</span></div>
+    <div class="match-kpi"><b style="color:#b7402c">9</b><span>B 失误</span></div>
+  </div>
+
+  <table class="match-table">
+    <thead>
+      <tr>
+        <th class="trial-num">#</th>
+        <th>A-m2-s7（A）</th>
+        <th>B-m2-s7（B）</th>
+      </tr>
+    </thead>
+    <tbody>
+    <tr class="trial-row ">
+      <td class="trial-num">0</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#1b4d3e">进袋 1</span></div>
+        <div class="cell-pick">打 <b>1</b> → <b>cb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.8731,0.9337 1.8230,0.9337" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.8731179487054095" cy="0.9337095448740211" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.8731179487054095" cy="0.9337095448740211" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.017159999999999998" fill="#1b4d3e" opacity="0.9"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">1</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#5a5d61">未进</span></div>
+        <div class="cell-pick">打 <b>2</b> → <b>cb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.1465,0.5901 1.2238,0.5901" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.14645573952239502" cy="0.5900837164209399" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.14645573952239502" cy="0.5900837164209399" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">2</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#5a5d61">未进</span></div>
+        <div class="cell-pick">打 <b>10</b> → <b>lt</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.0782,0.8164 1.3458,0.8164" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.07818742567626587" cy="0.8164372949957899" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.07818742567626587" cy="0.8164372949957899" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">3</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#1b4d3e">进袋 2</span></div>
+        <div class="cell-pick">打 <b>2</b> → <b>lb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.6402,0.2327 2.2767,0.2327" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.640232495652117" cy="0.23272329565701053" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.640232495652117" cy="0.23272329565701053" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.017159999999999998" fill="#1b4d3e" opacity="0.9"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">4</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#1b4d3e">进袋 3</span></div>
+        <div class="cell-pick">打 <b>4</b> → <b>rb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.7865,0.2695 1.1619,0.2695" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.7865482424033318" cy="0.2695310787971845" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.7865482424033318" cy="0.2695310787971845" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.017159999999999998" fill="#1b4d3e" opacity="0.9"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">5</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#5a5d61">未进</span></div>
+        <div class="cell-pick">打 <b>5</b> → <b>cb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.4637,0.1541 1.0678,0.1541" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.46373361675105634" cy="0.154143987794643" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.46373361675105634" cy="0.154143987794643" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">6</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#1b4d3e">进袋 10</span></div>
+        <div class="cell-pick">打 <b>10</b> → <b>lt</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.7612,0.0988 2.4813,0.0988" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.761158946199496" cy="0.09877504513624949" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.761158946199496" cy="0.09877504513624949" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.017159999999999998" fill="#1b4d3e" opacity="0.9"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">7</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#b7402c">犯规：首触错组（5）</span></div>
+        <div class="cell-pick">打 <b>15</b> → <b>rt</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.6981,0.5309 2.5375,0.5309" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.6980683351977726" cy="0.5309083008954412" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.6980683351977726" cy="0.5309083008954412" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">8</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#b7402c">犯规：首触错组（12）</span></div>
+        <div class="cell-pick">打 <b>5</b> → <b>rt</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.9465,0.9167 3.2302,0.9167" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.9464913781347308" cy="0.9167137744729468" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.9464913781347308" cy="0.9167137744729468" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">9</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#b7402c">母球进袋</span></div>
+        <div class="cell-pick">打 <b>9</b> → <b>rb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.9906,0.7429 1.7357,0.7429" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.9906" cy="0.74295" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0.74295" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">10</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#5a5d61">未进</span></div>
+        <div class="cell-pick">打 <b>5</b> → <b>lb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.9108,0.1043 2.7802,0.1043" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.9108416756846571" cy="0.1042553576936876" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.9108416756846571" cy="0.1042553576936876" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">11</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#5a5d61">未进</span></div>
+        <div class="cell-pick">打 <b>11</b> → <b>rt</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.7902,0.8460 2.9157,0.8460" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.7901621985897238" cy="0.8459919102022628" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.7901621985897238" cy="0.8459919102022628" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">12</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#5a5d61">未进</span></div>
+        <div class="cell-pick">打 <b>5</b> → <b>rb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.0329,0.3510 1.3842,0.3510" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.032922547734709" cy="0.35098181421085534" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.032922547734709" cy="0.35098181421085534" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">13</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#1b4d3e">进袋 9</span></div>
+        <div class="cell-pick">打 <b>9</b> → <b>lb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.2721,0.9497 1.4983,0.9497" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.2721253843844913" cy="0.9496781727873679" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.2721253843844913" cy="0.9496781727873679" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.017159999999999998" fill="#1b4d3e" opacity="0.9"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">14</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#5a5d61">未进</span></div>
+        <div class="cell-pick">打 <b>11</b> → <b>lb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.5597,0.1040 2.0820,0.1040" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.5596628740951501" cy="0.1039693991296349" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.5596628740951501" cy="0.1039693991296349" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">15</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#1b4d3e">进袋 14</span></div>
+        <div class="cell-pick">打 <b>5</b> → <b>ct</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.2387,0.7522 2.0148,0.7522" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.2387374076743505" cy="0.7522417715018019" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.2387374076743505" cy="0.7522417715018019" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.017159999999999998" fill="#1b4d3e" opacity="0.9"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">16</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#b7402c">犯规：首触错组（5）</span></div>
+        <div class="cell-pick">打 <b>12</b> → <b>rt</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.8620,0.3719 1.2777,0.3719" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.8619596668445808" cy="0.37186294282399207" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.8619596668445808" cy="0.37186294282399207" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.017159999999999998" fill="#1b4d3e" opacity="0.9"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">17</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#5a5d61">未进</span></div>
+        <div class="cell-pick">打 <b>6</b> → <b>lb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.4774,0.4855 1.2265,0.4855" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.47743562676678836" cy="0.48550337430833457" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.47743562676678836" cy="0.48550337430833457" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">18</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#1b4d3e">进袋 13</span></div>
+        <div class="cell-pick">打 <b>12</b> → <b>ct</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.0932,0.9480 1.4385,0.9480" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.09323118677553424" cy="0.9479677249412662" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.09323118677553424" cy="0.9479677249412662" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.017159999999999998" fill="#1b4d3e" opacity="0.9"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">19</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#b7402c">母球进袋</span></div>
+        <div class="cell-pick">打 <b>12</b> → <b>lb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.9906,0.7429 1.7357,0.7429" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.9906" cy="0.74295" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0.74295" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">20</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#b7402c">母球进袋</span></div>
+        <div class="cell-pick">打 <b>5</b> → <b>rb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.9906,0.7429 1.7357,0.7429" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.9906" cy="0.74295" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0.74295" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">21</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#1b4d3e">进袋 12</span></div>
+        <div class="cell-pick">打 <b>12</b> → <b>lb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.7422,0.0564 2.4389,0.0564" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.7421855778405297" cy="0.05638192614460878" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.7421855778405297" cy="0.05638192614460878" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.017159999999999998" fill="#1b4d3e" opacity="0.9"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">22</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#1b4d3e">进袋 11</span></div>
+        <div class="cell-pick">打 <b>11</b> → <b>rt</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.9466,0.5624 3.0068,0.5624" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.9465513945769175" cy="0.562445378462781" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.9465513945769175" cy="0.562445378462781" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.017159999999999998" fill="#1b4d3e" opacity="0.9"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">23</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#b7402c">犯规：首触错组（4）</span></div>
+        <div class="cell-pick">打 <b>8</b> → <b>rb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.2436,0.2117 1.5320,0.2117" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.2436219306977667" cy="0.21169975200760016" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.2436219306977667" cy="0.21169975200760016" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">24</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#5a5d61">未进</span></div>
+        <div class="cell-pick">打 <b>5</b> → <b>rt</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.2488,0.2333 1.0812,0.2333" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.24881281398298546" cy="0.2333050166548177" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.24881281398298546" cy="0.2333050166548177" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">25</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#b7402c">犯规：首触错组（4）</span></div>
+        <div class="cell-pick">打 <b>4</b> → <b>lt</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.9410,0.3954 2.9178,0.3954" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.9410163215275507" cy="0.3954092299996118" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.9410163215275507" cy="0.3954092299996118" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">26</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#1b4d3e">进袋 4</span></div>
+        <div class="cell-pick">打 <b>4</b> → <b>rt</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.7868,0.9476 2.9885,0.9476" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.7868065458410476" cy="0.94755379362896" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.7868065458410476" cy="0.94755379362896" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.017159999999999998" fill="#1b4d3e" opacity="0.9"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">27</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#1b4d3e">进袋 6</span></div>
+        <div class="cell-pick">打 <b>5</b> → <b>rb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.7557,0.5519 1.3802,0.5519" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.7556960842254076" cy="0.5519379001877048" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.7556960842254076" cy="0.5519379001877048" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.017159999999999998" fill="#1b4d3e" opacity="0.9"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row ">
+      <td class="trial-num">28</td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name A">A</span><span class="badge" style="color:#5a5d61">未进</span></div>
+        <div class="cell-pick">打 <b>5</b> → <b>rb</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="1.7948,0.0339 2.5426,0.0339" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="1.7947911104003107" cy="0.03393800411174391" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="1.7947911104003107" cy="0.03393800411174391" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+      <td class="cell empty"></td>
+    </tr>
+    <tr class="trial-row over">
+      <td class="trial-num">29</td>
+      <td class="cell empty"></td>
+      
+      <td class="cell">
+        <div class="cell-head"><span class="name B">B</span><span class="badge" style="color:#b7402c">犯规：首触错组（5）</span></div>
+        <div class="cell-pick">打 <b>5</b> → <b>rt</b></div>
+        <div class="cell-param">瞄 —° · 力 — · spin=0</div>
+        <div class="cell-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.05 -0.05 2.08 1.10" width="360"><g><rect x="-0.0508" y="-0.0508" width="2.0828" height="1.0922" fill="#7c4a18" rx="0.008" stroke="#5d3a12" stroke-width="0.002"/><rect x="0" y="0" width="1.9812" height="0.9906" fill="#1b4d3e"/><circle cx="0" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="1.9812" cy="0.9906" r="0.059" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0" r="0.068" fill="#121110" opacity="0.95"/><circle cx="0.9906" cy="0.9906" r="0.068" fill="#121110" opacity="0.95"/><path d="M 0.9906 0 L 0.9906 0.9906" stroke="#d6d0c4" stroke-width="0.0008" stroke-dasharray="0.008,0.006"/></g>
+<polyline points="0.4020,0.0730 1.0519,0.0730" fill="none" stroke="#2d5e8a" stroke-width="0.003" stroke-dasharray="0.01,0.008" opacity="0.7"/>
+<polyline points="1.0478,0.0000 0.0000,0.0000" fill="none" stroke="#2d5e8a" stroke-width="0.002" stroke-dasharray="0.008,0.008" opacity="0.4"/>
+<circle cx="0.402049381472073" cy="0.07297617616772216" r="0.0286" fill="#ffffff" stroke="#2b2b2b" stroke-width="0.001"/>
+<circle cx="0.9906" cy="0" r="0.0286" fill="#ffc844" stroke="#5a5d61" stroke-width="0.001"/>
+<circle cx="0.402049381472073" cy="0.07297617616772216" r="0.0286" fill="#ffffff" stroke="#5a5d61" stroke-width="0.001" opacity="0.7"/>
+<circle cx="0.9906" cy="0" r="0.0143" fill="none" stroke="#b7402c" stroke-width="0.0015"/>
+<g transform="translate(1.0478, 0.0000)"><line x1="-0.008" y1="0" x2="0.008" y2="0" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/><line x1="0" y1="-0.008" x2="0" y2="0.008" stroke="#2d5e8a" stroke-width="0.0015" opacity="0.5"/></g></svg></div>
+      </td>
+    </tr></tbody>
+  </table>
+</div>
+</body>
+</html>
