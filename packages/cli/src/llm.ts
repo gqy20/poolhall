@@ -309,7 +309,7 @@ export class LlmAgentSession {
       renderShotRequest(obs as never, this.pendingFeedback, this.ledger, this.task);
     this.pendingFeedback = null;
 
-    for (let retry = 0; retry < 3; retry++) {
+    for (let retry = 0; retry < 6; retry++) {
       const t0 = Date.now();
       try {
         const result = await generateObject({
@@ -367,7 +367,7 @@ export class LlmAgentSession {
           error: (e as Error).message.slice(0, 200),
           retry: retry + 1,
         });
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 1000 * Math.min(retry + 1, 4)));
       }
     }
     llmLog("llm.give_up", { trial: trialKey });
