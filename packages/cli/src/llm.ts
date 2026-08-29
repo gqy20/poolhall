@@ -188,6 +188,8 @@ export class LlmAgentSession {
   /** 出一杆：观察+账本 → generateObject（schema 即契约）→ aimAt→angle 边界换算。
    *  端点偶发抖动（NoObjectGeneratedError）由 3 次重试覆盖。 */
   async shot(obs: AgentObserve): Promise<ShotAndAim | null> {
+    // 滑动窗口（keep 最近 6 杆）：行为阻尼——全量历史会让早期 miss 持续供燃料，
+    // 过补偿加剧（实测 68%→54%）；缓存代价见 docs/benchmark.md §7.5（6.1% vs 31.9% 权衡）
     const histBlock =
       this.history.length > 0
         ? `<history>（你之前的决定与结果，从旧到新）\n${this.history.slice(-6).join("\n")}\n</history>\n`
