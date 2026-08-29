@@ -12,7 +12,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { makeBall, simulate, strike, type Spin3, vec2 } from "../packages/engine/src/index.ts";
+import { makeBall, type Spin3, simulate, strike, vec2 } from "../packages/engine/src/index.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, "figs");
@@ -89,8 +89,12 @@ writeFileSync(
 
 console.log(`✓ spin-demo JSONL: ${outJsonl}`);
 console.log(`\n组 A · 球-球（直线撞目标球）`);
-console.log(`  spin=0:        cueDy=${s0._meta.cueDy.toFixed(4)}m  objDy=${s0._meta.objDy.toFixed(4)}m`);
-console.log(`  topspin 0.8:   cueDy=${sTop._meta.cueDy.toFixed(4)}m  objDy=${sTop._meta.objDy.toFixed(4)}m`);
+console.log(
+  `  spin=0:        cueDy=${s0._meta.cueDy.toFixed(4)}m  objDy=${s0._meta.objDy.toFixed(4)}m`,
+);
+console.log(
+  `  topspin 0.8:   cueDy=${sTop._meta.cueDy.toFixed(4)}m  objDy=${sTop._meta.objDy.toFixed(4)}m`,
+);
 console.log(`\n组 B · 库边加塞（向右出杆撞右库）`);
 console.log(`  spin=0:        cueDy=${c0._meta.cueDy.toFixed(4)}m`);
 console.log(`  side +1:       cueDy=${cSide._meta.cueDy.toFixed(4)}m`);

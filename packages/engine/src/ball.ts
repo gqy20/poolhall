@@ -2,7 +2,7 @@
  * 球对象与运动状态（docs/physics.md §3）
  * 状态（stationary/sliding/rolling/pocketed）由 (v, ω) 派生，无显式转移事件。
  */
-import { type BallParams, POWER, speedOf, SPIN_SCALE } from "./consts.ts";
+import { type BallParams, POWER, SPIN_SCALE, speedOf } from "./consts.ts";
 import type { Ball, BallId, Spin3 } from "./types.ts";
 import { len, type Vec2, vec2 } from "./vec2.ts";
 

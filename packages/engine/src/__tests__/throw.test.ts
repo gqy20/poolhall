@@ -10,8 +10,8 @@
 
 import { describe, expect, it } from "vitest";
 import { makeBall, strike } from "../ball.ts";
-import { DEFAULT_BALL, SPIN_SCALE } from "../consts.ts";
 import { resolveBallBall, resolveCushion } from "../collide.ts";
+import { DEFAULT_BALL, SPIN_SCALE } from "../consts.ts";
 import { simulate } from "../simulate.ts";
 import { buildTable } from "../table.ts";
 import { len, vec2 } from "../vec2.ts";
