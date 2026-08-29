@@ -20,6 +20,18 @@ const textResult = (text: string) => ({ content: [{ type: "text" as const, text 
 import { DEFAULT_BALL } from "@poolhall/engine";
 import type { HistoryEntry, ObserveResult, ShotInput, ShotResult } from "./tools.ts";
 import { ShotInputSchema } from "./tools.ts";
+import {
+  matchState as matchStateFn,
+  type MatchSessionState,
+  newMatchState,
+  observeMatch,
+  takeMatchShot,
+  TOOL_MATCH_OBSERVE,
+  TOOL_MATCH_OPEN,
+  TOOL_MATCH_SHOT,
+  TOOL_MATCH_STATE,
+  MatchShotInputSchema,
+} from "./match-tools.ts";
 
 export interface ServerOpts {
   /** server 种子（决定手感 bias 和 trial 布局） */
@@ -181,6 +193,94 @@ export function buildPoolhallMcp(opts: ServerOpts): McpServer {
   );
 
   return server;
+}
+
+/** match server 启动参数（独立 stdio 入口） */
+export interface MatchServerOpts {
+  seed: number;
+  nameA: string;
+  nameB: string;
+  maxShots: number;
+  out?: string;
+}
+
+/** 构建中式八球对局 MCP server（独立 stdio 入口） */
+export function buildPoolhallMatchMcp(opts: MatchServerOpts): McpServer {
+  const server = new McpServer({ name: "poolhall-match", version: "0.1.0" });
+  const state: MatchSessionState = newMatchState({
+    nameA: opts.nameA,
+    nameB: opts.nameB,
+    seed: opts.seed,
+    maxShots: opts.maxShots,
+    out: opts.out,
+  });
+
+  server.registerTool(
+    TOOL_MATCH_OPEN,
+    {
+      description: "对局已在此 MCP 进程内初始化；返回初始 meta。",
+      inputSchema: z.object({}),
+    },
+    async () => textResult(
+      JSON.stringify({
+        nameA: opts.nameA,
+        nameB: opts.nameB,
+        seed: opts.seed,
+        maxShots: opts.maxShots,
+        turn: state.session.currentTurn,
+        yourGroup: state.session.groups[state.session.currentTurn],
+      }),
+    ),
+  );
+
+  server.registerTool(
+    TOOL_MATCH_OBSERVE,
+    {
+      description: "当前选手视角：turn=你、yourGroup、aimAssists=每球最容易组合的参考瞄点。",
+      inputSchema: z.object({}),
+    },
+    async () => textResult(JSON.stringify(observeMatch(state))),
+  );
+
+  server.registerTool(
+    TOOL_MATCH_SHOT,
+    {
+      description: "打一杆（必带 targetBall/pocket/aimX/aimY/power）。直线球建议 spin.y<0 防母球跟进。",
+      inputSchema: MatchShotInputSchema,
+    },
+    async (args: unknown) => {
+      const input = MatchShotInputSchema.parse(args);
+      return {
+        content: [{ type: "text", text: JSON.stringify(takeMatchShot(state, input)) }],
+      };
+    },
+  );
+
+  server.registerTool(
+    TOOL_MATCH_STATE,
+    {
+      description: "对局详情：轮次、双方组、已进球、胜负、犯规数。",
+      inputSchema: z.object({}),
+    },
+    async () => textResult(JSON.stringify(matchStateFn(state))),
+  );
+
+  return server;
+}
+
+/** match server 启动参数（独立 stdio 入口） */
+export interface MatchServerOpts {
+  seed: number;
+  nameA: string;
+  nameB: string;
+  maxShots: number;
+  out?: string;
+}
+
+/** 启动 match stdio server（与 calibrate 并列入口） */
+export async function startMatchStdio(opts: MatchServerOpts): Promise<void> {
+  const server = buildPoolhallMatchMcp(opts);
+  await server.connect(new StdioServerTransport());
 }
 
 /** 启动（stdio） */

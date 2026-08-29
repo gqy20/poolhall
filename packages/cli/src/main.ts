@@ -354,6 +354,30 @@ program
     await runDebugGo(Number(nArg));
   });
 
+program
+  .command("match-mcp")
+  .description("启动 match stdio server（独立 MCP 入口：open/observe/shot/state 4 工具）")
+  .option("--seed <n>", "server 种子", "42")
+  .option("--name-a <name>", "选手A身份名", "playerA")
+  .option("--name-b <name>", "选手B身份名", "playerB")
+  .option("--max-shots <n>", "杆数预算", "60")
+  .option("--out <file>", "研究日志 JSONL", "")
+  .action(
+    async (opts: { seed: string; nameA: string; nameB: string; maxShots: string; out: string }) => {
+      const { startMatchStdio } = await import("@poolhall/mcp");
+      console.error(
+        `poolhall-match MCP 启动：seed=${opts.seed} A=${opts.nameA} B=${opts.nameB} maxShots=${opts.maxShots}`,
+      );
+      await startMatchStdio({
+        seed: Number(opts.seed),
+        nameA: opts.nameA,
+        nameB: opts.nameB,
+        maxShots: Number(opts.maxShots),
+        out: opts.out || undefined,
+      });
+    },
+  );
+
 void CORE_VERSION;
 void ENGINE_VERSION;
 void SEVEN_FOOT;

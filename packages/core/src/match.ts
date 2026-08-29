@@ -66,6 +66,8 @@ export interface MatchShotResult {
   foul: string | null;
   /** 本杆后轮到谁 */
   nextTurn: PlayerId;
+  /** 本杆后是否继续（未 scratch、未清台、预算未尽） */
+  continueTurn: boolean;
   /** 对局是否结束 + 结局 */
   over: boolean;
   winner: PlayerId | null;
@@ -336,9 +338,10 @@ export class MatchSession {
     this.shotIdx += 1;
 
     // 换手判定：犯规或没进自己组的球 → 换人
-    let nextTurn = by;
-    if (!this.over_) {
-      if (foul || ownPots.length === 0) nextTurn = by === "A" ? "B" : "A";
+    let nextTurn: PlayerId = by;
+    let continueTurn: boolean = !this.over_ && !foul && ownPots.length > 0;
+    if (!this.over_ && (foul || ownPots.length === 0)) {
+      nextTurn = by === "A" ? "B" : "A";
     }
     this.turn = nextTurn;
 
@@ -380,6 +383,7 @@ export class MatchSession {
       firstContact,
       foul,
       nextTurn: this.turn,
+      continueTurn: continueTurn,
       over: this.over_,
       winner: this.winner,
       reason: this.reason,

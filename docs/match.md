@@ -23,12 +23,15 @@ A/B 各自独立 hand model（bias 由 `hash(seed, name)` 派生）——
 
 | 层 | 文件 | 说明 |
 |----|------|------|
-| core | `packages/core/src/match.ts` | MatchSession（rack/定组/裁判/换手/胜负） |
+| core | `packages/core/src/match.ts` | MatchSession（rack/定组/裁判/换手/胜负 + `continueTurn` 字段） |
 | cli | `packages/cli/src/match-run.ts` | 对局执行器（oracle / llm 选手混编） |
-| prompt | `prompts/match.yaml` | 对局文案（m1；含"对手打法也是情报"心理层钩子） |
+| prompt | `prompts/match.yaml` | 对局文案（m2；含"清组才能打 8"独立条款 + 心理层钩子） |
 | schema | 复用 ClearOutputSchema（llm.ts shotMatch） | 选球-袋 + 瞄点 + spin.y 低杆 + note |
+| mcp | `packages/mcp/src/match-tools.ts` + `server.ts:buildPoolhallMatchMcp` | 4 工具（open/observe/shot/state），独立 stdio 入口（`poolhall-mcp --match`） |
 
-运行：`poolhall experiment match --a llm --b synthetic:oracle --seed 42`
+运行：
+- CLI：`poolhall experiment match --a llm --b synthetic:oracle --seed 42`
+- MCP：`poolhall-mcp --match --seed 42 --name-a playerA --name-b playerB`
 
 ## 4. 基线（2026-08-29 首测）
 
