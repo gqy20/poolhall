@@ -3,9 +3,16 @@
  *
  * sliding：v̇ = −u_s·g·û；ω̇ = ±(5·u_s·g)/(2R)·û⊥（力矩直接推导）
  *   接触点速度 u 以 (7/2)·u_s·g 收敛到 0（教科书结果，单测验证）
- * rolling：v̇ = −u_r·g·v̂；ω 每步锁定自然滚动
+ * rolling：v̇ = −u_r·g·v̂；ω 与 v 仅在 |ω - 自然值| < 阈值时锁定（v3 阈值化）
  * stationary：|v|、|u| 均低于阈值 → 冻结
  * 半隐式欧拉：先更新速度（摩擦），再用新速度推位置（稳定性）。
+ *
+ * v3 改动（spin.x/y 真实走位）：
+ * - sliding 段 ω 卷向自然滚动的速率不受 spin.x/y 注入残量影响（仍按物理力矩），
+ *   但 rolling 段不再无条件 lockRoll——若 |ω - 自然值| > 阈值则保留 spin 残量
+ *   （让 spin.x/y 注入的角速度能"穿透" rolling 分支，继续影响后续库边/碰撞）
+ * - 阈值以 spinStop（0.1 rad/s）的 5× 为界：自然滚动收敛残余 < 阈值视为锁定；
+ *   高杆/低杆的额外 ω 残量（典型 5-30 rad/s）远大于阈值，保留到底
  */
 
 import { contactVel, lockRoll } from "./ball.ts";
@@ -41,9 +48,19 @@ export function integrateBall(ball: Ball, p: BallParams, dt: number): void {
     const dec = p.u_r * p.g * dt;
     const nv = Math.max(0, vMag - dec);
     ball.vel = scale(norm(ball.vel), nv);
-    // v1: rolling 仍 lockRoll（v0 行为保留）；spin 注入通过 sliding 卷向
-    // 自然滚动 + 库边/碰撞 throw 转化的复杂路径是 v2 范畴
-    lockRoll(ball, p);
+    // v3：rolling lockRoll 阈值化（spin.x/y 残量穿透）
+    // 自然滚动值：ω.x = -v.y/R，ω.y = v.x/R
+    const naturalWx = -ball.vel.y / p.R;
+    const naturalWy = ball.vel.x / p.R;
+    const dWx = ball.w.x - naturalWx;
+    const dWy = ball.w.y - naturalWy;
+    const dev = Math.hypot(dWx, dWy);
+    // 阈值=spinStop×5（0.5 rad/s）：低于此视为自然滚动收敛残量→锁
+    // 高杆/低杆的额外 ω（5-30 rad/s）远高于此→保留注入残量
+    if (dev < 5 * SIM.spinStop) {
+      lockRoll(ball, p);
+    }
+    // 残量较大的 spin.x/y 注入保留，参与后续库边/碰撞
   } else {
     // 滑动：û 方向摩擦减速 + 力矩卷入角速度
     const uh = { x: u.x / uMag, y: u.y / uMag };

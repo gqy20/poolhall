@@ -69,6 +69,11 @@ export function resolveCushion(ball: Ball, dir: CushionDir, p: BallParams): void
     const push = ball.w.z * p.R * p.cushionSpinSigma * sign;
     ball.vel = { x: ball.vel.x + push * tangX, y: ball.vel.y + push * tangY };
   }
+
+  // v3 spin.x/y 库边走位——**v3.0 暂不回滚**（spin.x=1 让母球一次撞库飞出场）；
+  // 设计本想"绕横向轴自转 → 库边切向摩擦在 vel 法向产生二次项"，但 2D
+  // 简化下系数难以量化，且一次库边叠加可远超合理量级。留待 v3.1 用
+  // pooltool spin≠0 对拍重新校准（与 throwSigma 同流程）。
 }
 
 /** 进袋：固定到袋心，速度清零 */
