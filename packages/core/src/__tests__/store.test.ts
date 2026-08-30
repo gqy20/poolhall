@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Store } from "../store.ts";
+import { ELO_INITIAL, eloDelta, Store } from "../store.ts";
 
 describe("Store（node:sqlite 持久化）", () => {
   let store: Store;
@@ -56,5 +56,57 @@ describe("Store（node:sqlite 持久化）", () => {
     expect(store.loadBias("a")).toBeCloseTo(1.0, 6);
     expect(other.loadBias("a")).toBeCloseTo(-1.0, 6);
     other.close();
+  });
+});
+
+describe("Elo 记分（M6.5）", () => {
+  let store: Store;
+
+  beforeEach(() => {
+    store = new Store(":memory:");
+  });
+
+  afterEach(() => {
+    store.close();
+  });
+
+  it("eloDelta：同分对局胜 +K/2、负 -K/2、平 0", () => {
+    expect(eloDelta(1500, 1500, 1)).toBeCloseTo(16, 10);
+    expect(eloDelta(1500, 1500, 0)).toBeCloseTo(-16, 10);
+    expect(eloDelta(1500, 1500, 0.5)).toBeCloseTo(0, 10);
+  });
+
+  it("eloDelta：强胜弱涨得少、弱胜强涨得多，且双向对称", () => {
+    const small = eloDelta(1700, 1300, 1);
+    const big = eloDelta(1300, 1700, 1);
+    expect(small).toBeLessThan(16);
+    expect(big).toBeGreaterThan(16);
+    expect(big).toBeCloseTo(-eloDelta(1700, 1300, 0), 10);
+  });
+
+  it("recordMatchResult：胜负入账，榜单降序，总分守恒", () => {
+    store.recordMatchResult("alice", "bob", "A", "合法打进 8 号——胜");
+    const lb = store.leaderboard();
+    expect(lb[0]).toMatchObject({ name: "alice", wins: 1, losses: 0, games: 1 });
+    expect(lb[1]).toMatchObject({ name: "bob", wins: 0, losses: 1, games: 1 });
+    expect(lb[0]!.rating).toBeGreaterThan(ELO_INITIAL);
+    expect(lb[1]!.rating).toBeLessThan(ELO_INITIAL);
+    expect(lb[0]!.rating + lb[1]!.rating).toBeCloseTo(2 * ELO_INITIAL, 8);
+  });
+
+  it("平局：双方各计一局平，总分守恒", () => {
+    store.recordMatchResult("a", "b", null, "杆数预算耗尽——平局");
+    const lb = store.leaderboard();
+    expect(lb.every((e) => e.draws === 1 && e.games === 1)).toBe(true);
+    expect(lb[0]!.rating + lb[1]!.rating).toBeCloseTo(2 * ELO_INITIAL, 8);
+  });
+
+  it("多局累积：高分者再胜涨得更少（期望分效应）", () => {
+    store.recordMatchResult("alice", "bob", "A");
+    const after1 = store.leaderboard().find((e) => e.name === "alice")!.rating;
+    store.recordMatchResult("alice", "bob", "A");
+    const after2 = store.leaderboard().find((e) => e.name === "alice")!.rating;
+    expect(after2 - after1).toBeLessThan(after1 - ELO_INITIAL);
+    expect(store.leaderboard().find((e) => e.name === "alice")!.games).toBe(2);
   });
 });

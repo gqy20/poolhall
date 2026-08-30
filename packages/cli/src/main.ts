@@ -409,6 +409,7 @@ program
   .option("--max-shots <n>", "杆数预算", "60")
   .option("--shot-clock <sec>", "外部选手出杆限时（秒，0=不限时）", "600")
   .option("--event-out-dir <dir>", "公开日志目录（每桌 <id>.jsonl）", "")
+  .option("--db <file>", "战绩库 SQLite 路径（空 = 内存库）", "")
   .action(async (opts: import("./lobby.ts").LobbyOpts) => {
     const { runLobby } = await import("./lobby.ts");
     await runLobby(opts);

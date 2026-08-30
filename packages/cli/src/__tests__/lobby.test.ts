@@ -50,6 +50,7 @@ beforeAll(async () => {
     // 5 秒出杆限时：兼作离席测试的兑底（离席后卡住的等待超时判负，桌回到等位）
     shotClock: "5",
     eventOutDir: "",
+    db: "",
   });
   base = `http://127.0.0.1:${lobby.port}`;
 }, 20000);
@@ -130,6 +131,12 @@ describe("常驻大厅（M6.4）", () => {
     expect((ended as Record<string, unknown> | null)?.reason).toBe("杆数预算耗尽——平局");
     await until(async () => Number((await status()).game) >= 1);
     expect(((await status()).seats as { A: string }).A).toBe("alice");
+    // 终局已入 Elo 榜：平局各计一场，初始分不变（同分对局 delta=0）
+    const lb = ((await api("/lobby/status")).body.leaderboard ?? []) as Array<
+      Record<string, unknown>
+    >;
+    expect(lb.map((e) => e.name).sort()).toEqual(["alice", "bob"]);
+    expect(lb.every((e) => e.games === 1 && e.draws === 1 && e.rating === 1500)).toBe(true);
   }, 40000);
 
   it("离席：释放席位后桌回到等待状态", async () => {

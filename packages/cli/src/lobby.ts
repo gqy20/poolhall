@@ -21,6 +21,7 @@ import {
   MATCH_TABLE,
   MatchSession,
   type PlayerId,
+  Store,
 } from "@poolhall/core";
 import { MatchHttp, readJsonBody } from "./match-http.ts";
 import { runMatch } from "./match-run.ts";
@@ -41,6 +42,8 @@ export interface LobbyOpts {
   shotClock: string;
   /** 公开日志目录（每桌 <id>.jsonl）；空 = 不落盘 */
   eventOutDir: string;
+  /** 战绩库路径（SQLite；空 = 内存库） */
+  db: string;
 }
 
 interface RoomConfig {
@@ -53,6 +56,8 @@ interface RoomConfig {
   shotClockMs: number;
   /** 公开日志目录；每局一个文件 <id>-g<n>.jsonl（空 = 不落盘） */
   eventOutDir: string;
+  /** 战绩库：终局入账 Elo */
+  store: Store;
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -218,6 +223,10 @@ export class TableRoom {
     });
     this.playing = false;
     if (this.stopped) return;
+    // 终局入账：自然结束（含平局）才计分；被打断的对局 reason 为 null，不入账
+    if (result.reason) {
+      this.cfg.store.recordMatchResult(nameA, nameB, result.winner, result.reason);
+    }
     sink.broadcast({
       type: "summary",
       schema: MATCH_EVENT_SCHEMA,
@@ -277,6 +286,7 @@ export async function startLobby(opts: LobbyOpts): Promise<LobbyHandle> {
   const handSeed = Number(opts.seed);
   const count = Math.max(1, Math.min(8, Number(opts.tables) || 1));
   const shotClockMs = Math.max(0, Number(opts.shotClock || 600)) * 1000;
+  const store = new Store(opts.db || ":memory:");
   const rooms = Array.from(
     { length: count },
     (_, i) =>
@@ -289,10 +299,11 @@ export async function startLobby(opts: LobbyOpts): Promise<LobbyHandle> {
         maxShots: Number(opts.maxShots),
         shotClockMs,
         eventOutDir: opts.eventOutDir,
+        store,
       }),
   );
   const waiting = new Set<string>();
-  const server = createServer((req, res) => void routeLobby(rooms, waiting, req, res));
+  const server = createServer((req, res) => void routeLobby(rooms, waiting, store, req, res));
   server.on("upgrade", (req, sock: Duplex) => dispatchUpgrade(rooms, req, sock));
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
@@ -308,6 +319,7 @@ export async function startLobby(opts: LobbyOpts): Promise<LobbyHandle> {
     close: async () => {
       await Promise.all(rooms.map((room) => room.stop()));
       await new Promise<void>((resolve) => server.close(() => resolve()));
+      store.close();
     },
   };
 }
@@ -344,6 +356,7 @@ function servePage(res: ServerResponse, file: string): void {
 async function routeLobby(
   rooms: TableRoom[],
   waiting: Set<string>,
+  store: Store,
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
@@ -356,6 +369,7 @@ async function routeLobby(
   if (req.method === "GET" && path === "/lobby/status") {
     return sendJson(res, 200, {
       tables: rooms.map((room) => room.status()),
+      leaderboard: store.leaderboard(),
       waiting: [...waiting],
     });
   }

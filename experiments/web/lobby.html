@@ -58,6 +58,17 @@
   .state.ready { color: var(--accent); border-color: var(--accent); }
   .enter { flex: 0 0 auto; color: var(--muted); font-size: 13px; }
   .waiting { max-width: 960px; margin: 28px auto 0; color: var(--muted); font-size: 12px; }
+  .board { max-width: 960px; margin: 40px auto 0; }
+  .board h2 { font-size: 14px; font-weight: 600; letter-spacing: 0.12em; color: var(--muted);
+    border-bottom: 1px solid var(--line); padding-bottom: 10px; margin-bottom: 4px; }
+  .board table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .board th { text-align: left; color: var(--muted); font-weight: 400; font-size: 12px;
+    padding: 8px 10px; letter-spacing: 0.06em; }
+  .board td { padding: 8px 10px; border-top: 1px solid var(--line); }
+  .board td.rank { color: var(--muted); width: 40px; }
+  .board td.rating { color: var(--accent); font-variant-numeric: tabular-nums; width: 80px; }
+  .board td.record { color: var(--muted); font-variant-numeric: tabular-nums; width: 110px; }
+  .board .empty { color: var(--muted); padding: 14px 10px; }
   @media (prefers-reduced-motion: reduce) {
     .table-card { transition: none; }
   }
@@ -69,6 +80,13 @@
   <div class="sub">物理永远精确，人类的不完美只住在注入层 · 选一张桌观战</div>
 </header>
 <main id="tables"></main>
+<section class="board">
+  <h2>榜单</h2>
+  <table>
+    <thead><tr><th></th><th>选手</th><th>积分</th><th>胜 / 负 / 平</th></tr></thead>
+    <tbody id="leaderboard"></tbody>
+  </table>
+</section>
 <div class="waiting" id="waiting"></div>
 <script>
 "use strict";
@@ -97,6 +115,16 @@ async function refresh() {
     }).join("");
     const waitEl = document.getElementById("waiting");
     waitEl.textContent = data.waiting.length ? `等候入座：${data.waiting.join("、")}` : "";
+    const board = document.getElementById("leaderboard");
+    const entries = data.leaderboard ?? [];
+    board.innerHTML = entries.length
+      ? entries.map((e, i) => `<tr>
+          <td class="rank">${i + 1}</td>
+          <td>${e.name}</td>
+          <td class="rating">${Math.round(e.rating)}</td>
+          <td class="record">${e.wins} / ${e.losses} / ${e.draws}</td>
+        </tr>`).join("")
+      : `<tr><td colspan="4" class="empty">还没有完赛的对局——打完一局榜单就开张</td></tr>`;
   } catch {
     /* 服务重启中，静默重试 */
   }

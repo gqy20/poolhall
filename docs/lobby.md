@@ -63,7 +63,19 @@ pnpm exec poolhall lobby --port 8830 --tables 2 \
 - 公开日志每局一个文件（续局不截断），`replay-match` 逐文件生成回放
 - 内部选手混编也支持：`--a synthetic:oracle --b external`（oracle 陪练等真人入座）
 
-## 6. v1 边界（未做）
+## 6. Elo 榜（M6.5）
+
+每局自然终局（含平局）自动入账，被打断的对局不计分：
+
+- 公式：标准 Elo，初始 1500、K=32；`eloDelta` 为纯函数（core/store.ts）
+- 持久化：`--db <file>`（SQLite，`elo` + `elo_matches` 两表）；缺省内存库。
+  **大厅重启后榜单仍在**
+- 透出：`/lobby/status.leaderboard`（按分降序，同分按胜场），大厅页榜单区渲染；
+  零和：每局双方增减互为相反数，总分恒定 1500×人数
+- v1 边界：合成选手（如 `t1-a`）也计入榜单；web-match/experiment 的对局不入账
+  （只计常驻厅内的局）；无衰减、无让分、无分组榜单
+
+## 7. v1 边界（未做）
 
 - 无鉴权/无跨机：身份名即凭证，局域网内信任
 - 等候名单只读：不自动补位（轮询 join 即可）
@@ -75,3 +87,5 @@ pnpm exec poolhall lobby --port 8830 --tables 2 \
 - 2026-08-30 v1 定稿：多桌常驻 + 动态认座 + handSeed 肌肉记忆 + 选桌观战。
   端到端冒烟：双外部 MCP 客户端经大厅自动分桌打完 12 杆并自动续局，
   每局公开日志零泄漏、可独立回放（测试：`packages/cli/src/__tests__/lobby.test.ts`）。
+- 2026-08-30 M6.5 Elo 榜：终局自动入账（零和、可持久化、跨重启保留）。
+  实测：bob 胜 alice → 1516/1484，重启后榜单不变；单测覆盖胜负/平局/多局累积（5 测）。
