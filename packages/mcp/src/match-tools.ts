@@ -129,7 +129,12 @@ export interface MatchSessionState {
 
 export function newMatchState(opts: OpenMatchInput & { out?: string }): MatchSessionState {
   const s: MatchSessionState = {
-    session: new MatchSession({ seed: opts.seed, nameA: opts.nameA, nameB: opts.nameB, maxShots: opts.maxShots }),
+    session: new MatchSession({
+      seed: opts.seed,
+      nameA: opts.nameA,
+      nameB: opts.nameB,
+      maxShots: opts.maxShots,
+    }),
     history: [],
     fouls: 0,
     out: opts.out,

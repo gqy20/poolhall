@@ -8,7 +8,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { renderMatchHtml, type MatchMetaRow, type MatchShotRow } from "./lib/match-html.ts";
+import { type MatchMetaRow, type MatchShotRow, renderMatchHtml } from "./lib/match-html.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, "figs");
@@ -47,15 +47,12 @@ function main(): void {
   const nameA = meta?.nameA ?? "A";
   const nameB = meta?.nameB ?? "B";
   const seed = meta?.seed ?? 0;
-  const fileOut =
-    outFile ?? join(outDir, `match-${nameA}-vs-${nameB}-s${seed}.html`);
+  const fileOut = outFile ?? join(outDir, `match-${nameA}-vs-${nameB}-s${seed}.html`);
 
   const html = renderMatchHtml(rows, { nameA, nameB });
   mkdirSync(dirname(fileOut), { recursive: true });
   writeFileSync(fileOut, html);
-  console.log(
-    `✓ 生成 ${fileOut}（${rows.filter(isShot).length} 杆，${nameA} vs ${nameB}）`,
-  );
+  console.log(`✓ 生成 ${fileOut}（${rows.filter(isShot).length} 杆，${nameA} vs ${nameB}）`);
 }
 
 main();

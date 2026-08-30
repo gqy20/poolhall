@@ -128,7 +128,11 @@ function trialRowHtml(a: TrialView | undefined, b: TrialView | undefined, t: num
   const isOver = sa?.over || sb?.over;
   const ba = sa ? statusBadge(sa) : null;
   const bb = sb ? statusBadge(sb) : null;
-  const cell = (side: "A" | "B" | null, t: TrialView | undefined, badge: { text: string; color: string } | null) => {
+  const cell = (
+    side: "A" | "B" | null,
+    t: TrialView | undefined,
+    badge: { text: string; color: string } | null,
+  ) => {
     if (!side || !t || !badge) {
       return `<td class="cell empty"></td>`;
     }
@@ -154,7 +158,10 @@ function trialRowHtml(a: TrialView | undefined, b: TrialView | undefined, t: num
     </tr>`;
 }
 
-export function renderMatchHtml(rows: Row[], opts: { nameA?: string; nameB?: string } = {}): string {
+export function renderMatchHtml(
+  rows: Row[],
+  opts: { nameA?: string; nameB?: string } = {},
+): string {
   const meta = rows.find((r) => r.kind === "meta") as MatchMetaRow | undefined;
   const shots = rows.filter(isShot);
   const nameA = opts.nameA ?? meta?.nameA ?? "A";
@@ -232,8 +239,10 @@ ${PAGE_CSS}
     <div>
       <h1 class="match-title">PoolHall · 中式八球对局</h1>
       <div class="match-meta">seed <b>${seed}</b> · <span class="A" style="color:${C.actual};font-weight:700">A: ${nameA}</span> vs <span class="B" style="color:#C76B2D;font-weight:700">B: ${nameB}</span>${
-    meta?.specA && meta?.specB ? ` · <span style="font-family:${FONT.mono};font-size:12px">${meta.specA} / ${meta.specB}</span>` : ""
-  }</div>
+        meta?.specA && meta?.specB
+          ? ` · <span style="font-family:${FONT.mono};font-size:12px">${meta.specA} / ${meta.specB}</span>`
+          : ""
+      }</div>
     </div>
     <div class="match-meta">${
       winner === "A"
