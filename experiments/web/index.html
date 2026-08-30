@@ -13,35 +13,38 @@
   --grid: #d4cfba;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background: var(--bg); color: var(--ink);
   font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 14px; line-height: 1.5; }
+body { display: flex; flex-direction: column; }
 header { padding: 16px 24px; border-bottom: 1px solid var(--grid); display: flex;
-  justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; }
+  flex: 0 0 auto; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; }
 h1 { font-size: 18px; margin: 0; }
 .meta { color: var(--ink-soft); font-size: 13px; }
 .meta .A { color: var(--A); font-weight: 700; }
 .meta .B { color: var(--B); font-weight: 700; }
 .status { font-size: 13px; }
-.main { padding: 16px 24px; display: grid; grid-template-columns: 1fr 360px; gap: 16px; }
-@media (max-width: 1000px) { .main { grid-template-columns: 1fr; } }
+.main { min-height: 0; flex: 1 1 auto; padding: 16px 24px; overflow: hidden; display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px; gap: 20px; align-items: stretch; }
+.play-column { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
 .table-frame { background: var(--felt); border-radius: 6px; padding: 8px; position: relative; aspect-ratio: 2.04; }
 .table-frame svg { width: 100%; height: 100%; display: block; }
 .stage { position: relative; min-width: 0; }
-.controls { min-height: 52px; margin-bottom: 8px; padding: 4px; display: flex; align-items: center;
-  gap: 4px; flex-wrap: wrap; background: #fff; border: 1px solid var(--grid); border-radius: 6px; }
+.controls { min-height: 52px; margin-bottom: 10px; padding: 0 0 10px; display: flex; align-items: center;
+  gap: 8px; flex-wrap: wrap; background: transparent; border: 0; border-bottom: 1px solid var(--grid); }
 .control-spacer { flex: 1; }
-.control, .control-field { min-height: 44px; border: 1px solid #a9a99f; border-radius: 5px;
-  background: #fff; color: var(--ink); font: inherit; font-weight: 650; }
+.control, .control-field { min-height: 44px; border: 0; border-radius: 5px;
+  background: transparent; color: var(--ink); font: inherit; font-weight: 650; }
 .control { padding: 0 13px; cursor: pointer; }
 .control.primary { background: var(--felt); border-color: var(--felt); color: #fff; }
-.control:hover:not(:disabled), .control-field:hover:not(:disabled) { border-color: var(--ink-soft); }
+.control:hover:not(:disabled), .control-field:hover:not(:disabled) { background: #e8ece9; }
 .control.primary:hover:not(:disabled) { background: #143f33; }
 .control:active:not(:disabled) { transform: translateY(1px); }
 .control:focus-visible, .control-field:focus-visible { outline: 3px solid #a9d8c5; outline-offset: 1px; }
 .control:disabled, .control-field:disabled { cursor: not-allowed; opacity: .48; }
-.control-label { display: flex; align-items: center; gap: 7px; min-height: 44px; padding-left: 9px;
+.control-label { display: flex; align-items: center; gap: 7px; min-height: 44px; padding-left: 5px;
   color: var(--ink-soft); font-size: 13px; font-weight: 650; }
-.control-field { height: 36px; min-height: 36px; padding: 0 7px; font-family: "JetBrains Mono", monospace;
+.control-field { height: 36px; min-height: 36px; padding: 0 5px; border-radius: 0;
+  border-bottom: 1px solid #a9a99f; font-family: "JetBrains Mono", monospace;
   font-variant-numeric: tabular-nums; }
 #max-shots { width: 68px; }
 #playback-speed { width: 64px; }
@@ -60,16 +63,32 @@ body.offline .server-control { display: none; }
 .stage:fullscreen .control-label, .stage:fullscreen .control-status { color: #e4e8e5; }
 .legend { padding: 8px 12px; font-size: 12px; color: var(--ink-soft); display: flex; gap: 16px; flex-wrap: wrap; }
 .legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 1.5px; }
-.side { display: flex; flex-direction: column; gap: 12px; }
-.kpi { background: #fff; border: 1px solid var(--grid); border-radius: 6px; padding: 10px 12px; }
+.side { height: 100%; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.kpi { padding: 4px 4px 16px; border-bottom: 1px solid var(--grid); }
 .kpi h3 { margin: 0 0 6px; font-size: 12px; color: var(--ink-soft); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 .kpi .v { font-size: 18px; font-weight: 700; font-family: "JetBrains Mono", monospace; }
 .kpi .sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
-.kpi .row { display: flex; gap: 8px; align-items: baseline; }
-.kpi .row > div { flex: 1; }
-.log { background: #fff; border: 1px solid var(--grid); border-radius: 6px; flex: 1;
-  overflow-y: auto; max-height: 380px; font-family: "JetBrains Mono", monospace; font-size: 12px; }
-.log-entry { padding: 6px 12px; border-bottom: 1px solid var(--grid); display: flex; gap: 8px; align-items: baseline; }
+.kpi .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; align-items: baseline; }
+.ai-panel { max-height: 42%; padding: 12px 4px 14px; overflow-y: auto; border-bottom: 1px solid var(--grid); }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.section-head h2 { margin: 0; font-size: 15px; }
+.ai-phase { color: var(--ink-soft); font-size: 12px; }
+.ai-phase::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px;
+  border-radius: 50%; background: currentColor; }
+.ai-phase.thinking { color: var(--felt); }
+.ai-shot { margin-bottom: 7px; font-size: 16px; font-weight: 750; }
+.plan-list { display: grid; gap: 6px; margin: 0; }
+.plan-row { display: grid; grid-template-columns: 46px 1fr; gap: 10px; }
+.plan-row dt { color: var(--ink-soft); font-size: 12px; }
+.plan-row dd { margin: 0; color: var(--ink); font-size: 13px; line-height: 1.45; }
+.confidence { display: inline-flex; align-items: center; gap: 5px; }
+.confidence i { width: 6px; height: 6px; border-radius: 50%; background: var(--felt); }
+.plan-review { margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--grid);
+  color: var(--ink-soft); font-size: 13px; }
+.event-panel { min-height: 0; padding-top: 14px; display: flex; flex: 1; flex-direction: column; }
+.event-panel .section-head { padding-inline: 4px; }
+.log { flex: 1; min-height: 0; overflow-y: auto; font-family: "JetBrains Mono", monospace; font-size: 12px; }
+.log-entry { padding: 9px 4px; border-bottom: 1px solid var(--grid); display: flex; gap: 10px; align-items: baseline; }
 .log-entry:last-child { border-bottom: none; }
 .log-entry .who { font-weight: 700; min-width: 32px; }
 .log-entry.A .who { color: var(--A); }
@@ -78,12 +97,26 @@ body.offline .server-control { display: none; }
 .log-entry .miss { color: var(--miss); }
 .log-entry .foul { color: var(--miss); font-weight: 700; }
 .placeholder { color: var(--felt-light); padding: 20px; text-align: center; font-style: italic; }
+.play-column, .ai-panel, .log { scrollbar-width: thin; scrollbar-color: #a9afa9 transparent; }
+.play-column::-webkit-scrollbar, .ai-panel::-webkit-scrollbar, .log::-webkit-scrollbar { width: 6px; }
+.play-column::-webkit-scrollbar-thumb, .ai-panel::-webkit-scrollbar-thumb, .log::-webkit-scrollbar-thumb {
+  border-radius: 6px; background: #a9afa9; }
+@media (max-width: 1000px) {
+  .main { grid-template-columns: 1fr; align-items: start; overflow-y: auto; }
+  .play-column { overflow: visible; }
+  .side { height: auto; min-height: 0; overflow: visible; }
+  .ai-panel { max-height: none; overflow: visible; }
+  .event-panel { min-height: 420px; }
+}
 @media (max-width: 680px) {
   .main { padding: 10px; }
   header { padding: 12px; }
   .control { flex: 1 1 auto; padding-inline: 10px; }
   .control-spacer { display: none; }
   .control-status { flex: 1 0 100%; text-align: left; min-height: 24px; }
+  .side { height: auto; min-height: 0; }
+  .event-panel { min-height: 360px; }
+  .log { max-height: 480px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .control, .stage:fullscreen .controls { transition: none; }
@@ -92,7 +125,7 @@ body.offline .server-control { display: none; }
 </head>
 <body>
 <header>
-  <div>
+  <div class="play-column">
     <h1>PoolHall · 中式八球对局</h1>
     <div class="meta" id="meta">连接中...</div>
   </div>
@@ -133,24 +166,36 @@ body.offline .server-control { display: none; }
 
   <div class="side">
     <div class="kpi">
-      <h3>当前局况</h3>
+      <div class="section-head"><h2>当前局况</h2></div>
       <div class="row">
         <div><div class="v" id="kpi-shot">-</div><div class="sub">杆数</div></div>
         <div><div class="v" id="kpi-turn">-</div><div class="sub">轮到</div></div>
-      </div>
-      <div class="row" style="margin-top:8px">
         <div><div class="v" id="kpi-A">0</div><div class="sub">A 进球</div></div>
         <div><div class="v" id="kpi-B">0</div><div class="sub">B 进球</div></div>
       </div>
     </div>
-    <div class="kpi">
-      <h3>最近事件</h3>
-      <div id="last-event" class="v" style="font-size:14px">—</div>
-      <div id="last-event-detail" class="sub">—</div>
-    </div>
-    <div class="log" id="log">
-      <div class="placeholder">等待首杆...</div>
-    </div>
+    <section class="ai-panel" aria-labelledby="ai-plan-title">
+      <div class="section-head">
+        <h2 id="ai-plan-title">AI 本杆思路</h2>
+        <span class="ai-phase" id="ai-phase">等待分析</span>
+      </div>
+      <div class="ai-shot" id="last-event">等待开局</div>
+      <div class="sub" id="last-event-detail">AI 选择目标后将在这里展示公开计划</div>
+      <dl class="plan-list">
+        <div class="plan-row"><dt>观察</dt><dd id="plan-observation">—</dd></div>
+        <div class="plan-row"><dt>判断</dt><dd id="plan-choice">—</dd></div>
+        <div class="plan-row"><dt>走位</dt><dd id="plan-cue">—</dd></div>
+        <div class="plan-row"><dt>风险</dt><dd id="plan-risk">—</dd></div>
+        <div class="plan-row"><dt>信心</dt><dd id="plan-confidence">—</dd></div>
+      </dl>
+      <div class="plan-review" id="plan-review">本杆结束后显示复盘</div>
+    </section>
+    <section class="event-panel" aria-labelledby="events-title">
+      <div class="section-head"><h2 id="events-title">最近事件</h2></div>
+      <div class="log" id="log">
+        <div class="placeholder">等待首杆...</div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -343,38 +388,55 @@ function appendLog(by, text, cls) {
   tx.textContent = text;
   div.appendChild(who);
   div.appendChild(tx);
-  logEl.appendChild(div);
-  logEl.scrollTop = logEl.scrollHeight;
+  logEl.prepend(div);
+  logEl.scrollTop = 0;
+}
+
+function resultLabel(shot) {
+  if (shot.scratch) return "母球进袋";
+  if (shot.foul) return `犯规：${shot.foul}`;
+  if (shot.pottedBalls?.length > 0) return `进袋：${shot.pottedBalls.join("/")}`;
+  return "未进";
+}
+
+function renderPublicPlan(shot) {
+  const plan = shot.publicPlan;
+  aiPhase.className = "ai-phase";
+  aiPhase.textContent = `${shot.by} 计划已生成`;
+  planObservation.textContent = plan?.observation ?? "本杆没有公开观察摘要";
+  planChoice.textContent = plan?.choice ?? `${shot.targetBall ?? "?"} 号球 → ${shot.targetPocket ?? "未指定袋"}`;
+  planCue.textContent = plan?.cuePlan ?? `力度 ${(shot.intentPower ?? 0).toFixed(2)}`;
+  planRisk.textContent = plan?.risk ?? "未记录风险判断";
+  const confidence = { low: "低", medium: "中", high: "高" }[plan?.confidence] ?? "未标注";
+  planConfidence.innerHTML = `<span class="confidence"><i></i>${confidence}</span>`;
+  planReview.textContent = "本杆结束后显示复盘";
 }
 
 async function renderShot(s, generation) {
   const displayShot = s.trial + 1;
   kpi.shot = displayShot;
   kpi.turn = s.by;
-  if (s.pottedBalls && s.pottedBalls.length > 0) {
-    if (s.by === "A") kpi.A += s.pottedBalls.length;
-    else kpi.B += s.pottedBalls.length;
-  }
   setKpi();
-  let label = "";
-  if (s.scratch) label = "母球进袋";
-  else if (s.foul) label = `犯规：${s.foul}`;
-  else if (s.pottedBalls && s.pottedBalls.length > 0) label = `进袋：${s.pottedBalls.join("/")}`;
-  else label = "未进";
   status.textContent = `▶ ${s.by} 正在击第 ${displayShot} 杆`;
-  lastEventEl.textContent = `第 ${displayShot} 杆 · ${s.by} ${label}`;
+  lastEventEl.textContent = `第 ${displayShot} 杆 · ${s.by} 正在执行计划`;
   const spinStr = s.intentSpin
     ? ` spin(${s.intentSpin.x.toFixed(2)},${s.intentSpin.y.toFixed(2)},${s.intentSpin.z.toFixed(2)})`
     : "";
   lastEventDetail.textContent =
     `${s.targetBall ?? "?"}→${s.targetPocket ?? "?"} 瞄 ${(s.intentAngle ?? 0).toFixed(1)}° 力 ${(s.intentPower ?? 0).toFixed(2)}${spinStr}`;
-  let cls = "";
-  if (s.scratch) cls = "miss";
-  else if (s.foul) cls = "foul";
-  else if (s.pottedBalls && s.pottedBalls.length > 0) cls = "pot";
-  appendLog(s.by, `第${displayShot}杆 ${s.targetBall ?? "?"}→${s.targetPocket ?? "?"} 瞄${(s.intentAngle ?? 0).toFixed(0)}° ${label}`, cls);
+  renderPublicPlan(s);
   await animateShot(s);
   if (generation !== playbackGeneration) return;
+  if (s.pottedBalls?.length > 0) {
+    if (s.by === "A") kpi.A += s.pottedBalls.length;
+    else kpi.B += s.pottedBalls.length;
+  }
+  const label = resultLabel(s);
+  const cls = s.scratch ? "miss" : s.foul ? "foul" : s.pottedBalls?.length > 0 ? "pot" : "";
+  lastEventEl.textContent = `第 ${displayShot} 杆 · ${s.by} ${label}`;
+  planReview.textContent = s.review;
+  aiPhase.textContent = "本杆已复盘";
+  appendLog(s.by, `第${displayShot}杆 ${s.targetBall ?? "?"}→${s.targetPocket ?? "?"} 瞄${(s.intentAngle ?? 0).toFixed(0)}° ${label}`, cls);
   kpi.turn = s.nextTurn;
   setKpi();
 }
@@ -488,6 +550,7 @@ function renderSummary(msg, generation) {
   const color = msg.winner === "A" ? "var(--A)" : msg.winner === "B" ? "var(--B)" : "var(--ink-soft)";
   const reason = (msg.reason ?? "").replaceAll("——平局", "").replaceAll("——", "：");
   status.innerHTML = `<b style="color:${color}">${w}</b>${reason ? `：${reason}` : ""}（${msg.shots} 杆）`;
+  aiPhase.textContent = "对局结束";
   replayButton.disabled = false;
 }
 
@@ -502,7 +565,15 @@ function beginSession(msg) {
   kpi.shot = 0; kpi.turn = "-"; kpi.A = 0; kpi.B = 0;
   setKpi();
   lastEventEl.textContent = "—";
-  lastEventDetail.textContent = "—";
+  lastEventDetail.textContent = "AI 选择目标后将在这里展示公开计划";
+  aiPhase.className = "ai-phase";
+  aiPhase.textContent = "等待分析";
+  planObservation.textContent = "—";
+  planChoice.textContent = "—";
+  planCue.textContent = "—";
+  planRisk.textContent = "—";
+  planConfidence.textContent = "—";
+  planReview.textContent = "本杆结束后显示复盘";
   const empty = document.createElement("div");
   empty.className = "placeholder";
   empty.textContent = "等待首杆...";
@@ -512,9 +583,14 @@ function beginSession(msg) {
 
 function applyControlNotice(msg) {
   controlStatus.textContent = msg.message;
-  const loading = msg.state === "starting" || msg.state === "playing";
+  const loading = ["starting", "thinking", "playing"].includes(msg.state);
   newMatchButton.disabled = loading || !socket || socket.readyState !== WebSocket.OPEN;
   maxShotsInput.disabled = loading;
+  if (msg.state === "thinking") {
+    aiPhase.className = "ai-phase thinking";
+    aiPhase.textContent = msg.message;
+    planReview.textContent = "正在读取局面并形成公开计划";
+  }
 }
 
 function handle(msg, record = true) {
@@ -563,6 +639,13 @@ const speedSelect = document.getElementById("playback-speed");
 const maxShotsInput = document.getElementById("max-shots");
 const fullscreenButton = document.getElementById("fullscreen-table");
 const controlStatus = document.getElementById("control-status");
+const aiPhase = document.getElementById("ai-phase");
+const planObservation = document.getElementById("plan-observation");
+const planChoice = document.getElementById("plan-choice");
+const planCue = document.getElementById("plan-cue");
+const planRisk = document.getElementById("plan-risk");
+const planConfidence = document.getElementById("plan-confidence");
+const planReview = document.getElementById("plan-review");
 let socket = null;
 
 function togglePause() {

@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import type { AgentObserve, ClearObserve, MatchObserve } from "@poolhall/core";
+import type { AgentObserve, ClearObserve, MatchObserve, MatchPublicPlan } from "@poolhall/core";
 import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
 import {
@@ -83,6 +83,16 @@ const ClearOutputSchema = z.object({
     .describe("策略笔记（改写制）：清台策略/力度教训/spin 是否有效的一句话结论"),
 });
 
+const MatchOutputSchema = ClearOutputSchema.extend({
+  publicPlan: z.object({
+    observation: z.string().max(160).describe("给观众看的桌面观察，只陈述可见局面"),
+    choice: z.string().max(160).describe("为什么选择当前目标球和袋口"),
+    cuePlan: z.string().max(160).describe("力度、旋球和期望母球走位"),
+    risk: z.string().max(160).describe("本杆最主要的犯规、scratch 或走位风险"),
+    confidence: z.enum(["low", "medium", "high"]).describe("对本杆计划的公开信心等级"),
+  }),
+});
+
 export interface LlmConfig {
   baseUrl: string;
   apiKey: string;
@@ -137,6 +147,7 @@ interface ShotObjCommon {
   note?: string;
   targetBall?: string;
   targetPocket?: string;
+  publicPlan?: MatchPublicPlan;
 }
 
 /** 出一杆的归一结果（aimAt 含"模型瞄的点"；仅 angle 兼容时为 null） */
@@ -267,11 +278,13 @@ export class LlmAgentSession {
   /** 出一杆（对局）：与清台同构（选球-袋 + 瞄点 + 走位），prompt 用 match.yaml */
   async shotMatch(
     obs: import("@poolhall/core").MatchObserve,
-  ): Promise<(ShotAndAim & { targetBall: string; targetPocket: string }) | null> {
-    return this.callModel(ClearOutputSchema, obs, (obj) => {
+  ): Promise<
+    (ShotAndAim & { targetBall: string; targetPocket: string; publicPlan: MatchPublicPlan }) | null
+  > {
+    return this.callModel(MatchOutputSchema, obs, (obj) => {
       const cue = obs.balls.find((b) => b.id === "cue");
       const spin = obj.spin ?? { x: 0, y: 0, z: 0 };
-      if (!cue || !obj.targetBall || !obj.targetPocket) return null;
+      if (!cue || !obj.targetBall || !obj.targetPocket || !obj.publicPlan) return null;
       const angle = (Math.atan2(-(obj.aimY - cue.y), obj.aimX - cue.x) * 180) / Math.PI;
       return {
         angle,
@@ -280,6 +293,7 @@ export class LlmAgentSession {
         spin,
         targetBall: obj.targetBall,
         targetPocket: obj.targetPocket,
+        publicPlan: obj.publicPlan,
       };
     });
   }

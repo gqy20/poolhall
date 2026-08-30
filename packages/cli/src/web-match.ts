@@ -121,6 +121,9 @@ async function playGame(
     out: opts.out || "/dev/null",
     hub: sink,
     shouldStop: () => signal.aborted,
+    onThinking: (actor) => {
+      hub.notify({ type: "control", state: "thinking", actor, message: `${actor} 正在分析桌面` });
+    },
     paceShot: async (shot) => {
       hub.notify({ type: "control", state: "playing", message: "AI 对局进行中" });
       const simTime = shot.samples.at(-1)?.t ?? 0;

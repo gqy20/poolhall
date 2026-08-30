@@ -121,7 +121,7 @@ DoD：两个外部 agent 通过 MCP 各自完成一局校准挑战，产出知�
   8 号胜负/双选手独立 hand model）+ llm×oracle 混编对战全通（docs/match.md）——
   Agent vs Agent 与"读对手 bias"心理层的地基
 - [~] **M6.3 单桌试营业**（进行中）：本地 HTTP + WebSocket 实时观战、晚连历史回放、
-  MatchEvent schema 2、公开事件泄漏红线、delta-v1 持久日志与自包含 HTML 回放已完成；
+  MatchEvent schema 3、公开计划/复盘、泄漏红线、delta-v1 持久日志与自包含 HTML 回放已完成；
   按杆实时 AI、局域网开局控制、暂停/倍速/重播/全屏已完成；双外部 Agent 身份接入待做
 - [ ] 常驻服务：HTTP/SSE 大厅，多桌并发，观战排队
 - [ ] Agent vs Agent 对弈（Elo 榜）

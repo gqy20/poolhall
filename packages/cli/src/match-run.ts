@@ -12,6 +12,7 @@ import {
   MATCH_EVENT_SCHEMA,
   type MatchEvent,
   type MatchObserve,
+  type MatchPublicPlan,
   MatchSession,
   type MatchShotResult,
   type PlayerId,
@@ -34,6 +35,7 @@ export interface MatchRunOpts {
   /** 实时观战节奏：本杆广播后，下一次 Agent 决策前等待。 */
   paceShot?: (result: MatchShotResult) => Promise<void>;
   shouldStop?: () => boolean;
+  onThinking?: (player: PlayerId) => void;
 }
 
 function log(out: string, obj: object): void {
@@ -59,6 +61,22 @@ function oracleIntent(session: MatchSession): { angle: number; power: number } {
   const cue = obs.balls.find((b) => b.id === "cue")!;
   const angle = (Math.atan2(-(best.ghost.y - cue.y), best.ghost.x - cue.x) * 180) / Math.PI;
   return { angle, power: 0.45 };
+}
+
+function oraclePlan(obs: MatchObserve, target: string, pocket: string | null): MatchPublicPlan {
+  const assist = obs.aimAssists.find((item) => item.ball === target && item.pocket === pocket);
+  const cut = assist?.cutAngleDeg ?? 0;
+  return {
+    observation: obs.breakShot
+      ? "球组已摆紧，母球位于开球线后，当前执行标准开球"
+      : `当前为${obs.yourGroup === "open" ? "开放球局" : obs.yourGroup === "solids" ? "全色组" : "花色组"}，优先寻找低切角组合`,
+    choice: pocket
+      ? `选择 ${target} 号球进 ${pocket} 袋，切角约 ${cut.toFixed(1)}°`
+      : "直击 1 号顶球冲散球组",
+    cuePlan: obs.breakShot ? "使用较高力度沿长轴开球" : "使用中等力度，尽量保留母球在中区",
+    risk: obs.breakShot ? "主要风险是母球进袋或不足四球碰库" : "主要风险是母球跟进或首触偏离目标球",
+    confidence: cut < 20 ? "high" : cut < 45 ? "medium" : "low",
+  };
 }
 
 export async function runMatch(opts: MatchRunOpts): Promise<{
@@ -95,11 +113,14 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
     const obs: MatchObserve = session.observe();
     const isA = obs.turn === "A";
     const llm = isA ? llmA : llmB;
+    opts.onThinking?.(obs.turn);
     let intent: { angle: number; power: number; spin?: { x: number; y: number; z: number } };
     let extra: { targetBall?: string; targetPocket?: string | null } = {};
+    let publicPlan: MatchPublicPlan;
     if (obs.breakShot) {
       intent = session.breakIntent();
       extra = { targetBall: "1", targetPocket: null };
+      publicPlan = oraclePlan(obs, "1", null);
     } else if (llm) {
       const d = await llm.shotMatch(obs);
       if (!d) {
@@ -108,12 +129,14 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
       }
       intent = { angle: d.angle, power: d.power, spin: d.spin };
       extra = { targetBall: d.targetBall, targetPocket: d.targetPocket };
+      publicPlan = d.publicPlan;
     } else {
       intent = oracleIntent(session);
       // oracle 路径无 targetBall/pocket（直接走 aimAssists 优选）—— 用 obs 取最优
       const obs0 = session.observe();
       const best0 = obs0.aimAssists.reduce((a, b) => (b.cutAngleDeg < a.cutAngleDeg ? b : a));
       extra = { targetBall: best0.ball, targetPocket: best0.pocket };
+      publicPlan = oraclePlan(obs, best0.ball, best0.pocket);
     }
     const rec: MatchShotResult = session.shoot(intent);
     log(opts.out, {
@@ -142,6 +165,8 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
         intentAngle: intent.angle,
         intentPower: intent.power,
         intentSpin: intent.spin ?? null,
+        publicPlan,
+        review: reviewOf(rec, extra.targetBall),
         pottedBalls: rec.pottedBalls,
         pottedPockets: rec.pottedPockets,
         scratch: rec.scratch,
@@ -187,6 +212,12 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
   const r = session.result;
   log(opts.out, { kind: "summary", ...r });
   return r;
+}
+
+function reviewOf(rec: MatchShotResult, target: string | undefined): string {
+  if (rec.foul) return `计划未完成：${rec.foul}`;
+  if (rec.pottedBalls.length > 0) return `计划结果：进袋 ${rec.pottedBalls.join("、")} 号球`;
+  return `计划未命中：${missDescOf(rec, target)}`;
 }
 
 function missDescOf(rec: MatchShotResult, target: string | undefined): string {

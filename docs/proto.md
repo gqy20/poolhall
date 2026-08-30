@@ -79,15 +79,15 @@ zod schema（core 包 `proto.ts`）双端共用；CLI 侧、未来 MCP 侧同一
 - `spin` 全量启用、`throw` 事件
 - 对弈模式：`actor` 字段（当前出杆方）
 
-### 3.1 Match 公开事件流（schema 2）
+### 3.1 Match 公开事件流（schema 3）
 
 中式八球实时观战与后续静态回放共用 `core/match-log.ts` 的 `MatchEvent`：
 
 - `hello`：seed、双方公开身份、prompt 版本
-- `shot`：出杆意图、裁判结果、公开终态，以及 `sampleMode: "delta-v1"` 的稀疏轨迹
+- `shot`：出杆意图、裁判结果、公开终态、`publicPlan/review`，以及 `sampleMode: "delta-v1"` 的稀疏轨迹
 - `summary`：胜者、原因、总杆数
 
-每条事件携带 `schema: 2`；`hello.table` 给出中式台面的 width/height、开球线和置球点。
+每条事件携带 `schema: 3`；`hello.table` 给出中式台面的 width/height、开球线和置球点。
 CLI 的 WebSocket hub 在广播前递归检查字段名，任何层级出现
 `actual/bias/optimal/sigma/drift/hand/noise` 都立即抛错。研究日志与公开事件流保持物理隔离。
 
@@ -101,7 +101,10 @@ CLI 的 WebSocket hub 在广播前递归检查字段名，任何层级出现
 
 实时 WebSocket 另有不持久化的控制消息：浏览器发送
 `{"type":"new_match","maxShots":N}`；服务返回 `control` 状态
-`starting/playing/ready/busy/error`。控制消息不属于 MatchEvent，不写入公开回放日志。
+`starting/thinking/playing/ready/busy/error`。控制消息不属于 MatchEvent，不写入公开回放日志。
+
+`publicPlan` 是模型按独立 schema 生成的观众摘要（观察/判断/走位/风险/信心），不是私有思维链。
+`review` 由服务端根据进球、犯规与终态生成。私有 note 和隐藏手感字段禁止进入两者。
 
 ## 4. 禁止事项（泄漏红线）
 
@@ -121,3 +124,4 @@ schema 版本号只增不减。破坏性变更：升版本 → 写迁移脚本�
 - 2026-08-30 MatchEvent 轨迹改用 delta-v1：固定 30ms 取样 + 稀疏球位差分；`web-match --event-out` 可持久化公开 JSONL。
 - 2026-08-30 增加整局事件序列校验与 `replay-match` 自包含 HTML；实时历史和离线日志统一按杆排队播放。
 - 2026-08-30 MatchEvent 升 schema 2：hello 增加台面几何；读取 schema 1 时自动补旧 7 尺台尺寸并迁移。
+- 2026-08-30 MatchEvent 升 schema 3：shot 增加公开计划与服务端复盘；schema 1/2 日志自动迁移。

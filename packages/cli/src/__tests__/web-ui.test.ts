@@ -26,6 +26,12 @@ describe("实时对局前端", () => {
     expect(html).toContain('id="max-shots"');
     expect(html).toContain('id="fullscreen-table"');
     expect(source).toContain('type: "new_match"');
+    expect(html).toContain('id="ai-plan-title"');
+    expect(html).toContain('id="plan-observation"');
+    expect(html).toContain('id="plan-review"');
+    expect(source).toContain("renderPublicPlan");
+    expect(source).toContain("logEl.prepend(div)");
+    expect(html).toContain("overflow: hidden; background: var(--bg)");
   });
 
   it("公开 JSONL 可生成无网络依赖的自包含 HTML", async () => {

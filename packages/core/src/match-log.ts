@@ -6,7 +6,7 @@
  */
 import { z } from "zod";
 
-export const MATCH_EVENT_SCHEMA = 2 as const;
+export const MATCH_EVENT_SCHEMA = 3 as const;
 
 const PositionSchema = z.object({ x: z.number().finite(), y: z.number().finite() });
 const PlayerSchema = z.enum(["A", "B"]);
@@ -14,6 +14,13 @@ const DeltaSampleSchema = z.object({
   t: z.number().finite(),
   pos: z.record(z.string(), PositionSchema),
   removed: z.array(z.string()),
+});
+export const MatchPublicPlanSchema = z.object({
+  observation: z.string().max(160),
+  choice: z.string().max(160),
+  cuePlan: z.string().max(160),
+  risk: z.string().max(160),
+  confidence: z.enum(["low", "medium", "high"]),
 });
 
 export interface DenseMatchSample {
@@ -48,6 +55,8 @@ export const MatchShotEventSchema = z.object({
   intentAngle: z.number().finite().nullable(),
   intentPower: z.number().min(0).max(1).nullable(),
   intentSpin: z.object({ x: z.number(), y: z.number(), z: z.number() }).nullable(),
+  publicPlan: MatchPublicPlanSchema.nullable(),
+  review: z.string().max(240),
   pottedBalls: z.array(z.string()),
   pottedPockets: z.array(z.object({ ball: z.string(), pocket: z.string() })),
   scratch: z.boolean(),
@@ -81,6 +90,7 @@ export type MatchShotEvent = z.infer<typeof MatchShotEventSchema>;
 export type MatchSummaryEvent = z.infer<typeof MatchSummaryEventSchema>;
 export type MatchEvent = z.infer<typeof MatchEventSchema>;
 export type MatchDeltaSample = z.infer<typeof DeltaSampleSchema>;
+export type MatchPublicPlan = z.infer<typeof MatchPublicPlanSchema>;
 
 export const MATCH_EVENT_FORBIDDEN_KEYS = [
   "actual",
@@ -166,15 +176,20 @@ export function encodeMatchEvent(event: MatchEvent): string {
 
 export function decodeMatchEventLine(line: string): MatchEvent {
   const payload = JSON.parse(line) as Record<string, unknown>;
-  if (payload.schema === 1) {
+  if (payload.schema === 1 || payload.schema === 2) {
+    const legacySchema = payload.schema;
     payload.schema = MATCH_EVENT_SCHEMA;
-    if (payload.type === "hello") {
+    if (payload.type === "hello" && legacySchema === 1) {
       payload.table = {
         width: 1.9812,
         height: 0.9906,
         breakLineX: 1.9812 / 4,
         footSpotX: (1.9812 * 3) / 4,
       };
+    }
+    if (payload.type === "shot") {
+      payload.publicPlan = null;
+      payload.review = "旧版回放未记录公开复盘";
     }
   }
   return parsePublicMatchEvent(payload);

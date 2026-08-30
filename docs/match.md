@@ -31,7 +31,7 @@ A/B 各自独立 hand model（bias 由 `hash(seed, name)` 派生）——
 | prompt | `prompts/match.yaml` | 对局文案（m2；含"清组才能打 8"独立条款 + 心理层钩子） |
 | schema | 复用 ClearOutputSchema（llm.ts shotMatch） | 选球-袋 + 瞄点 + spin.y 低杆 + note |
 | mcp | `packages/mcp/src/match-tools.ts` + `server.ts:buildPoolhallMatchMcp` | 4 工具（open/observe/shot/state），独立 stdio 入口（`poolhall-mcp --match`） |
-| event | `packages/core/src/match-log.ts` | MatchEvent schema 2（实时观战/回放共享，隐藏字段 fail fast） |
+| event | `packages/core/src/match-log.ts` | MatchEvent schema 3（公开计划/复盘、实时观战/回放共享、隐藏字段 fail fast） |
 | web | `packages/cli/src/web-match.ts` + `experiments/web/index.html` | 单桌实时观战；晚连历史回放；对局结束后持续服务至 Ctrl-C |
 
 运行：
@@ -58,3 +58,4 @@ A/B 各自独立 hand model（bias 由 `hash(seed, name)` 派生）——
 - 2026-08-30 自包含回放：公开 JSONL 可生成单文件 HTML；历史事件按杆排队播放，不依赖运行中的服务。
 - 2026-08-30 修正中式开球：比赛台尺寸、长轴摆球、开球区母球、独立 break、四球碰库与开球 8 重置。
 - 2026-08-30 实时控制：浏览器可开新局/设杆数；AI 按杆流式运行；观众支持暂停、重播、倍速与全屏。
+- 2026-08-30 观众叙事：AI 输出公开计划摘要，服务端生成事实复盘；右栏扩展为计划与事件时间线。

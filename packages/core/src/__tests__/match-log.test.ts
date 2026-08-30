@@ -39,11 +39,11 @@ describe("MatchEvent 公开事件契约", () => {
     expect(() => parsePublicMatchEvent({ type: "summary", schema: 1 })).toThrow();
   });
 
-  it("schema 1 日志迁移到 schema 2，并补旧台面尺寸", () => {
+  it("schema 1 日志迁移到 schema 3，并补旧台面尺寸", () => {
     const legacy = { ...hello(), schema: 1 } as Record<string, unknown>;
     delete legacy.table;
     expect(decodeMatchEventLine(JSON.stringify(legacy))).toMatchObject({
-      schema: 2,
+      schema: 3,
       table: { width: 1.9812, height: 0.9906 },
     });
   });
@@ -59,6 +59,8 @@ describe("MatchEvent 公开事件契约", () => {
       intentAngle: 0,
       intentPower: 0.5,
       intentSpin: null,
+      publicPlan: null,
+      review: "未进",
       pottedBalls: [],
       pottedPockets: [],
       scratch: false,

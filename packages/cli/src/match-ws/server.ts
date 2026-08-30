@@ -29,8 +29,9 @@ export interface HubControl {
 export type HubNotice =
   | {
       type: "control";
-      state: "starting" | "playing" | "ready" | "busy" | "error";
+      state: "starting" | "thinking" | "playing" | "ready" | "busy" | "error";
       message: string;
+      actor?: "A" | "B";
     }
   | { type: "control"; state: "connected"; message: string; maxShots: number };
 
