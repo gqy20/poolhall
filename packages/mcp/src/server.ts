@@ -370,6 +370,27 @@ export async function buildPoolhallMatchRemoteMcp(opts: MatchRemoteServerOpts): 
     async () => textResult(JSON.stringify(await safeRemote(() => client.state()))),
   );
 
+  server.registerTool(
+    "read_opponent",
+    {
+      description:
+        "读对手（心理层）：提交你对对手习惯偏差的估计（度，带符号：正=偏右/顺时针，负=偏左）。" +
+        "服务端返回带噪声的误差与方向是否对——从对手的意图角 vs 实际结果里归纳，别指望一次猜中。每局限次。",
+      inputSchema: z.object({
+        estimateDeg: z
+          .number()
+          .finite()
+          .min(-5)
+          .max(5)
+          .describe("你估计的对手系统偏差（度，带符号）"),
+      }),
+    },
+    async (args: unknown) => {
+      const input = z.object({ estimateDeg: z.number().finite() }).parse(args);
+      return textResult(JSON.stringify(await safeRemote(() => client.read(input.estimateDeg))));
+    },
+  );
+
   return server;
 }
 

@@ -94,6 +94,24 @@ describe("MatchRemoteClient", () => {
     expect(fake.calls[2]!.search).toContain("table=t2");
     expect(fake.calls[2]!.search).toContain("name=x");
   });
+
+  it("read：读人载荷携带身份名与桌号", async () => {
+    const fake = fakeFetch({
+      "POST /match/join": {
+        body: { ok: true, seat: "B", seats: { A: "y", B: "x" }, shotClockMs: 0, table: "t1" },
+      },
+      "POST /match/read": {
+        body: { ok: true, target: "A", errorDeg: 0.08, directionCorrect: true, attemptsLeft: 2 },
+      },
+    });
+    const client = new MatchRemoteClient("http://h:8800", "x", fake.fetch);
+    await client.join();
+    const out = (await client.read(0.12)) as Record<string, unknown>;
+    expect(out).toMatchObject({ directionCorrect: true, attemptsLeft: 2 });
+    expect(fake.calls[1]!.path).toBe("/match/read");
+    expect(fake.calls[1]!.search).toBe("?table=t1");
+    expect(fake.calls[1]!.body).toEqual({ name: "x", estimateDeg: 0.12 });
+  });
 });
 
 function parseText(result: { content: unknown[] }): Record<string, unknown> {
@@ -123,7 +141,7 @@ describe("remote 模式 MCP server（端到端，内存传输 + fetch 桩）", (
     };
   }
 
-  it("tools/list 4 工具；open_match 返回入座信息", async () => {
+  it("tools/list 5 工具；open_match 返回入座信息", async () => {
     const { client, cleanup } = await setup({
       "POST /match/join": {
         body: { ok: true, seat: "B", seats: { A: "y", B: "x" }, shotClockMs: 600000 },
@@ -134,6 +152,7 @@ describe("remote 模式 MCP server（端到端，内存传输 + fetch 桩）", (
       "match_state",
       "observe_match",
       "open_match",
+      "read_opponent",
       "take_match_shot",
     ]);
     const open = parseText(await client.callTool({ name: "open_match", arguments: {} }));

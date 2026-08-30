@@ -57,7 +57,7 @@ export type {
 export { decodeAgentLine, encode } from "./protocol.ts";
 export type { Rng } from "./rng.ts";
 export { gaussian, hash32, nextDouble, nextInt, rangeDot, streamOf } from "./rng.ts";
-export type { AgentStats, EloEntry, MatchRecordResult, ShotRow } from "./store.ts";
+export type { AgentStats, EloEntry, MatchRecordResult, ReadStats, ShotRow } from "./store.ts";
 
 export { ELO_INITIAL, ELO_K, eloDelta, Store } from "./store.ts";
 export type { CalibOpts, TrialLayout } from "./trial.ts";

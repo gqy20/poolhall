@@ -110,3 +110,25 @@ describe("Elo 记分（M6.5）", () => {
     expect(store.leaderboard().find((e) => e.name === "alice")!.games).toBe(2);
   });
 });
+
+describe("读人记录（心理层指标）", () => {
+  let store: Store;
+
+  beforeEach(() => {
+    store = new Store(":memory:");
+  });
+
+  afterEach(() => {
+    store.close();
+  });
+
+  it("recordBiasRead + readStats：平均误差与方向命中率", () => {
+    store.recordBiasRead("alice", "bob", 0.1, 0.05, true);
+    store.recordBiasRead("alice", "bob", -0.1, 0.25, false);
+    const st = store.readStats("alice");
+    expect(st.reads).toBe(2);
+    expect(st.avgErrorDeg).toBeCloseTo(0.15, 10);
+    expect(st.directionRate).toBeCloseTo(0.5, 10);
+    expect(store.readStats("nobody").reads).toBe(0);
+  });
+});

@@ -115,6 +115,32 @@ describe("MatchSession", () => {
     expect(s3.handA.biasBase).not.toBe(s1.handA.biasBase);
   });
 
+  it("scoreBiasRead：误差围绕真实误差±0.02°噪声，方向判定正确，不泄漏真值", () => {
+    const s = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
+    const trueBias = s.handB.biasBase;
+    // 猜真值：误差应≈ 0（噪声范围内），方向正确；返回值不含真实 bias 字段
+    const perfect = s.scoreBiasRead("A", trueBias, 0)!;
+    expect(perfect.target).toBe("B");
+    expect(perfect.errorDeg).toBeGreaterThanOrEqual(0);
+    expect(perfect.errorDeg).toBeLessThan(0.021);
+    expect(perfect.directionCorrect).toBe(true);
+    // 猜 0：误差≈|bias|，无方向可言；猜反：方向错且误差大——均落在噪声带内确定可验：
+    const zero = s.scoreBiasRead("A", 0, 1)!;
+    expect(zero.directionCorrect).toBe(false);
+    expect(zero.errorDeg).toBeGreaterThan(Math.abs(trueBias) - 0.021);
+    const flipped = s.scoreBiasRead("A", -Math.sign(trueBias) * 0.5, 2)!;
+    expect(flipped.directionCorrect).toBe(false);
+    expect(flipped.errorDeg).toBeGreaterThan(0.5 - 0.021);
+    // 确定性：同一 (读者, 估计, 次数) 结果可重算（噪声也是确定性的）
+    expect(s.scoreBiasRead("A", trueBias, 0)).toEqual(perfect);
+  });
+
+  it("scoreBiasRead：终局后返回 null", () => {
+    const s = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
+    s.resign("A", "x");
+    expect(s.scoreBiasRead("B", 0.1, 0)).toBeNull();
+  });
+
   it("resign：中途认负 → 对手获胜，对局立即终止", () => {
     const s = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
     s.resign("A", "a 出杆超时——判负");

@@ -12,7 +12,7 @@
  */
 
 import type { IncomingMessage } from "node:http";
-import type { MatchEvent, MatchSession, PlayerId } from "@poolhall/core";
+import type { MatchEvent, MatchSession, PlayerId, Store } from "@poolhall/core";
 import { z } from "zod";
 
 export interface EventSink {
@@ -91,7 +91,12 @@ export interface MatchHttpOpts {
   shotClockMs: number;
   /** 固定席位（web-match 单桌模式）：身份名预绑定。大厅模式缺省，认座时动态填充 */
   fixed?: { A: string; B: string };
+  /** 战绩库（可选）：读人记录入库（读人准确率指标） */
+  store?: Store;
 }
+
+/** 每座每局读人次数上限（防把打分接口当二分 oracle 反推隐藏 bias） */
+export const READ_MAX = 3;
 
 interface PendingShot {
   player: PlayerId;
@@ -128,6 +133,8 @@ export class MatchHttp {
     if (this.recentShots.length > MatchHttp.RECENT_CAP) this.recentShots.shift();
   }
   private readonly claimListeners = new Set<(seat: PlayerId, name: string) => void>();
+  /** 读人限次：每座每局 READ_MAX 次，attach（新局）时重置 */
+  private readAttempts: { A: number; B: number } = { A: 0, B: 0 };
   readonly opts: MatchHttpOpts;
 
   constructor(opts: MatchHttpOpts) {
@@ -186,9 +193,10 @@ export class MatchHttp {
     this.claimed[seat] = name;
   }
 
-  /** 绑定本局的权威对局会话（每局一次） */
+  /** 绑定本局的权威对局会话（每局一次；同时重置读人限次） */
   attach(session: MatchSession): void {
     this.session = session;
+    this.readAttempts = { A: 0, B: 0 };
   }
 
   /** 对局循环：等待指定选手的外部出杆（可被 AbortSignal 打断，按超时处理） */
@@ -215,6 +223,7 @@ export class MatchHttp {
     const query = new URLSearchParams(url.split("?")[1] ?? "");
     if (method === "POST" && path === "/match/join") return this.routeJoin(body);
     if (method === "POST" && path === "/match/leave") return this.routeLeave(body);
+    if (method === "POST" && path === "/match/read") return this.routeRead(body);
     if (method === "GET" && path === "/match/state") return this.routeState();
     if (method === "GET" && path === "/match/observe") return this.routeObserve(query.get("name"));
     if (method === "POST" && path === "/match/shot") return this.routeShot(body);
@@ -244,6 +253,49 @@ export class MatchHttp {
     return ok
       ? { status: 200, body: { ok: true } }
       : { status: 404, body: { error: "未找到该席位" } };
+  }
+
+  /** 读对手：提交对对手习惯偏差的估计 → 带噪声评分（隐藏态不出库；限次防反推） */
+  private routeRead(body: unknown): HttpRoute {
+    const session = this.session;
+    if (!session) return { status: 503, body: { error: "本桌尚未开局" } };
+    const parsed = z
+      .object({ name: z.string().min(1), estimateDeg: z.number().finite().min(-5).max(5) })
+      .safeParse(body);
+    if (!parsed.success) {
+      return { status: 400, body: { error: "读人载荷不合法（需 name + estimateDeg）" } };
+    }
+    const seat = this.seatOf(parsed.data.name);
+    if (!seat) return { status: 404, body: { error: "身份名与本桌席位不符" } };
+    if (session.finished) return { status: 409, body: { error: "对局已结束" } };
+    const attempt = this.readAttempts[seat];
+    if (attempt >= READ_MAX) {
+      return {
+        status: 409,
+        body: { error: `本局读人已达上限（${READ_MAX} 次）`, attemptsLeft: 0 },
+      };
+    }
+    const scored = session.scoreBiasRead(seat, parsed.data.estimateDeg, attempt);
+    if (!scored) return { status: 409, body: { error: "对局已结束" } };
+    this.readAttempts[seat] = attempt + 1;
+    const targetName = this.seatNames()[scored.target] ?? scored.target;
+    this.opts.store?.recordBiasRead(
+      parsed.data.name,
+      targetName,
+      parsed.data.estimateDeg,
+      scored.errorDeg,
+      scored.directionCorrect,
+    );
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        target: scored.target,
+        errorDeg: Number(scored.errorDeg.toFixed(3)),
+        directionCorrect: scored.directionCorrect,
+        attemptsLeft: READ_MAX - (attempt + 1),
+      },
+    };
   }
 
   private routeState(): HttpRoute {

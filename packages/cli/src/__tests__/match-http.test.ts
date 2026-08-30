@@ -1,9 +1,9 @@
 /**
  * 外部选手入座层测试（M6.3）：回合门控 / 入座校验 / 出杆等待与超时
  */
-import { MatchSession } from "@poolhall/core";
+import { MatchSession, Store } from "@poolhall/core";
 import { describe, expect, it } from "vitest";
-import { attachLastShot, MatchHttp } from "../match-http.ts";
+import { attachLastShot, MatchHttp, READ_MAX } from "../match-http.ts";
 
 function mk(): { http: MatchHttp; session: MatchSession } {
   const http = new MatchHttp({ fixed: { A: "alice", B: "bob" }, shotClockMs: 0 });
@@ -191,5 +191,57 @@ describe("MatchHttp 动态认座（大厅模式）", () => {
   it("leave 路由：未认座者 404", () => {
     const http = mkDynamic();
     expect(http.route("POST", "/match/leave", { name: "nobody" }).status).toBe(404);
+  });
+});
+
+describe("MatchHttp 读对手（/match/read）", () => {
+  function mkRead(): { http: MatchHttp; session: MatchSession; store: Store } {
+    const store = new Store(":memory:");
+    const http = new MatchHttp({ shotClockMs: 0, store, fixed: { A: "alice", B: "bob" } });
+    const session = new MatchSession({ seed: 42, nameA: "alice", nameB: "bob", maxShots: 30 });
+    http.attach(session);
+    return { http, session, store };
+  }
+
+  it("未开局 503；身份不符 404；载荷非法 400", () => {
+    const bare = new MatchHttp({ shotClockMs: 0 });
+    expect(bare.route("POST", "/match/read", { name: "x", estimateDeg: 0.1 }).status).toBe(503);
+    const { http } = mkRead();
+    expect(http.route("POST", "/match/read", { name: "carol", estimateDeg: 0.1 }).status).toBe(404);
+    expect(http.route("POST", "/match/read", { name: "alice", estimateDeg: 99 }).status).toBe(400);
+  });
+
+  it("评分：猜中方向与量级时误差小、方向对；返回值不泄漏真实 bias", () => {
+    const { http, session } = mkRead();
+    const trueBias = session.handB.biasBase; // alice 读 bob（B）
+    const r = http.route("POST", "/match/read", { name: "alice", estimateDeg: trueBias });
+    expect(r.status).toBe(200);
+    const body = r.body as Record<string, unknown>;
+    expect(body).toMatchObject({ target: "B", directionCorrect: true, attemptsLeft: READ_MAX - 1 });
+    expect(body.errorDeg as number).toBeLessThan(0.021);
+    expect(JSON.stringify(body)).not.toMatch(/bias/i);
+  });
+
+  it("限次：READ_MAX 后 409；attach（新局）重置", () => {
+    const { http, session } = mkRead();
+    for (let i = 0; i < READ_MAX; i++) {
+      expect(http.route("POST", "/match/read", { name: "alice", estimateDeg: 0.1 }).status).toBe(
+        200,
+      );
+    }
+    const capped = http.route("POST", "/match/read", { name: "alice", estimateDeg: 0.1 });
+    expect(capped.status).toBe(409);
+    expect(capped.body).toMatchObject({ attemptsLeft: 0 });
+    http.attach(session); // 新局重置限次（同 session 仅测试用）
+    expect(http.route("POST", "/match/read", { name: "alice", estimateDeg: 0.1 }).status).toBe(200);
+  });
+
+  it("入库：读人记录进 Store（只存误差/方向，不存真值）", () => {
+    const { http, store } = mkRead();
+    http.route("POST", "/match/read", { name: "alice", estimateDeg: 0.1 });
+    const st = store.readStats("alice");
+    expect(st.reads).toBe(1);
+    expect(st.avgErrorDeg).toBeGreaterThanOrEqual(0);
+    store.close();
   });
 });

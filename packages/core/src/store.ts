@@ -47,6 +47,13 @@ export interface MatchRecordResult {
   deltaB: number;
 }
 
+/** 读对手（心理层）汇总指标 */
+export interface ReadStats {
+  reads: number;
+  avgErrorDeg: number;
+  directionRate: number;
+}
+
 export class Store {
   private db: DatabaseSync;
 
@@ -98,6 +105,15 @@ export class Store {
         delta_a REAL NOT NULL,
         delta_b REAL NOT NULL,
         played_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS reads (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        reader TEXT NOT NULL,
+        target TEXT NOT NULL,
+        estimate REAL NOT NULL,
+        error REAL NOT NULL,
+        direction_ok INTEGER NOT NULL,
+        read_at INTEGER NOT NULL
       );
     `);
   }
@@ -216,6 +232,38 @@ export class Store {
       )
       .run(nameA, nameB, winner, reason, deltaA, -deltaA, Date.now());
     return { ratingA: newA, ratingB: newB, deltaA, deltaB: -deltaA };
+  }
+
+  /** 读对手记录：只存误差与方向命中，不存真实 bias（隐藏态不出库） */
+  recordBiasRead(
+    reader: string,
+    target: string,
+    estimateDeg: number,
+    errorDeg: number,
+    directionOk: boolean,
+  ): void {
+    this.ensureAgent(reader);
+    this.db
+      .prepare(
+        `INSERT INTO reads (reader, target, estimate, error, direction_ok, read_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(reader, target, estimateDeg, errorDeg, directionOk ? 1 : 0, Date.now());
+  }
+
+  /** 读人指标：平均误差与方向命中率 */
+  readStats(reader: string): ReadStats {
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(*) AS n, AVG(error) AS avg_err, AVG(direction_ok) AS dir_rate
+         FROM reads WHERE reader = ?`,
+      )
+      .get(reader) as { n: number; avg_err: number | null; dir_rate: number | null };
+    return {
+      reads: Number(row.n),
+      avgErrorDeg: Number(row.avg_err ?? 0),
+      directionRate: Number(row.dir_rate ?? 0),
+    };
   }
 
   /** 榜单：按分高到低（同分按胜场） */

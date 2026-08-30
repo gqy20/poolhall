@@ -80,7 +80,7 @@ export class TableRoom {
   constructor(cfg: RoomConfig) {
     this.cfg = cfg;
     this.id = cfg.id;
-    this.http = new MatchHttp({ shotClockMs: cfg.shotClockMs });
+    this.http = new MatchHttp({ shotClockMs: cfg.shotClockMs, store: cfg.store });
     // 预占内部（非 external）座位：外部 agent 只能认 external 座（混编规格防抢座）
     if (cfg.specA !== "external") this.http.presetSeat("A", `${cfg.id}-a`);
     if (cfg.specB !== "external") this.http.presetSeat("B", `${cfg.id}-b`);

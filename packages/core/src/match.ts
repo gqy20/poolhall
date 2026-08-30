@@ -260,6 +260,25 @@ export class MatchSession {
     this.reason = reason;
   }
 
+  /**
+   * 读对手打分（心理层）：读者提交对对手习惯偏差的估计（度），服务端用对手隐藏的
+   * biasBase 计分，但只返回“带噪声的误差 + 方向是否对”，绝不回传真实值。
+   * 噪声由确定性流派生（可测且防被当二分 oracle 反推出精确值）。
+   */
+  scoreBiasRead(
+    reader: PlayerId,
+    estimateDeg: number,
+    attempt: number,
+  ): { target: PlayerId; errorDeg: number; directionCorrect: boolean } | null {
+    if (this.finished) return null;
+    const target: PlayerId = reader === "A" ? "B" : "A";
+    const trueBias = (target === "A" ? this.handA : this.handB).biasBase;
+    const noise = (nextDouble(streamOf(this.seed, "read", reader, attempt)) - 0.5) * 0.04; // ±0.02°
+    const errorDeg = Math.max(0, Math.abs(estimateDeg - trueBias) + noise);
+    const directionCorrect = estimateDeg !== 0 && Math.sign(estimateDeg) === Math.sign(trueBias);
+    return { target, errorDeg, directionCorrect };
+  }
+
   /** 开球专用意图：从开球区中央直击顶球，不指定球袋。 */
   breakIntent(): { angle: number; power: number } {
     const cue = this.balls.find((b) => b.id === "cue")!;
