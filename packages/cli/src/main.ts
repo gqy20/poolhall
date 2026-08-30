@@ -390,92 +390,24 @@ program
   .requiredOption("--b <spec>", "选手B：synthetic:oracle 或 llm")
   .option("--max-shots <n>", "杆数预算", "60")
   .option("--out <file>", "研究日志 JSONL", "")
-  .action(
-    async (opts: {
-      host: string;
-      port: string;
-      seed: string;
-      nameA: string;
-      nameB: string;
-      a: string;
-      b: string;
-      maxShots: string;
-      out: string;
-    }) => {
-      const { WsHub } = await import("./match-ws/server.ts");
-      const { runMatch } = await import("./match-run.ts");
-      const port = Number(opts.port);
-      const hub = new WsHub(port, opts.host);
-      await hub.start();
-      // 静态前端：serve experiments/web/
-      const { createReadStream, statSync } = await import("node:fs");
-      const { join, dirname } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-      const webDir = join(dirname(fileURLToPath(import.meta.url)), "../../experiments/web");
-      const { createServer } = await import("node:http");
-      const http = createServer((req, res) => {
-        if (!req.url) return;
-        if (req.url === "/" || req.url === "/index.html") {
-          const p = join(webDir, "index.html");
-          try {
-            statSync(p);
-            res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-            createReadStream(p).pipe(res);
-          } catch {
-            res.writeHead(404).end("experiments/web/index.html not found");
-          }
-          return;
-        }
-        if (req.url?.startsWith("/?")) {
-          // / 路径已被上面覆盖
-        }
-        res.writeHead(404).end();
-      });
-      http.listen(port + 1, opts.host, () => {
-        console.error(
-          `poolhall web-match 启动：WS ws://${opts.host}:${port}  HTTP http://${opts.host}:${port + 1}`,
-        );
-      });
+  .option("--event-out <file>", "公开 MatchEvent JSONL（可安全分享）", "")
+  .action(async (opts: import("./web-match.ts").WebMatchOpts) => {
+    const { runWebMatch } = await import("./web-match.ts");
+    await runWebMatch(opts);
+  });
 
-      // hello：客户端连上即推元信息
-      const { promptFingerprint } = await import("./prompt.ts");
-      hub.broadcast({
-        type: "hello",
-        seed: Number(opts.seed),
-        nameA: opts.nameA,
-        nameB: opts.nameB,
-        promptA: opts.a === "llm" ? promptFingerprint("match").version : null,
-        promptB: opts.b === "llm" ? promptFingerprint("match").version : null,
-      });
-
-      const matchPromise = runMatch({
-        specA: opts.a,
-        specB: opts.b,
-        nameA: opts.nameA,
-        nameB: opts.nameB,
-        seed: Number(opts.seed),
-        maxShots: Number(opts.maxShots),
-        out: opts.out || "/dev/null",
-        hub,
-      });
-      matchPromise.then((r) => {
-        hub.broadcast({ type: "summary", winner: r.winner, reason: r.reason, shots: r.shots });
-        console.error(`对局结束：${r.winner ? `${r.winner} 胜` : "平局"}——${r.reason}（${r.shots} 杆）`);
-      });
-      // 长驻：等对局结束 + 等客户端断开或用户 Ctrl-C
-      const shutdown = new Promise<void>((resolve) => {
-        const onSig = () => {
-          console.error("收到信号，关闭 hub...");
-          hub.close();
-          resolve();
-        };
-        process.on("SIGINT", onSig);
-        process.on("SIGTERM", onSig);
-      });
-      await Promise.race([matchPromise, shutdown]);
-      hub.close();
-    },
-  );
+program
+  .command("replay-match")
+  .description("将公开 MatchEvent JSONL 生成自包含 HTML 回放")
+  .requiredOption("--in <file>", "公开 MatchEvent JSONL")
+  .requiredOption("--out <file>", "自包含 HTML 输出")
+  .action(async (opts: { in: string; out: string }) => {
+    const { renderMatchReplay } = await import("./web-replay.ts");
+    const result = renderMatchReplay(opts.in, opts.out);
+    console.log(
+      `生成 ${opts.out}（${result.shots} 杆 / ${result.events} 事件 / ${result.bytes} bytes）`,
+    );
+  });
 
 void CORE_VERSION;
 void ENGINE_VERSION;

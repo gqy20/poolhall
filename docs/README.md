@@ -12,6 +12,8 @@
 | [match.md](match.md) | 中式八球对局：v1 规则、双选手 hand model、Agent vs Agent | 已定稿（M6.2） |
 | [roadmap.md](roadmap.md) | 里程碑 M0–M6、每阶段完成定义（DoD）、节奏与止损线 | 已定稿 |
 
+产品设计上下文见根目录 [PRODUCT.md](../PRODUCT.md)：观战用户、产品定位、品牌性格、反例与无障碍基线。
+
 规范类见根目录 [AGENTS.md](../AGENTS.md)；项目愿景见 [README.md](../README.md)。
 
 阅读顺序建议：README → AGENTS → tech-stack → physics → hand-model → cli → proto。

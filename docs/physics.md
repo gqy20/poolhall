@@ -9,6 +9,7 @@
 - 内部单位：SI（米、千克、秒、弧度）；对外接口（CLI/协议）角度用**度**
 - JSON 输出浮点保留 6 位小数（微米级，足够渲染与对拍）
 - 台面类型 v0 唯一：`seven_foot`（美式 7 尺台，规格见 §2）
+- `MatchSession` 例外使用 `CHINESE_EIGHT`（2.540 × 1.270m）；engine 默认值仍为 `seven_foot`，因此既有 golden 不变
 
 ## 2. 常数表（默认值，可在 config 覆盖）
 

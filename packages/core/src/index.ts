@@ -20,7 +20,30 @@ export {
   unitUniform,
 } from "./hand.ts";
 export type { Group, MatchObserve, MatchOpts, MatchShotResult, PlayerId } from "./match.ts";
-export { MatchSession } from "./match.ts";
+export { BREAK_LINE_X, FOOT_SPOT_X, MATCH_TABLE, MatchSession } from "./match.ts";
+export type {
+  DenseMatchSample,
+  MatchDeltaSample,
+  MatchEvent,
+  MatchHelloEvent,
+  MatchShotEvent,
+  MatchSummaryEvent,
+} from "./match-log.ts";
+export {
+  assertPublicMatchEvent,
+  compactMatchSamples,
+  decodeMatchEventLine,
+  decodeMatchEventLog,
+  encodeMatchEvent,
+  expandMatchSamples,
+  MATCH_EVENT_FORBIDDEN_KEYS,
+  MATCH_EVENT_SCHEMA,
+  MatchEventSchema,
+  MatchHelloEventSchema,
+  MatchShotEventSchema,
+  MatchSummaryEventSchema,
+  parsePublicMatchEvent,
+} from "./match-log.ts";
 export type {
   AgentMsg,
   EndMsg,

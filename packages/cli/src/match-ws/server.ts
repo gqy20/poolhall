@@ -12,62 +12,38 @@
  *   每次广播后所有连接 client 收到该 JSON
  */
 import { createHash } from "node:crypto";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
+import { type MatchEvent, parsePublicMatchEvent } from "@poolhall/core";
 
 interface Socket {
   send(data: string): void;
   close(): void;
 }
 
-interface HelloMsg {
-  type: "hello";
-  seed: number;
-  nameA: string;
-  nameB: string;
-  promptA: string | null;
-  promptB: string | null;
+export interface HubControl {
+  type: "new_match";
+  maxShots: number;
 }
 
-export type Broadcast =
-  | HelloMsg
+export type HubNotice =
   | {
-      type: "shot";
-      trial: number;
-      by: "A" | "B";
-      targetBall: string | null;
-      targetPocket: string | null;
-      intentAngle: number | null;
-      intentPower: number | null;
-      intentSpin: { x: number; y: number; z: number } | null;
-      pottedBalls: string[];
-      pottedPockets: Array<{ ball: string; pocket: string }>;
-      scratch: boolean;
-      firstContact: string | null;
-      foul: string | null;
-      nextTurn: "A" | "B";
-      over: boolean;
-      winner: "A" | "B" | null;
-      reason: string | null;
-      /** 完整轨迹（10ms 采样）——浏览器按时间戳内插出平滑移动 */
-      samples: Array<{ t: number; pos: Record<string, { x: number; y: number }> }>;
-      cueFinal: { x: number; y: number } | null;
-      finalBalls: Record<string, { x: number; y: number }>;
+      type: "control";
+      state: "starting" | "playing" | "ready" | "busy" | "error";
+      message: string;
     }
-  | {
-      type: "summary";
-      winner: "A" | "B" | null;
-      reason: string | null;
-      shots: number;
-    };
+  | { type: "control"; state: "connected"; message: string; maxShots: number };
 
 const SOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 /** 极简 WebSocket server（基于 Node net/http）——握手 + 帧解析 + 广播 */
 export class WsHub {
   private clients = new Set<Socket>();
+  private controlHandlers = new Set<(control: HubControl) => void>();
+  private lastNotice: HubNotice | null = null;
+  private server: Server | null = null;
   /** 新客户端连接时回放历史——解决"客户端晚到"时序错位 */
-  readonly history: Broadcast[] = [];
+  readonly history: MatchEvent[] = [];
   readonly port: number;
   readonly host: string;
 
@@ -76,27 +52,65 @@ export class WsHub {
     this.host = host;
   }
 
-  broadcast(msg: Broadcast): void {
-    this.history.push(msg);
-    const data = JSON.stringify(msg);
+  broadcast(msg: MatchEvent): void {
+    const event = parsePublicMatchEvent(msg);
+    this.history.push(event);
+    const data = JSON.stringify(event);
     for (const c of this.clients) c.send(data);
   }
 
-  close(): void {
+  notify(notice: HubNotice): void {
+    this.lastNotice = notice;
+    const data = JSON.stringify(notice);
+    for (const client of this.clients) client.send(data);
+  }
+
+  clearHistory(): void {
+    this.history.length = 0;
+  }
+
+  onControl(handler: (control: HubControl) => void): () => void {
+    this.controlHandlers.add(handler);
+    return () => this.controlHandlers.delete(handler);
+  }
+
+  async close(): Promise<void> {
     for (const c of this.clients) c.close();
     this.clients.clear();
+    const server = this.server;
+    this.server = null;
+    if (!server?.listening) return;
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
   }
 
   /** 启动 http server；upgrade 时切到 ws 协议 */
   start(): Promise<void> {
-    return new Promise((resolve) => {
-      const server = createServer((_req: IncomingMessage, res: ServerResponse) => {
-        res.writeHead(200, { "content-type": "text/plain" });
-        res.end("PoolHall ws hub — connect via WebSocket\n");
-      });
-      server.on("upgrade", (req, sock: Duplex) => this.handleUpgrade(req, sock));
-      server.listen(this.port, this.host, () => resolve());
+    if (this.server) throw new Error("WebSocket hub 已启动");
+    const server = createServer((_req: IncomingMessage, res: ServerResponse) => {
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end("PoolHall ws hub — connect via WebSocket\n");
     });
+    this.server = server;
+    return new Promise((resolve, reject) => {
+      const onError = (error: Error): void => {
+        this.server = null;
+        reject(error);
+      };
+      server.once("error", onError);
+      server.on("upgrade", (req, sock: Duplex) => this.handleUpgrade(req, sock));
+      server.listen(this.port, this.host, () => {
+        server.off("error", onError);
+        resolve();
+      });
+    });
+  }
+
+  boundPort(): number {
+    const address = this.server?.address();
+    if (!address || typeof address === "string") throw new Error("WebSocket hub 尚未监听");
+    return address.port;
   }
 
   private handleUpgrade(req: IncomingMessage, sock: Duplex): void {
@@ -105,22 +119,44 @@ export class WsHub {
       sock.destroy();
       return;
     }
-    const accept = createHash("sha1").update(key + SOCKET_GUID).digest("base64");
+    const accept = createHash("sha1")
+      .update(key + SOCKET_GUID)
+      .digest("base64");
     sock.write(
       `HTTP/1.1 101 Switching Protocols\r\n` +
         `Upgrade: websocket\r\n` +
         `Connection: Upgrade\r\n` +
         `Sec-WebSocket-Accept: ${accept}\r\n\r\n`,
     );
-    const sock2 = makeSocket(sock);
+    let sock2: Socket;
+    sock2 = makeSocket(
+      sock,
+      (text) => this.handleClientText(text),
+      () => this.clients.delete(sock2),
+    );
     this.clients.add(sock2);
     // 回放历史：解决"客户端晚到"（跑完 match 后才连进来）
     for (const msg of this.history) sock2.send(JSON.stringify(msg));
+    if (this.lastNotice) sock2.send(JSON.stringify(this.lastNotice));
+  }
+
+  private handleClientText(text: string): void {
+    let payload: unknown;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      return;
+    }
+    if (!payload || typeof payload !== "object" || !("type" in payload)) return;
+    if (payload.type !== "new_match" || !("maxShots" in payload)) return;
+    const maxShots = Number(payload.maxShots);
+    if (!Number.isInteger(maxShots) || maxShots < 1 || maxShots > 120) return;
+    for (const handler of this.controlHandlers) handler({ type: "new_match", maxShots });
   }
 }
 
-/** 帧解析器：仅实现服务端→客户端文本帧（广播用）+ ping/pong */
-function makeSocket(sock: Duplex): Socket {
+/** 帧写入器：仅实现服务端→客户端文本帧；客户端帧当前直接丢弃。 */
+function makeSocket(sock: Duplex, onText: (text: string) => void, onClose: () => void): Socket {
   const send = (data: string): void => {
     const payload = Buffer.from(data, "utf8");
     // 单帧，mask=0，opcode=1（text）
@@ -154,9 +190,45 @@ function makeSocket(sock: Duplex): Socket {
     }
   };
 
-  // 简化：丢弃 client→server 帧（不读 ping/pong）。生产应实现。
-  sock.on("data", () => {});
-  sock.on("close", () => {});
-  sock.on("error", () => {});
+  readClientFrames(sock, onText);
+  sock.on("close", onClose);
+  sock.on("error", onClose);
   return { send, close };
+}
+
+/** 浏览器控制帧解析：支持 masked text、close；控制消息限制为 64KiB。 */
+function readClientFrames(sock: Duplex, onText: (text: string) => void): void {
+  let pending = Buffer.alloc(0);
+  sock.on("data", (chunk: Buffer) => {
+    pending = Buffer.concat([pending, chunk]);
+    while (pending.length >= 2) {
+      const opcode = pending[0]! & 0x0f;
+      const masked = (pending[1]! & 0x80) !== 0;
+      let length = pending[1]! & 0x7f;
+      let offset = 2;
+      if (length === 126) {
+        if (pending.length < 4) return;
+        length = pending.readUInt16BE(2);
+        offset = 4;
+      } else if (length === 127) {
+        if (pending.length < 10) return;
+        const wide = pending.readBigUInt64BE(2);
+        if (wide > 65536n) return sock.destroy();
+        length = Number(wide);
+        offset = 10;
+      }
+      const maskBytes = masked ? 4 : 0;
+      if (length > 65536 || pending.length < offset + maskBytes + length) return;
+      const mask = masked ? pending.subarray(offset, offset + 4) : null;
+      const payload = Buffer.from(
+        pending.subarray(offset + maskBytes, offset + maskBytes + length),
+      );
+      pending = pending.subarray(offset + maskBytes + length);
+      if (mask) {
+        for (let i = 0; i < payload.length; i++) payload[i] = payload[i]! ^ mask[i % 4]!;
+      }
+      if (opcode === 0x1) onText(payload.toString("utf8"));
+      if (opcode === 0x8) return sock.end();
+    }
+  });
 }

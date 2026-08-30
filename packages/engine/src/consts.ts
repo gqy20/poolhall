@@ -69,6 +69,14 @@ export const SEVEN_FOOT: TableSpecs = {
   sideMouth: 0.136525,
 };
 
+/** 中式台球比赛台内沿（CBSA 2017：2540 × 1270mm）。袋口沿用 v0 圆判定近似。 */
+export const CHINESE_EIGHT: TableSpecs = {
+  width: 2.54,
+  height: 1.27,
+  cornerMouth: 0.11811,
+  sideMouth: 0.136525,
+};
+
 /** 模拟与阈值参数 */
 export const SIM = {
   /** 固定积分步长 1ms（A' 方案，docs/physics.md §5） */

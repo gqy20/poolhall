@@ -79,6 +79,30 @@ zod schema（core 包 `proto.ts`）双端共用；CLI 侧、未来 MCP 侧同一
 - `spin` 全量启用、`throw` 事件
 - 对弈模式：`actor` 字段（当前出杆方）
 
+### 3.1 Match 公开事件流（schema 2）
+
+中式八球实时观战与后续静态回放共用 `core/match-log.ts` 的 `MatchEvent`：
+
+- `hello`：seed、双方公开身份、prompt 版本
+- `shot`：出杆意图、裁判结果、公开终态，以及 `sampleMode: "delta-v1"` 的稀疏轨迹
+- `summary`：胜者、原因、总杆数
+
+每条事件携带 `schema: 2`；`hello.table` 给出中式台面的 width/height、开球线和置球点。
+CLI 的 WebSocket hub 在广播前递归检查字段名，任何层级出现
+`actual/bias/optimal/sigma/drift/hand/noise` 都立即抛错。研究日志与公开事件流保持物理隔离。
+
+公开轨迹从物理核 10ms samples 中固定每 3 帧保留一帧（首尾必留），首帧记录完整球位，
+后续帧只记录相对上一保留帧发生变化的球及 `removed` 球 id。该编码确定、可无损恢复保留帧，
+不会改变 engine 轨迹或 golden；core 提供 `compactMatchSamples/expandMatchSamples` 纯函数。
+
+`core.decodeMatchEventLog` 负责整局顺序校验：首条必须为 `hello`，`shot.trial` 从 0 连续递增，
+末条必须为 `summary` 且 `summary.shots` 与实际杆数一致。CLI 命令 `replay-match` 将校验后的
+事件数组嵌入现有浏览器播放器，生成不发起 WebSocket、无需网络的自包含 HTML。
+
+实时 WebSocket 另有不持久化的控制消息：浏览器发送
+`{"type":"new_match","maxShots":N}`；服务返回 `control` 状态
+`starting/playing/ready/busy/error`。控制消息不属于 MatchEvent，不写入公开回放日志。
+
 ## 4. 禁止事项（泄漏红线）
 
 - 行协议任何输出不得含 `actual` / `bias` / `optimal`
@@ -93,3 +117,7 @@ schema 版本号只增不减。破坏性变更：升版本 → 写迁移脚本�
 
 - 2026-08-28 草稿（待实现中验证后定稿）
 - 2026-08-29 定稿：M5 MCP 落地后，core/protocol.ts + views.ts AgentView 白名单 + mcp/tools.ts 双端 schema + cli/experiment.ts LLM 流程全部稳定。`actual`/`bias`/`optimal` 字段仅出现在 research 视图（mcp `--out` 与 experiment 日志），MCP 默认导出与 AgentView 严格隔离。
+- 2026-08-30 新增 MatchEvent schema 1：实时观战与回放共享公开事件契约，广播前执行隐藏字段红线检查。
+- 2026-08-30 MatchEvent 轨迹改用 delta-v1：固定 30ms 取样 + 稀疏球位差分；`web-match --event-out` 可持久化公开 JSONL。
+- 2026-08-30 增加整局事件序列校验与 `replay-match` 自包含 HTML；实时历史和离线日志统一按杆排队播放。
+- 2026-08-30 MatchEvent 升 schema 2：hello 增加台面几何；读取 schema 1 时自动补旧 7 尺台尺寸并迁移。

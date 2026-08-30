@@ -3,10 +3,11 @@
  */
 import { DEFAULT_BALL } from "@poolhall/engine";
 import { describe, expect, it } from "vitest";
-import { MatchSession } from "../match.ts";
+import { BREAK_LINE_X, FOOT_SPOT_X, MATCH_TABLE, MatchSession } from "../match.ts";
 
 /** oracle：选切角最小的【合法】目标组合，瞄 ghost */
 function oracleShot(session: MatchSession): { angle: number; power: number } {
+  if (session.observe().breakShot) return session.breakIntent();
   const obs = session.observe();
   const legal = new Set(
     obs.yourGroup === "solids"
@@ -22,7 +23,6 @@ function oracleShot(session: MatchSession): { angle: number; power: number } {
   const pool = cands.length > 0 ? cands : eight ? [eight] : obs.aimAssists;
   const best = pool.reduce((a, b) => (b.cutAngleDeg < a.cutAngleDeg ? b : a));
   const cue = obs.balls.find((b) => b.id === "cue")!;
-  const R = DEFAULT_BALL.R;
   const angle = (Math.atan2(-(best.ghost.y - cue.y), best.ghost.x - cue.x) * 180) / Math.PI;
   return { angle, power: 0.45 };
 }
@@ -33,6 +33,16 @@ describe("MatchSession", () => {
     const balls = s.observe().balls;
     expect(balls).toHaveLength(16);
     const R = DEFAULT_BALL.R;
+    const cue = balls.find((b) => b.id === "cue")!;
+    const one = balls.find((b) => b.id === "1")!;
+    const eight = balls.find((b) => b.id === "8")!;
+    expect(MATCH_TABLE).toMatchObject({ width: 2.54, height: 1.27 });
+    expect(cue.x).toBeLessThan(BREAK_LINE_X);
+    expect(cue.y).toBeCloseTo(MATCH_TABLE.height / 2, 8);
+    expect(one.x).toBeCloseTo(FOOT_SPOT_X, 8);
+    expect(one.y).toBeCloseTo(MATCH_TABLE.height / 2, 8);
+    expect(eight.x).toBeGreaterThan(one.x);
+    expect(eight.y).toBeCloseTo(MATCH_TABLE.height / 2, 8);
     const num = balls.filter((b) => b.id !== "cue");
     for (let i = 0; i < num.length; i++) {
       for (let j = i + 1; j < num.length; j++) {
@@ -43,6 +53,17 @@ describe("MatchSession", () => {
     // 确定性
     const s2 = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
     expect(s2.observe().balls).toEqual(balls);
+  });
+
+  it("开球：沿长轴首触顶球，合法开球后保持开放台", () => {
+    const s = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
+    expect(s.observe().breakShot).toBe(true);
+    expect(s.breakIntent()).toEqual({ angle: 0, power: 0.85 });
+    const rec = s.shoot(s.breakIntent());
+    expect(rec.firstContact).toBe("1");
+    expect(rec.foul).toBeNull();
+    expect(s.groups).toEqual({ A: "open", B: "open" });
+    expect(s.observe().breakShot).toBe(false);
   });
 
   it("open table：首个合法进球定组", () => {

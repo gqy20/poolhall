@@ -10,6 +10,7 @@ export { contactVel, deriveState, lockRoll, makeBall, strike } from "./ball.ts";
 export { pocketBall, resolveBallBall, resolveCushion } from "./collide.ts";
 export type { BallParams, TableSpecs } from "./consts.ts";
 export {
+  CHINESE_EIGHT,
   DEFAULT_BALL,
   POWER,
   SEVEN_FOOT,

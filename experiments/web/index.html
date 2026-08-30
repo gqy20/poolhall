@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>PoolHall 中式八球对局 · 实时</title>
 <style>
 :root {
@@ -25,6 +26,38 @@ h1 { font-size: 18px; margin: 0; }
 @media (max-width: 1000px) { .main { grid-template-columns: 1fr; } }
 .table-frame { background: var(--felt); border-radius: 6px; padding: 8px; position: relative; aspect-ratio: 2.04; }
 .table-frame svg { width: 100%; height: 100%; display: block; }
+.stage { position: relative; min-width: 0; }
+.controls { min-height: 52px; margin-bottom: 8px; padding: 4px; display: flex; align-items: center;
+  gap: 4px; flex-wrap: wrap; background: #fff; border: 1px solid var(--grid); border-radius: 6px; }
+.control-spacer { flex: 1; }
+.control, .control-field { min-height: 44px; border: 1px solid #a9a99f; border-radius: 5px;
+  background: #fff; color: var(--ink); font: inherit; font-weight: 650; }
+.control { padding: 0 13px; cursor: pointer; }
+.control.primary { background: var(--felt); border-color: var(--felt); color: #fff; }
+.control:hover:not(:disabled), .control-field:hover:not(:disabled) { border-color: var(--ink-soft); }
+.control.primary:hover:not(:disabled) { background: #143f33; }
+.control:active:not(:disabled) { transform: translateY(1px); }
+.control:focus-visible, .control-field:focus-visible { outline: 3px solid #a9d8c5; outline-offset: 1px; }
+.control:disabled, .control-field:disabled { cursor: not-allowed; opacity: .48; }
+.control-label { display: flex; align-items: center; gap: 7px; min-height: 44px; padding-left: 9px;
+  color: var(--ink-soft); font-size: 13px; font-weight: 650; }
+.control-field { height: 36px; min-height: 36px; padding: 0 7px; font-family: "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums; }
+#max-shots { width: 68px; }
+#playback-speed { width: 64px; }
+.control-status { min-width: 84px; padding: 0 8px; color: var(--ink-soft); font-size: 12px; text-align: right; }
+body.offline .server-control { display: none; }
+.stage:fullscreen { display: flex; align-items: center; justify-content: center; padding: 12px; background: #151716; }
+.stage:fullscreen .table-frame { width: 100%; max-height: calc(100vh - 24px); margin: auto; }
+.stage:fullscreen .controls { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 10; width: max-content; max-width: calc(100vw - 24px); margin: 0; padding: 6px;
+  border-color: #4b4e4c; background: #232624; color: #fff; opacity: 0; transform: translate(-50%, 12px);
+  transition: opacity 180ms cubic-bezier(.22,1,.36,1), transform 180ms cubic-bezier(.22,1,.36,1); }
+.stage:fullscreen.controls-visible .controls, .stage:fullscreen .controls:focus-within {
+  opacity: 1; transform: translate(-50%, 0); }
+.stage:fullscreen .control:not(.primary), .stage:fullscreen .control-field {
+  background: #303431; border-color: #5d625e; color: #fff; }
+.stage:fullscreen .control-label, .stage:fullscreen .control-status { color: #e4e8e5; }
 .legend { padding: 8px 12px; font-size: 12px; color: var(--ink-soft); display: flex; gap: 16px; flex-wrap: wrap; }
 .legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 1.5px; }
 .side { display: flex; flex-direction: column; gap: 12px; }
@@ -45,6 +78,16 @@ h1 { font-size: 18px; margin: 0; }
 .log-entry .miss { color: var(--miss); }
 .log-entry .foul { color: var(--miss); font-weight: 700; }
 .placeholder { color: var(--felt-light); padding: 20px; text-align: center; font-style: italic; }
+@media (max-width: 680px) {
+  .main { padding: 10px; }
+  header { padding: 12px; }
+  .control { flex: 1 1 auto; padding-inline: 10px; }
+  .control-spacer { display: none; }
+  .control-status { flex: 1 0 100%; text-align: left; min-height: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .control, .stage:fullscreen .controls { transition: none; }
+}
 </style>
 </head>
 <body>
@@ -58,12 +101,31 @@ h1 { font-size: 18px; margin: 0; }
 
 <div class="main">
   <div>
+    <div class="stage" id="stage">
+    <div class="controls" role="toolbar" aria-label="对局与播放控制">
+      <button class="control primary server-control" id="new-match" type="button" disabled>＋ 开新一局</button>
+      <button class="control" id="pause-playback" type="button" disabled>Ⅱ 暂停</button>
+      <button class="control" id="replay-match" type="button" disabled>↻ 重新播放</button>
+      <label class="control-label" for="playback-speed">速度
+        <select class="control-field" id="playback-speed" aria-label="播放速度">
+          <option value="0.5">0.5×</option><option value="1" selected>1×</option>
+          <option value="2">2×</option><option value="4">4×</option>
+        </select>
+      </label>
+      <label class="control-label server-control" for="max-shots">最大杆数
+        <input class="control-field" id="max-shots" type="number" min="1" max="120" value="60" inputmode="numeric"/>
+      </label>
+      <div class="control-spacer"></div>
+      <button class="control" id="fullscreen-table" type="button">⛶ 全屏球桌</button>
+      <span class="control-status" id="control-status" role="status" aria-live="polite">等待连接</span>
+    </div>
     <div class="table-frame" id="table">
       <div class="placeholder">球台将在第一杆时激活</div>
     </div>
+    </div>
     <div class="legend">
-      <span><i style="background:var(--A)"></i>A 击球</span>
-      <span><i style="background:var(--B)"></i>B 击球</span>
+      <span><i style="background:var(--A)"></i>A 选手</span>
+      <span><i style="background:var(--B)"></i>B 选手</span>
       <span><i style="background:var(--pot)"></i>进球</span>
       <span><i style="background:var(--miss)"></i>未中/犯规</span>
     </div>
@@ -92,31 +154,139 @@ h1 { font-size: 18px; margin: 0; }
   </div>
 </div>
 
+<!--POOLHALL_EVENTS-->
 <script>
-const TABLE_W = 1.9812, TABLE_H = 0.9906, R = 0.0286;
+let TABLE_W = 2.54, TABLE_H = 1.27;
+let BREAK_LINE_X = TABLE_W / 4, FOOT_SPOT_X = (TABLE_W * 3) / 4;
+const R = 0.028575;
+const CUE_LENGTH = 1.4;
 const svgNS = "http://www.w3.org/2000/svg";
 const kpi = { shot: 0, turn: "-", A: 0, B: 0 };
+const embeddedEvents = globalThis.POOLHALL_EVENTS;
+let playbackSpeed = Array.isArray(embeddedEvents) ? 4 : 1;
+let paused = false;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const BALL_COLORS = {
+  1: "#F2C230", 2: "#2457A6", 3: "#C83F3F", 4: "#6A438C",
+  5: "#E8872D", 6: "#2F7D4A", 7: "#8C2F3C", 8: "#202124",
+};
 
 function el(tag, attrs = {}, children = []) {
   const n = document.createElementNS(svgNS, tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (v === undefined || v === null) continue;
-    n.setAttribute(k, v);
-  }
+  setAttrs(n, attrs);
   for (const c of children) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
   return n;
 }
 
-function ballFill(id) {
-  if (id === "cue") return "#fff";
-  if (id === "8") return "#222";
-  if (["1","2","3","4","5","6","7"].includes(id)) return "#FFD93D";
-  return "#FFFFFF";
+function setAttrs(node, attrs) {
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value === undefined || value === null) continue;
+    node.setAttribute(key, value);
+  }
 }
 
-function renderTable(finalBalls, highlightBy, playerColor) {
-  const root = el("svg", { viewBox: `0 0 ${TABLE_W} ${TABLE_H}`, preserveAspectRatio: "xMidYMid meet" });
+function ballSpec(id) {
+  const number = Number(id);
+  if (!Number.isInteger(number) || number < 1 || number > 15) return null;
+  const colorNumber = number > 8 ? number - 8 : number;
+  return { number, color: BALL_COLORS[colorNumber], stripe: number > 8 };
+}
+
+function createCueStick() {
+  const group = el("g", { class: "cue-stick", display: "none" });
+  const styles = [
+    { stroke: "rgba(18,20,18,.28)", "stroke-width": 0.027 },
+    { stroke: "#D6B47A", "stroke-width": 0.014 },
+    { stroke: "#75452E", "stroke-width": 0.021 },
+    { stroke: "var(--A)", "stroke-width": 0.023 },
+    { stroke: "var(--A)", "stroke-width": 0.011 },
+  ];
+  for (const style of styles) {
+    group.appendChild(el("line", { ...style, "stroke-linecap": "round" }));
+  }
+  return group;
+}
+
+function updateCueStick(group, cue, angle, playerColor) {
+  if (!cue || !Number.isFinite(angle)) {
+    group.setAttribute("display", "none");
+    return;
+  }
+  const rad = (angle * Math.PI) / 180;
+  const dx = Math.cos(rad), dy = -Math.sin(rad);
+  const point = (distance) => ({ x: cue.x - dx * distance, y: cue.y - dy * distance });
+  const tipDistance = R + 0.012;
+  const tip = point(tipDistance), joint = point(tipDistance + 0.86);
+  const butt = point(tipDistance + CUE_LENGTH);
+  const nearTip = point(tipDistance + 0.035), gripEnd = point(tipDistance + 1.08);
+  const lines = group.querySelectorAll("line");
+  setAttrs(lines[0], { x1: butt.x, y1: butt.y, x2: tip.x, y2: tip.y });
+  setAttrs(lines[1], { x1: joint.x, y1: joint.y, x2: tip.x, y2: tip.y });
+  setAttrs(lines[2], { x1: butt.x, y1: butt.y, x2: joint.x, y2: joint.y });
+  setAttrs(lines[3], { x1: butt.x, y1: butt.y, x2: gripEnd.x, y2: gripEnd.y, stroke: playerColor });
+  setAttrs(lines[4], { x1: nearTip.x, y1: nearTip.y, x2: tip.x, y2: tip.y, stroke: playerColor });
+  setAttrs(group, { display: "inline", "aria-label": `球杆，瞄准 ${angle.toFixed(1)} 度` });
+}
+
+function createBallNode(id) {
+  const group = el("g", { "data-ball-id": id, "data-ball-kind": id === "cue" ? "cue" : "object" });
+  group.appendChild(el("line", { class: "motion-tail", display: "none",
+    stroke: "rgba(235,242,238,.2)", "stroke-width": R * 0.7, "stroke-linecap": "round" }));
+  group.appendChild(el("ellipse", { cx: R * 0.12, cy: R * 0.16,
+    rx: R * 0.92, ry: R * 0.7, fill: "rgba(8,18,14,.2)" }));
+  if (id === "cue") {
+    group.appendChild(el("circle", { class: "ball-body", cx: 0, cy: 0, r: R,
+      fill: "#FAFAF7", stroke: "#343A3D", "stroke-width": 0.0025 }));
+    group.appendChild(el("circle", { cx: -R * 0.3, cy: -R * 0.32, r: R * 0.18,
+      fill: "rgba(255,255,255,.72)" }));
+    return group;
+  }
+  const spec = ballSpec(id);
+  if (!spec) return group;
+  const clipId = `ball-clip-${id}`;
+  group.setAttribute("data-ball-kind", spec.stripe ? "stripe" : "solid");
+  group.appendChild(el("clipPath", { id: clipId }, [el("circle", { cx: 0, cy: 0, r: R })]));
+  group.appendChild(el("circle", { class: "ball-body", cx: 0, cy: 0, r: R,
+    fill: spec.stripe ? "#F7F7F2" : spec.color }));
+  if (spec.stripe) {
+    group.appendChild(el("rect", { class: "ball-stripe", x: -R, y: -R * 0.42,
+      width: R * 2, height: R * 0.84, fill: spec.color, "clip-path": `url(#${clipId})` }));
+  }
+  group.appendChild(el("circle", { cx: 0, cy: 0, r: R, fill: "none",
+    stroke: "rgba(20,24,22,.62)", "stroke-width": 0.0025 }));
+  group.appendChild(el("circle", { class: "ball-number", cx: 0, cy: 0, r: R * 0.5,
+    fill: "#FAFAF7", stroke: "rgba(20,24,22,.2)", "stroke-width": 0.001 }));
+  group.appendChild(el("text", { x: 0, y: R * 0.27, "text-anchor": "middle",
+    "font-size": spec.number >= 10 ? 0.018 : 0.021, fill: "#171918", "font-weight": 750 }, [id]));
+  return group;
+}
+
+function updateBallNode(group, p) {
+  group.setAttribute("transform", `translate(${p.x} ${p.y})`);
+  group.setAttribute("display", "inline");
+  const tail = group.querySelector(".motion-tail");
+  const speed = Math.hypot(p.vx ?? 0, p.vy ?? 0);
+  if (speed <= 0.15) {
+    tail.setAttribute("display", "none");
+    return;
+  }
+  const trail = Math.min(R * 1.5, speed * 0.009);
+  const ux = p.vx / speed, uy = p.vy / speed;
+  setAttrs(tail, { display: "inline", x1: -ux * trail, y1: -uy * trail,
+    x2: -ux * R * 0.3, y2: -uy * R * 0.3 });
+}
+
+const scene = { root: null, cue: null, ballLayer: null, balls: new Map() };
+
+function createScene() {
+  const root = el("svg", { viewBox: `0 0 ${TABLE_W} ${TABLE_H}`, preserveAspectRatio: "xMidYMid meet",
+    role: "img", "aria-label": "中式八球球台" });
   root.appendChild(el("rect", { x: 0, y: 0, width: TABLE_W, height: TABLE_H, fill: "var(--felt)" }));
+  root.appendChild(el("line", { class: "break-line", x1: BREAK_LINE_X, y1: 0.04,
+    x2: BREAK_LINE_X, y2: TABLE_H - 0.04, stroke: "rgba(247,244,238,.2)",
+    "stroke-width": 0.003, "stroke-dasharray": "0.018 0.018" }));
+  root.appendChild(el("circle", { class: "foot-spot", cx: FOOT_SPOT_X, cy: TABLE_H / 2,
+    r: 0.006, fill: "rgba(247,244,238,.35)" }));
   const pockets = [
     { id: "lt", x: 0, y: 0 }, { id: "rt", x: TABLE_W, y: 0 },
     { id: "lb", x: 0, y: TABLE_H }, { id: "rb", x: TABLE_W, y: TABLE_H },
@@ -127,21 +297,30 @@ function renderTable(finalBalls, highlightBy, playerColor) {
     root.appendChild(el("text", { x: p.x, y: p.y + 0.022, "text-anchor": "middle",
       "font-size": 0.04, fill: "var(--ink-soft)" }, [p.id.toUpperCase()]));
   }
-  if (!finalBalls) return root;
-  for (const [id, p] of Object.entries(finalBalls)) {
-    const isCue = id === "cue";
-    const stroke = isCue ? "#000" : ballFill(id) === "#fff" ? "#222" : "rgba(0,0,0,.3)";
-    // 击球方球员色描边（区分本杆是谁打的）
-    const strokeColor = playerColor && !isCue ? playerColor : stroke;
-    const strokeWidth = playerColor && !isCue ? 0.005 : 0.002;
-    root.appendChild(el("circle", { cx: p.x, cy: p.y, r: R, fill: ballFill(id), stroke: strokeColor, "stroke-width": strokeWidth }));
-    if (!isCue) {
-      root.appendChild(el("circle", { cx: p.x, cy: p.y, r: R * 0.55, fill: "rgba(255,255,255,.6)" }));
-      root.appendChild(el("text", { x: p.x, y: p.y + R * 0.3, "text-anchor": "middle",
-        "font-size": 0.025, fill: "#222", "font-weight": 700 }, [id]));
+  scene.cue = createCueStick();
+  scene.ballLayer = el("g", { class: "ball-layer" });
+  root.appendChild(scene.cue);
+  root.appendChild(scene.ballLayer);
+  scene.root = root;
+  tableFrame.replaceChildren(root);
+}
+
+function updateScene(positions, playerColor, cueAngle) {
+  if (!scene.root) createScene();
+  updateCueStick(scene.cue, positions?.cue, cueAngle, playerColor);
+  const live = new Set(Object.keys(positions ?? {}));
+  for (const [id, p] of Object.entries(positions ?? {})) {
+    let group = scene.balls.get(id);
+    if (!group) {
+      group = createBallNode(id);
+      scene.balls.set(id, group);
+      scene.ballLayer.appendChild(group);
     }
+    updateBallNode(group, p);
   }
-  return root;
+  for (const [id, group] of scene.balls) {
+    if (!live.has(id)) group.setAttribute("display", "none");
+  }
 }
 
 function setKpi() {
@@ -155,7 +334,7 @@ function appendLog(by, text, cls) {
   const empty = logEl.querySelector(".placeholder");
   if (empty) empty.remove();
   const div = document.createElement("div");
-  div.className = "log-entry " + by + (cls ? " " + cls : "");
+  div.className = `log-entry ${by}${cls ? ` ${cls}` : ""}`;
   const who = document.createElement("span");
   who.className = "who";
   who.textContent = by;
@@ -168,10 +347,10 @@ function appendLog(by, text, cls) {
   logEl.scrollTop = logEl.scrollHeight;
 }
 
-function renderShot(s) {
-  tableFrame.innerHTML = "";
-  kpi.shot = s.trial;
-  kpi.turn = s.nextTurn;
+async function renderShot(s, generation) {
+  const displayShot = s.trial + 1;
+  kpi.shot = displayShot;
+  kpi.turn = s.by;
   if (s.pottedBalls && s.pottedBalls.length > 0) {
     if (s.by === "A") kpi.A += s.pottedBalls.length;
     else kpi.B += s.pottedBalls.length;
@@ -179,10 +358,11 @@ function renderShot(s) {
   setKpi();
   let label = "";
   if (s.scratch) label = "母球进袋";
-  else if (s.foul) label = "犯规：" + s.foul;
-  else if (s.pottedBalls && s.pottedBalls.length > 0) label = "进袋：" + s.pottedBalls.join("/");
+  else if (s.foul) label = `犯规：${s.foul}`;
+  else if (s.pottedBalls && s.pottedBalls.length > 0) label = `进袋：${s.pottedBalls.join("/")}`;
   else label = "未进";
-  lastEventEl.textContent = `杆 ${s.trial} · ${s.by} ${label}`;
+  status.textContent = `▶ ${s.by} 正在击第 ${displayShot} 杆`;
+  lastEventEl.textContent = `第 ${displayShot} 杆 · ${s.by} ${label}`;
   const spinStr = s.intentSpin
     ? ` spin(${s.intentSpin.x.toFixed(2)},${s.intentSpin.y.toFixed(2)},${s.intentSpin.z.toFixed(2)})`
     : "";
@@ -192,8 +372,11 @@ function renderShot(s) {
   if (s.scratch) cls = "miss";
   else if (s.foul) cls = "foul";
   else if (s.pottedBalls && s.pottedBalls.length > 0) cls = "pot";
-  appendLog(s.by, `杆${s.trial} ${s.targetBall ?? "?"}→${s.targetPocket ?? "?"} 瞄${(s.intentAngle ?? 0).toFixed(0)}° ${label}`, cls);
-  animateShot(s);
+  appendLog(s.by, `第${displayShot}杆 ${s.targetBall ?? "?"}→${s.targetPocket ?? "?"} 瞄${(s.intentAngle ?? 0).toFixed(0)}° ${label}`, cls);
+  await animateShot(s);
+  if (generation !== playbackGeneration) return;
+  kpi.turn = s.nextTurn;
+  setKpi();
 }
 
 /**
@@ -202,93 +385,290 @@ function renderShot(s) {
  * - 命中 / pocket 时该球在下一个 sample 就从 pos 中消失，做"消失"动画
  */
 let animFrame = null;
-function animateShot(s) {
+let animResolve = null;
+function cancelAnimation() {
   if (animFrame) cancelAnimationFrame(animFrame);
-  const samples = s.samples || [];
+  animFrame = null;
+  animResolve?.();
+  animResolve = null;
+}
+function expandSamples(s) {
+  const input = s.samples || [];
+  if (s.sampleMode !== "delta-v1") return input;
+  const state = {};
+  return input.map((sample) => {
+    for (const id of sample.removed) delete state[id];
+    for (const [id, pos] of Object.entries(sample.pos)) state[id] = { x: pos.x, y: pos.y };
+    return { t: sample.t, pos: Object.fromEntries(Object.entries(state).map(([id, pos]) => [id, { ...pos }])) };
+  });
+}
+
+function interpolateBalls(samples, targetT) {
+  let lo = 0, hi = samples.length - 1;
+  while (lo < hi - 1) {
+    const mid = (lo + hi) >> 1;
+    if (samples[mid].t <= targetT) lo = mid;
+    else hi = mid;
+  }
+  const s0 = samples[lo], s1 = samples[hi];
+  const f = (targetT - s0.t) / Math.max(1e-6, s1.t - s0.t);
+  const dt = Math.max(1e-6, s1.t - s0.t);
+  const liveBalls = {};
+  for (const id of new Set([...Object.keys(s0.pos), ...Object.keys(s1.pos)])) {
+    const a = s0.pos[id], b = s1.pos[id];
+    if (a && b) liveBalls[id] = { x: a.x + f * (b.x - a.x), y: a.y + f * (b.y - a.y),
+      vx: (b.x - a.x) / dt, vy: (b.y - a.y) / dt };
+    else if (a) liveBalls[id] = a;
+    else if (b) liveBalls[id] = b;
+  }
+  return liveBalls;
+}
+
+function animateShot(s) {
+  cancelAnimation();
+  const samples = expandSamples(s);
   if (samples.length < 2) {
-    tableFrame.innerHTML = "";
-    tableFrame.appendChild(renderTable(s.finalBalls, s.by));
-    return;
+    updateScene(s.finalBalls);
+    return Promise.resolve();
+  }
+  if (reduceMotion) {
+    updateScene(s.finalBalls);
+    return Promise.resolve();
   }
   const t0 = samples[0].t;
   const tEnd = samples[samples.length - 1].t;
-  const dur = Math.max(1.5, Math.min(8, tEnd - t0)); // 1.5-8s
-  const tStart = performance.now();
+  const dur = Math.max(1.5, Math.min(8, tEnd - t0));
+  const cueHold = Array.isArray(embeddedEvents) ? 250 : 850;
+  let playbackMs = 0;
+  let lastNow = performance.now();
   // 球员色：A 蓝、B 橙；瞄准线虚色用同色
   const playerColor = s.by === "A" ? "var(--A)" : "var(--B)";
 
-  function frame() {
-    const elapsed = (performance.now() - tStart) / 1000;
-    const tv = elapsed / dur;
-    if (tv >= 1) {
-      // 结束：定格到 finalBalls
-      tableFrame.innerHTML = "";
-      tableFrame.appendChild(renderTable(s.finalBalls, s.by));
-      animFrame = null;
-      return;
+  return new Promise((resolve) => {
+    animResolve = resolve;
+    function frame() {
+      const now = performance.now();
+      const delta = now - lastNow;
+      lastNow = now;
+      if (paused) {
+        animFrame = requestAnimationFrame(frame);
+        return;
+      }
+      playbackMs += delta * playbackSpeed;
+      if (playbackMs < cueHold) {
+        updateScene(samples[0].pos, playerColor, s.intentAngle);
+        animFrame = requestAnimationFrame(frame);
+        return;
+      }
+      const elapsed = (playbackMs - cueHold) / 1000;
+      const tv = elapsed / dur;
+      if (tv >= 1) {
+        updateScene(s.finalBalls);
+        animFrame = null;
+        animResolve = null;
+        resolve();
+        return;
+      }
+      const targetT = t0 + tv * (tEnd - t0);
+      const liveBalls = interpolateBalls(samples, targetT);
+      updateScene(liveBalls, playerColor);
+      animFrame = requestAnimationFrame(frame);
     }
-    // 找到当前 tv 对应 sample（线性插值 t0 → tEnd）
-    const targetT = t0 + tv * (tEnd - t0);
-    // 二分定位最近 sample（samples 100-200 个，二分足够）
-    let lo = 0, hi = samples.length - 1;
-    while (lo < hi - 1) {
-      const mid = (lo + hi) >> 1;
-      if (samples[mid].t <= targetT) lo = mid;
-      else hi = mid;
-    }
-    const s0 = samples[lo], s1 = samples[hi];
-    const f = (targetT - s0.t) / Math.max(1e-6, s1.t - s0.t);
-    // 取 lo 和 hi 之间的 pos 插值
-    const liveBalls = {};
-    for (const id of new Set([...Object.keys(s0.pos), ...Object.keys(s1.pos)])) {
-      const a = s0.pos[id], b = s1.pos[id];
-      if (a && b) liveBalls[id] = { x: a.x + f * (b.x - a.x), y: a.y + f * (b.y - a.y) };
-      else if (a) liveBalls[id] = a;
-      else if (b) liveBalls[id] = b;
-    }
-    // 高亮本次击球方：所有球轻微描边 cue/8 外环，击球方走过的球（finalPos 与 initPos 不同）高亮
-    tableFrame.innerHTML = "";
-    tableFrame.appendChild(renderTable(liveBalls, s.by, playerColor));
     animFrame = requestAnimationFrame(frame);
-  }
-  animFrame = requestAnimationFrame(frame);
-}
+  });
 }
 
-function handle(msg) {
+let playback = Promise.resolve();
+let playbackGeneration = 0;
+let currentEvents = [];
+
+function renderSummary(msg, generation) {
+  if (generation !== playbackGeneration) return;
+  const w = msg.winner === "A" ? "A 胜" : msg.winner === "B" ? "B 胜" : "平局";
+  const color = msg.winner === "A" ? "var(--A)" : msg.winner === "B" ? "var(--B)" : "var(--ink-soft)";
+  const reason = (msg.reason ?? "").replaceAll("——平局", "").replaceAll("——", "：");
+  status.innerHTML = `<b style="color:${color}">${w}</b>${reason ? `：${reason}` : ""}（${msg.shots} 杆）`;
+  replayButton.disabled = false;
+}
+
+function beginSession(msg) {
+  playbackGeneration += 1;
+  cancelAnimation();
+  playback = Promise.resolve();
+  paused = false;
+  pauseButton.textContent = "Ⅱ 暂停";
+  pauseButton.disabled = false;
+  replayButton.disabled = true;
+  kpi.shot = 0; kpi.turn = "-"; kpi.A = 0; kpi.B = 0;
+  setKpi();
+  lastEventEl.textContent = "—";
+  lastEventDetail.textContent = "—";
+  const empty = document.createElement("div");
+  empty.className = "placeholder";
+  empty.textContent = "等待首杆...";
+  logEl.replaceChildren(empty);
+  if (msg.maxShots) maxShotsInput.value = String(msg.maxShots);
+}
+
+function applyControlNotice(msg) {
+  controlStatus.textContent = msg.message;
+  const loading = msg.state === "starting" || msg.state === "playing";
+  newMatchButton.disabled = loading || !socket || socket.readyState !== WebSocket.OPEN;
+  maxShotsInput.disabled = loading;
+}
+
+function handle(msg, record = true) {
+  if (msg.type === "control") {
+    applyControlNotice(msg);
+    return;
+  }
+  if (record) {
+    if (msg.type === "hello") currentEvents = [msg];
+    else currentEvents.push(msg);
+  }
   if (msg.type === "hello") {
+    beginSession(msg);
+    if (msg.table) {
+      TABLE_W = msg.table.width;
+      TABLE_H = msg.table.height;
+      BREAK_LINE_X = msg.table.breakLineX;
+      FOOT_SPOT_X = msg.table.footSpotX;
+    }
     document.getElementById("meta").innerHTML =
       `seed <b>${msg.seed}</b> · <span class="A">A: ${msg.nameA}</span> vs <span class="B">B: ${msg.nameB}</span>` +
       (msg.promptA ? `<br/><span style="font-size:11px">promptA=${msg.promptA} · promptB=${msg.promptB}</span>` : "");
     status.textContent = "🔵 等待首杆";
-    tableFrame.innerHTML = "";
-    tableFrame.appendChild(renderTable(null));
+    updateScene(null);
   } else if (msg.type === "shot") {
-    renderShot(msg);
+    const generation = playbackGeneration;
+    playback = playback.then(() =>
+      generation === playbackGeneration ? renderShot(msg, generation) : undefined,
+    );
   } else if (msg.type === "summary") {
-    const w = msg.winner === "A" ? "A 胜" : msg.winner === "B" ? "B 胜" : "平局";
-    const color = msg.winner === "A" ? "var(--A)" : msg.winner === "B" ? "var(--B)" : "var(--ink-soft)";
-    status.innerHTML = `<b style="color:${color}">${w}</b>——${msg.reason ?? ""}（${msg.shots} 杆）`;
+    const generation = playbackGeneration;
+    playback = playback.then(() => renderSummary(msg, generation));
   }
 }
 
-const meta = document.getElementById("meta");
 const status = document.getElementById("status");
 const tableFrame = document.getElementById("table");
 const lastEventEl = document.getElementById("last-event");
 const lastEventDetail = document.getElementById("last-event-detail");
 const logEl = document.getElementById("log");
+const stage = document.getElementById("stage");
+const newMatchButton = document.getElementById("new-match");
+const pauseButton = document.getElementById("pause-playback");
+const replayButton = document.getElementById("replay-match");
+const speedSelect = document.getElementById("playback-speed");
+const maxShotsInput = document.getElementById("max-shots");
+const fullscreenButton = document.getElementById("fullscreen-table");
+const controlStatus = document.getElementById("control-status");
+let socket = null;
 
-const proto = location.protocol === "https:" ? "wss:" : "ws:";
-const wsPort = parseInt(location.port || "8788") - 1;
-const wsUrl = `${proto}//${location.hostname}:${wsPort}`;
-const ws = new WebSocket(wsUrl);
-ws.addEventListener("open", () => { status.textContent = "🟢 已连接，等待首杆"; });
-ws.addEventListener("close", () => { status.textContent = "🔴 连接断开"; });
-ws.addEventListener("error", () => { status.textContent = "⚠️ 连接错误"; });
-ws.addEventListener("message", (e) => {
-  try { handle(JSON.parse(e.data)); } catch (err) { console.error("parse error", err); }
+function togglePause() {
+  if (pauseButton.disabled) return;
+  paused = !paused;
+  pauseButton.textContent = paused ? "▶ 继续" : "Ⅱ 暂停";
+  controlStatus.textContent = paused ? "已暂停" : "播放中";
+  showFullscreenControls();
+}
+
+function replayCurrentMatch() {
+  if (replayButton.disabled || currentEvents.length === 0) return;
+  const events = [...currentEvents];
+  for (const event of events) handle(event, false);
+  controlStatus.textContent = "重新播放";
+}
+
+function requestNewMatch() {
+  const maxShots = Number(maxShotsInput.value);
+  if (!Number.isInteger(maxShots) || maxShots < 1 || maxShots > 120) {
+    maxShotsInput.focus();
+    controlStatus.textContent = "最大杆数需为 1–120";
+    return;
+  }
+  if (!socket || socket.readyState !== WebSocket.OPEN) return;
+  newMatchButton.disabled = true;
+  maxShotsInput.disabled = true;
+  controlStatus.textContent = "新局准备中";
+  socket.send(JSON.stringify({ type: "new_match", maxShots }));
+}
+
+async function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement === stage) await document.exitFullscreen();
+    else await stage.requestFullscreen();
+  } catch {
+    controlStatus.textContent = "浏览器不支持全屏";
+  }
+}
+
+let fullscreenTimer = null;
+function showFullscreenControls() {
+  if (document.fullscreenElement !== stage) return;
+  stage.classList.add("controls-visible");
+  clearTimeout(fullscreenTimer);
+  fullscreenTimer = setTimeout(() => {
+    if (!stage.querySelector(".controls:focus-within") && !paused) {
+      stage.classList.remove("controls-visible");
+    }
+  }, 1800);
+}
+
+newMatchButton.addEventListener("click", requestNewMatch);
+pauseButton.addEventListener("click", togglePause);
+replayButton.addEventListener("click", replayCurrentMatch);
+speedSelect.addEventListener("change", () => {
+  playbackSpeed = Number(speedSelect.value);
+  controlStatus.textContent = `${speedSelect.value}× 播放`;
 });
+fullscreenButton.addEventListener("click", toggleFullscreen);
+stage.addEventListener("pointermove", showFullscreenControls);
+stage.addEventListener("keydown", showFullscreenControls);
+document.addEventListener("fullscreenchange", () => {
+  const active = document.fullscreenElement === stage;
+  fullscreenButton.textContent = active ? "退出全屏" : "⛶ 全屏球桌";
+  stage.classList.toggle("controls-visible", active);
+  if (active && !fullscreenButton.matches(":focus-visible")) fullscreenButton.blur();
+  if (active) showFullscreenControls();
+});
+document.addEventListener("keydown", (event) => {
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement?.tagName)) return;
+  if (event.code === "Space") { event.preventDefault(); togglePause(); }
+  if (event.key.toLowerCase() === "f") toggleFullscreen();
+  if (event.key.toLowerCase() === "r") replayCurrentMatch();
+});
+
+function connectLive() {
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  const wsPort = parseInt(location.port || "8788", 10) - 1;
+  socket = new WebSocket(`${proto}//${location.hostname}:${wsPort}`);
+  socket.addEventListener("open", () => {
+    status.textContent = "🟢 已连接，等待首杆";
+    controlStatus.textContent = "已连接";
+    newMatchButton.disabled = false;
+  });
+  socket.addEventListener("close", () => {
+    status.textContent = "🔴 连接断开";
+    controlStatus.textContent = "连接断开";
+    newMatchButton.disabled = true;
+  });
+  socket.addEventListener("error", () => { status.textContent = "⚠️ 连接错误"; });
+  socket.addEventListener("message", (e) => {
+    try { handle(JSON.parse(e.data)); } catch (err) { console.error("parse error", err); }
+  });
+}
+
+if (Array.isArray(embeddedEvents)) {
+  document.body.classList.add("offline");
+  playbackSpeed = 4;
+  speedSelect.value = "4";
+  controlStatus.textContent = "离线回放";
+  status.textContent = "▶ 正在播放离线回放";
+  for (const event of embeddedEvents) handle(event);
+} else {
+  connectLive();
+}
 setKpi();
 </script>
 </body>

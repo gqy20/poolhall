@@ -16,6 +16,7 @@
 import {
   type Ball,
   buildTable,
+  CHINESE_EIGHT,
   DEFAULT_BALL,
   makeBall,
   norm,
@@ -31,11 +32,17 @@ import { nextDouble, streamOf } from "./rng.ts";
 export type Group = "solids" | "stripes" | "open";
 export type PlayerId = "A" | "B";
 
+export const MATCH_TABLE = CHINESE_EIGHT;
+export const BREAK_LINE_X = MATCH_TABLE.width / 4;
+export const FOOT_SPOT_X = MATCH_TABLE.width - 0.635;
+
 export interface MatchObserve {
   kind: "match-observe";
   shot: number;
   /** 当前该谁打 */
   turn: PlayerId;
+  /** 第一杆使用独立开球策略，不按普通选球进袋处理 */
+  breakShot: boolean;
   /** 你是哪组（观察永远以当前选手视角给出）*/
   you: PlayerId;
   yourGroup: Group;
@@ -89,17 +96,14 @@ export interface MatchOpts {
 const SOLIDS = new Set(["1", "2", "3", "4", "5", "6", "7"]);
 const STRIPES = new Set(["9", "10", "11", "12", "13", "14", "15"]);
 
-const groupOf = (id: string): Group | "eight" | "cue" =>
-  id === "8" ? "eight" : SOLIDS.has(id) ? "solids" : STRIPES.has(id) ? "stripes" : "cue";
-
-/** 15 球标准三角（1 顶点、8 第三行中位、底行两角一全色一花色；seed 洗牌+微扰） */
+/** 15 球标准三角：沿长轴摆放，顶球朝向开球方，所有球彼此贴紧。 */
 function rack(seed: number, table: Table): Ball[] {
   const g = streamOf(seed, "match", "rack", 0);
   const R = DEFAULT_BALL.R;
-  const balls: Ball[] = [makeBall("cue", vec2(table.width / 2, table.height * 0.75))];
-  const apex = vec2(table.width / 2, table.height * 0.28);
-  const rowDy = 2 * R * Math.cos(Math.PI / 6);
-  const jitter = () => (nextDouble(g) - 0.5) * 0.03 * R;
+  const cueX = BREAK_LINE_X - 2 * R;
+  const balls: Ball[] = [makeBall("cue", vec2(cueX, table.height / 2))];
+  const apex = vec2(FOOT_SPOT_X, table.height / 2);
+  const rowDx = 2 * R * Math.cos(Math.PI / 6);
   const rows = [1, 2, 3, 4, 5];
 
   // 号位分配：slot0=1（顶点）、slot4=8（第三行中位）、底行首尾一全色一花色，其余洗牌
@@ -128,8 +132,8 @@ function rack(seed: number, table: Table): Ball[] {
   for (let row = 0; row < rows.length; row++) {
     const n = rows[row]!;
     for (let i = 0; i < n; i++) {
-      const x = apex.x + (i - (n - 1) / 2) * 2 * R + jitter();
-      const y = apex.y + row * rowDy + jitter();
+      const x = apex.x + row * rowDx;
+      const y = apex.y + (i - (n - 1) / 2) * 2 * R;
       balls.push(makeBall(filled[slot++]!, vec2(x, y)));
     }
   }
@@ -152,7 +156,7 @@ export class MatchSession {
   private over_ = false;
   private winner: PlayerId | null = null;
   private reason: string | null = null;
-  private readonly table = buildTable();
+  private readonly table = buildTable(MATCH_TABLE);
 
   constructor(opts: MatchOpts) {
     this.seed = opts.seed;
@@ -203,6 +207,7 @@ export class MatchSession {
       kind: "match-observe",
       shot: this.shotIdx,
       turn: this.turn,
+      breakShot: this.shotIdx === 0,
       you: this.turn,
       yourGroup: this.turn === "A" ? this.groupA : this.groupB,
       oppGroup: this.turn === "A" ? this.groupB : this.groupA,
@@ -245,6 +250,15 @@ export class MatchSession {
     return out;
   }
 
+  /** 开球专用意图：从开球区中央直击顶球，不指定球袋。 */
+  breakIntent(): { angle: number; power: number } {
+    const cue = this.balls.find((b) => b.id === "cue")!;
+    const apex = this.balls.find((b) => b.id === "1")!;
+    const delta = sub(apex.pos, cue.pos);
+    const angle = (Math.atan2(-delta.y, delta.x) * 180) / Math.PI;
+    return { angle: angle || 0, power: 0.85 };
+  }
+
   /** 本组剩余球号（open 时返回全部彩球） */
   private legalTargets(p: PlayerId): Set<string> {
     const g = p === "A" ? this.groupA : this.groupB;
@@ -262,6 +276,7 @@ export class MatchSession {
   }): MatchShotResult {
     if (this.finished) throw new Error("对局已结束");
     const idx = this.shotIdx;
+    const isBreak = idx === 0;
     const by = this.turn;
     const noise = noiseAtShot(this.handOf(by), idx, this.seed, this.nameOf(by));
     const actual = applyHand(intent, noise);
@@ -301,12 +316,27 @@ export class MatchSession {
       foul = `首触错组（${firstContact}）`;
     }
     if (scratch) foul = "母球进袋（scratch）";
+    const railBalls = new Set(
+      r.events
+        .filter((event) => event.kind === "ball-cushion" && event.a !== "cue")
+        .map((event) => event.a),
+    );
+    if (isBreak && !scratch && pottedPockets.length === 0 && railBalls.size < 4) {
+      foul = `开球犯规（仅 ${railBalls.size} 颗目标球碰库）`;
+    }
 
     const eightIn = pottedPockets.find((p) => p.ball === "8");
     const ownPots = pottedPockets.filter((p) => legal.has(p.ball));
 
     // 8 的处理
-    if (eightIn) {
+    if (eightIn && isBreak) {
+      const eight = r.balls.find((ball) => ball.id === "8")!;
+      eight.pocketed = false;
+      eight.pocket = undefined;
+      eight.pos = vec2(FOOT_SPOT_X, this.table.height / 2);
+      eight.vel = vec2(0, 0);
+      eight.w = { x: 0, y: 0, z: 0 };
+    } else if (eightIn) {
       const clearedBefore = legal.has("8"); // 本组已清空才合法打 8
       if (clearedBefore && !scratch) {
         this.over_ = true;
@@ -320,7 +350,7 @@ export class MatchSession {
     }
 
     // open table 定组：合法且非 8 的进球
-    if (!this.over_ && this.groupA === "open" && ownPots.length > 0 && !foul) {
+    if (!isBreak && !this.over_ && this.groupA === "open" && ownPots.length > 0 && !foul) {
       const g = SOLIDS.has(ownPots[0]!.ball) ? "solids" : "stripes";
       if (by === "A") {
         this.groupA = g;
@@ -340,9 +370,10 @@ export class MatchSession {
     this.shotIdx += 1;
 
     // 换手判定：犯规或没进自己组的球 → 换人
+    const breakEightContinues = isBreak && Boolean(eightIn) && !scratch;
     let nextTurn: PlayerId = by;
-    let continueTurn: boolean = !this.over_ && !foul && ownPots.length > 0;
-    if (!this.over_ && (foul || ownPots.length === 0)) {
+    const continueTurn = !this.over_ && !foul && (ownPots.length > 0 || breakEightContinues);
+    if (!this.over_ && !continueTurn) {
       nextTurn = by === "A" ? "B" : "A";
     }
     this.turn = nextTurn;
@@ -352,8 +383,8 @@ export class MatchSession {
       const cueBall = this.balls.find((b) => b.id === "cue")!;
       cueBall.pocketed = false;
       cueBall.pocket = undefined;
-      let x = this.table.width / 2;
-      const y = this.table.height * 0.75;
+      let x = BREAK_LINE_X - 2 * DEFAULT_BALL.R;
+      const y = this.table.height / 2;
       const R = DEFAULT_BALL.R;
       while (
         this.balls.some(
@@ -374,7 +405,9 @@ export class MatchSession {
     }
 
     const finalPos: Record<string, { x: number; y: number }> = {};
-    for (const b of r.balls) finalPos[b.id] = { x: b.pos.x, y: b.pos.y };
+    for (const b of r.balls) {
+      if (!b.pocketed) finalPos[b.id] = { x: b.pos.x, y: b.pos.y };
+    }
     const cueFinal = scratch
       ? null
       : {

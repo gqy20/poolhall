@@ -4,14 +4,17 @@
 
 ## 1. 规则（v1 简化，相对完整中式八球的裁剪）
 
-- 15 球标准三角（1 顶点、8 第三行中位、底行两角一全色一花色；seed 洗牌 + ≤0.015R 微扰）
+- CBSA 中式比赛台内沿 `2.540 × 1.270m`；开球线与置球点分别位于长轴 `1/4`、`3/4`
+- 15 球标准三角沿长轴摆放：1 号顶点朝开球方，8 号第三行中位，底角一全一花，球间无微扰并彼此贴紧
+- 母球默认置于开球线后一个球直径、横向居中；第一杆强制使用 break 意图直击 1 号，力度 0.85
+- 合法开球：有目标球进袋或至少四颗目标球碰库；开球进球后球局仍保持开放，开球进 8 时重置 8 号
 - open table：首个**合法**进球定组（全色 1-7 / 花色 9-15）
 - 轮流击打：合法进本组球继续；未进/犯规换人
 - **犯规 v1 两类**：scratch（母球进袋 → 换人 + 母球重置开球点，被挡向右顺延）、
   首触错组/未清组触 8（首触从 events 首个含 cue 的 ball-ball 事件读取）
 - **8 号**：本组清空后合法进 8 = 胜；提前进 8 / 打 8 时 scratch = 判负
 - 预算 60 杆耗尽 = 平局
-- **v1 未做**（后置）：自由球任意摆位、进对方球判罚（当前只换人）、开球 8 进袋重摆、
+- **v1 未做**（后置）：自由球任意摆位、进对方球判罚（当前只换人）、
   无进球判犯规、双方观察/观战视角
 
 ## 2. 双选手手感
@@ -28,10 +31,18 @@ A/B 各自独立 hand model（bias 由 `hash(seed, name)` 派生）——
 | prompt | `prompts/match.yaml` | 对局文案（m2；含"清组才能打 8"独立条款 + 心理层钩子） |
 | schema | 复用 ClearOutputSchema（llm.ts shotMatch） | 选球-袋 + 瞄点 + spin.y 低杆 + note |
 | mcp | `packages/mcp/src/match-tools.ts` + `server.ts:buildPoolhallMatchMcp` | 4 工具（open/observe/shot/state），独立 stdio 入口（`poolhall-mcp --match`） |
+| event | `packages/core/src/match-log.ts` | MatchEvent schema 2（实时观战/回放共享，隐藏字段 fail fast） |
+| web | `packages/cli/src/web-match.ts` + `experiments/web/index.html` | 单桌实时观战；晚连历史回放；对局结束后持续服务至 Ctrl-C |
 
 运行：
 - CLI：`poolhall experiment match --a llm --b synthetic:oracle --seed 42`
 - MCP：`poolhall-mcp --match --seed 42 --name-a playerA --name-b playerB`
+- 实时观战：`poolhall web-match --a synthetic:oracle --b synthetic:oracle --seed 42`
+- 持久公开日志：在上述命令追加 `--event-out experiments/results/live-match.jsonl`
+- 离线分享：`poolhall replay-match --in experiments/results/live-match.jsonl --out replay.html`
+
+实时页控制：所有局域网观众均可按当前双方配置开新局并设置 1–120 最大杆数；seed 每局递增。
+服务端每广播一杆后按该杆物理时长节流，再进入下一次 Agent 决策。暂停、重播和倍速为观众本地状态。
 
 ## 4. 基线（2026-08-29 首测）
 
@@ -43,3 +54,7 @@ A/B 各自独立 hand model（bias 由 `hash(seed, name)` 派生）——
 ## 变更记录
 
 - 2026-08-29 首版定稿：v1 简化规则 + 双 hand model + LLM 接入
+- 2026-08-30 单桌观战链路收口：共享 MatchEvent schema 1、历史回放、HTTP/WS 生命周期与泄漏红线。
+- 2026-08-30 自包含回放：公开 JSONL 可生成单文件 HTML；历史事件按杆排队播放，不依赖运行中的服务。
+- 2026-08-30 修正中式开球：比赛台尺寸、长轴摆球、开球区母球、独立 break、四球碰库与开球 8 重置。
+- 2026-08-30 实时控制：浏览器可开新局/设杆数；AI 按杆流式运行；观众支持暂停、重播、倍速与全屏。

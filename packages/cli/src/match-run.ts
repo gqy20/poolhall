@@ -8,13 +8,15 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import {
+  compactMatchSamples,
+  MATCH_EVENT_SCHEMA,
+  type MatchEvent,
   type MatchObserve,
   MatchSession,
   type MatchShotResult,
   type PlayerId,
 } from "@poolhall/core";
 import { DEFAULT_BALL } from "@poolhall/engine";
-import type { Broadcast } from "./match-ws/server.ts";
 import { LlmAgentSession } from "./llm.ts";
 import { promptFingerprint } from "./prompt.ts";
 
@@ -28,7 +30,10 @@ export interface MatchRunOpts {
   maxShots: number;
   out: string;
   /** B.实时对局可视化：每杆 broadcast 给 WS hub（可选） */
-  hub?: { broadcast: (msg: Broadcast) => void };
+  hub?: { broadcast: (event: MatchEvent) => void };
+  /** 实时观战节奏：本杆广播后，下一次 Agent 决策前等待。 */
+  paceShot?: (result: MatchShotResult) => Promise<void>;
+  shouldStop?: () => boolean;
 }
 
 function log(out: string, obj: object): void {
@@ -86,13 +91,16 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
     promptB: llmB ? promptFingerprint("match") : null,
   });
 
-  while (!session.finished) {
+  while (!session.finished && !opts.shouldStop?.()) {
     const obs: MatchObserve = session.observe();
     const isA = obs.turn === "A";
     const llm = isA ? llmA : llmB;
     let intent: { angle: number; power: number; spin?: { x: number; y: number; z: number } };
-    let extra: object = {};
-    if (llm) {
+    let extra: { targetBall?: string; targetPocket?: string | null } = {};
+    if (obs.breakShot) {
+      intent = session.breakIntent();
+      extra = { targetBall: "1", targetPocket: null };
+    } else if (llm) {
       const d = await llm.shotMatch(obs);
       if (!d) {
         console.error(`[llm] 选手 ${isA ? "A" : "B"} 连续调用失败，对局中断`);
@@ -124,13 +132,13 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
 
     // B.实时对局可视化：每杆 broadcast
     if (opts.hub) {
-      const extra2 = extra as { targetBall?: string; targetPocket?: string };
       opts.hub.broadcast({
         type: "shot",
+        schema: MATCH_EVENT_SCHEMA,
         trial: rec.shot,
         by: rec.byPlayer,
-        targetBall: extra2.targetBall ?? null,
-        targetPocket: extra2.targetPocket ?? null,
+        targetBall: extra.targetBall ?? null,
+        targetPocket: extra.targetPocket ?? null,
         intentAngle: intent.angle,
         intentPower: intent.power,
         intentSpin: intent.spin ?? null,
@@ -143,19 +151,20 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
         over: rec.over,
         winner: rec.winner,
         reason: rec.reason,
+        sampleMode: "delta-v1",
         cueFinal: rec.cueFinal,
         finalBalls: rec.finalPos,
-        samples: rec.samples,
+        samples: compactMatchSamples(rec.samples),
       });
     }
 
     // 反馈只给击打方（v1；观战视角后置）
-    if (llm) {
+    if (llm && !obs.breakShot) {
       const desc = rec.foul
         ? rec.foul
         : rec.pottedBalls.length > 0
           ? null
-          : missDescOf(rec, (extra as { targetBall?: string }).targetBall);
+          : missDescOf(rec, extra.targetBall);
       llm.feedback(
         !rec.foul && rec.pottedBalls.length > 0,
         rec.pottedPockets[0]?.pocket ?? null,
@@ -172,6 +181,7 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
         },
       );
     }
+    await opts.paceShot?.(rec);
   }
 
   const r = session.result;

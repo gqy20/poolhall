@@ -154,6 +154,27 @@ MCP 客户端配置示例（Claude Code 的 `.mcp.json` / pi 的 mcp 配置）�
 | `get_shot_history(limit?)` | 回看本局最近 N 杆（校准原料） |
 | `get_score` | 当前比分 |
 
+## 对局观战与离线回放
+
+```bash
+# 启动一桌实时对局，同时保存不含隐藏手感参数的公开事件日志
+pnpm exec poolhall web-match \
+  --a synthetic:oracle --b synthetic:oracle \
+  --event-out experiments/results/live-match.jsonl
+
+# 生成无需服务器、可直接分享的单文件 HTML
+pnpm exec poolhall replay-match \
+  --in experiments/results/live-match.jsonl \
+  --out replay.html
+```
+
+公开日志使用 MatchEvent schema 2 与 delta-v1 稀疏轨迹；浏览器会按杆顺序播放，
+不会读取 research 日志中的 `actual`、`bias` 或其他隐藏状态。
+
+实时观战页提供开新局、最大杆数、暂停/继续、重新播放、0.5×–4× 倍速和全屏球桌。
+局域网内所有访问者都可开新局；AI 按“决策一杆 → 模拟一杆 → 广播一杆”的节奏实时运行。
+暂停、倍速和重播只影响当前浏览器，不会暂停其他观众或服务端 AI。
+
 ## 灵感来源
 
 - Notion 项目页：AI + 台球（Projects Hub）
