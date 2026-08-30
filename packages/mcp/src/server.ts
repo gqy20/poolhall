@@ -18,20 +18,21 @@ import { z } from "zod";
 const textResult = (text: string) => ({ content: [{ type: "text" as const, text }] });
 
 import { DEFAULT_BALL } from "@poolhall/engine";
-import type { HistoryEntry, ObserveResult, ShotInput, ShotResult } from "./tools.ts";
-import { ShotInputSchema } from "./tools.ts";
 import {
-  matchState as matchStateFn,
   type MatchSessionState,
+  MatchShotInputSchema,
+  matchState as matchStateFn,
   newMatchState,
   observeMatch,
-  takeMatchShot,
   TOOL_MATCH_OBSERVE,
   TOOL_MATCH_OPEN,
   TOOL_MATCH_SHOT,
   TOOL_MATCH_STATE,
-  MatchShotInputSchema,
+  takeMatchShot,
 } from "./match-tools.ts";
+import { MatchRemoteClient, RemoteMatchError } from "./remote.ts";
+import type { HistoryEntry, ObserveResult, ShotInput, ShotResult } from "./tools.ts";
+import { ShotInputSchema } from "./tools.ts";
 
 export interface ServerOpts {
   /** server 种子（决定手感 bias 和 trial 布局） */
@@ -221,16 +222,17 @@ export function buildPoolhallMatchMcp(opts: MatchServerOpts): McpServer {
       description: "对局已在此 MCP 进程内初始化；返回初始 meta。",
       inputSchema: z.object({}),
     },
-    async () => textResult(
-      JSON.stringify({
-        nameA: opts.nameA,
-        nameB: opts.nameB,
-        seed: opts.seed,
-        maxShots: opts.maxShots,
-        turn: state.session.currentTurn,
-        yourGroup: state.session.groups[state.session.currentTurn],
-      }),
-    ),
+    async () =>
+      textResult(
+        JSON.stringify({
+          nameA: opts.nameA,
+          nameB: opts.nameB,
+          seed: opts.seed,
+          maxShots: opts.maxShots,
+          turn: state.session.currentTurn,
+          yourGroup: state.session.groups[state.session.currentTurn],
+        }),
+      ),
   );
 
   server.registerTool(
@@ -245,7 +247,8 @@ export function buildPoolhallMatchMcp(opts: MatchServerOpts): McpServer {
   server.registerTool(
     TOOL_MATCH_SHOT,
     {
-      description: "打一杆（必带 targetBall/pocket/aimX/aimY/power）。直线球建议 spin.y<0 防母球跟进。",
+      description:
+        "打一杆（必带 targetBall/pocket/aimX/aimY/power）。直线球建议 spin.y<0 防母球跟进。",
       inputSchema: MatchShotInputSchema,
     },
     async (args: unknown) => {
@@ -275,6 +278,105 @@ export interface MatchServerOpts {
   nameB: string;
   maxShots: number;
   out?: string;
+}
+
+/** match remote 模式启动参数（M6.3：入座 web-match 共享对局） */
+export interface MatchRemoteServerOpts {
+  /** web-match 的 HTTP 基址（WS 端口 + 1），如 http://127.0.0.1:8788 */
+  remote: string;
+  /** 身份名（必须与桌位 --name-a/--name-b 之一相符） */
+  agent: string;
+  fetchFn?: typeof fetch;
+}
+
+/** 预期流程错误（409 没轮到你/对局结束）转成可读 JSON；网络/服务端错误照抛 */
+async function safeRemote(fn: () => Promise<unknown>): Promise<unknown> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (error instanceof RemoteMatchError) {
+      const payload =
+        typeof error.payload === "object" && error.payload !== null ? error.payload : {};
+      return { waiting: true, status: error.status, ...payload };
+    }
+    throw error;
+  }
+}
+
+/** 构建 remote 模式对局 MCP server（入座即绑定桌位；权威对局在 web-match 侧） */
+export async function buildPoolhallMatchRemoteMcp(opts: MatchRemoteServerOpts): Promise<McpServer> {
+  const client = new MatchRemoteClient(opts.remote, opts.agent, opts.fetchFn);
+  const join = await client.join();
+  const server = new McpServer({ name: "poolhall-match-remote", version: "0.1.0" });
+
+  server.registerTool(
+    TOOL_MATCH_OPEN,
+    {
+      description: "你已入座共享对局（无需开局）：返回你的桌位与对手身份。",
+      inputSchema: z.object({}),
+    },
+    async () =>
+      textResult(
+        JSON.stringify({
+          joined: true,
+          seat: join.seat,
+          you: opts.agent,
+          seats: join.seats,
+          shotClockMs: join.shotClockMs,
+          remote: opts.remote,
+        }),
+      ),
+  );
+
+  server.registerTool(
+    TOOL_MATCH_OBSERVE,
+    {
+      description:
+        "你的视角观察（仅轮到你时可用）；没轮到时返回 waiting/turn，轮询 match_state 即可。",
+      inputSchema: z.object({}),
+    },
+    async () => textResult(JSON.stringify(await safeRemote(() => client.observe()))),
+  );
+
+  server.registerTool(
+    TOOL_MATCH_SHOT,
+    {
+      description: "打一杆（仅轮到你时受理）。直线球建议 spin.y<0 防母球跟进。",
+      inputSchema: MatchShotInputSchema,
+    },
+    async (args: unknown) => {
+      const input = MatchShotInputSchema.parse(args);
+      const out = await safeRemote(() =>
+        client.shot({
+          aimX: input.aimX,
+          aimY: input.aimY,
+          power: input.power,
+          spin: input.spin,
+          targetBall: input.targetBall,
+          targetPocket: input.targetPocket,
+          prediction: input.prediction,
+        }),
+      );
+      return textResult(JSON.stringify(out));
+    },
+  );
+
+  server.registerTool(
+    TOOL_MATCH_STATE,
+    {
+      description: "对局详情：轮次、双方组、杆数、胜负。等对手时用本工具轮询。",
+      inputSchema: z.object({}),
+    },
+    async () => textResult(JSON.stringify(await safeRemote(() => client.state()))),
+  );
+
+  return server;
+}
+
+/** 启动 remote 模式 match stdio server */
+export async function startMatchRemoteStdio(opts: MatchRemoteServerOpts): Promise<void> {
+  const server = await buildPoolhallMatchRemoteMcp(opts);
+  await server.connect(new StdioServerTransport());
 }
 
 /** 启动 match stdio server（与 calibrate 并列入口） */

@@ -120,9 +120,10 @@ DoD：两个外部 agent 通过 MCP 各自完成一局校准挑战，产出知�
 - [x] **M6.2 中式八球对局**（2026-08-29）：MatchSession 规则引擎（定组/首触裁判/
   8 号胜负/双选手独立 hand model）+ llm×oracle 混编对战全通（docs/match.md）——
   Agent vs Agent 与"读对手 bias"心理层的地基
-- [~] **M6.3 单桌试营业**（进行中）：本地 HTTP + WebSocket 实时观战、晚连历史回放、
+- [x] **M6.3 单桌试营业**（2026-08-30）：本地 HTTP + WebSocket 实时观战、晚连历史回放、
   MatchEvent schema 3、公开计划/复盘、泄漏红线、delta-v1 持久日志与自包含 HTML 回放已完成；
-  按杆实时 AI、局域网开局控制、暂停/倍速/重播/全屏已完成；双外部 Agent 身份接入待做
+  按杆实时 AI、局域网开局控制、暂停/倍速/重播/全屏已完成；双外部 Agent 同桌已完成（`--a/--b external` +
+  `poolhall-mcp --match --remote`，回合门控 + 出杆限时判负，端到端冒烟 27 杆全通）
 - [ ] 常驻服务：HTTP/SSE 大厅，多桌并发，观战排队
 - [ ] Agent vs Agent 对弈（Elo 榜）
 - [ ] Hustle 赌局、token 赌注、表演性放水
@@ -148,3 +149,5 @@ DoD（每项独立）：对外可分享的榜单/对局回放页；至少一场"
 - 2026-08-29 M3 `poolhall play` REPL 标 `[~]`：未排期（Agent 入口已迁至 MCP，价值密度评估后未实施）
 - 2026-08-29 M4 Godot 标 `[→]`：被 HTML 回放器取代
 - 2026-08-29 M5 补 `poolhall run` 批量重放为 `[~]` 未做+无替代物
+- 2026-08-30 M6.3 完成：双外部 Agent 同桌（共享对局 + `/match/*` 入座层 + MCP remote 模式；
+  端到端冒烟：双外部 MCP 客户端打完 27 杆完整对局，公开日志零泄漏可回放，docs/match.md §4）

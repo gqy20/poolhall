@@ -1,9 +1,9 @@
 /**
  * 中式八球对局实验执行器（M6：Agent vs Agent）
  *
- * 选手规格：synthetic:oracle（贪心合法目标）或 llm（prompts/match.yaml，m1）
- * 两位选手各自 LlmAgentSession（记忆/笔记独立）+ 各自 hand model（bias 独立——
- * "读对手 bias"心理层的地基）。v1 反馈只发给击打方。
+ * 选手规格：synthetic:oracle（贪心合法目标）/ llm（prompts/match.yaml，m1）/
+ * external（外部 Agent 经 HTTP 入座，M6.3）。两位选手各自 hand model
+ * （bias 独立——“读对手 bias”心理层的地基）。v1 反馈只发给击打方。
  */
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
@@ -19,10 +19,11 @@ import {
 } from "@poolhall/core";
 import { DEFAULT_BALL } from "@poolhall/engine";
 import { LlmAgentSession } from "./llm.ts";
+import type { ShotWait } from "./match-http.ts";
 import { promptFingerprint } from "./prompt.ts";
 
 export interface MatchRunOpts {
-  /** 选手规格：synthetic:oracle | llm */
+  /** 选手规格：synthetic:oracle | llm | external */
   specA: string;
   specB: string;
   nameA: string;
@@ -30,6 +31,10 @@ export interface MatchRunOpts {
   seed: number;
   maxShots: number;
   out: string;
+  /** 共享对局模式：复用调用方创建的会话（web-match 外部接入）；缺省自建 */
+  session?: MatchSession;
+  /** 外部选手出杆来源（spec=external 必供）：超时返回 {kind:"timeout"} */
+  externalShot?: (player: PlayerId, obs: MatchObserve) => Promise<ShotWait>;
   /** B.实时对局可视化：每杆 broadcast 给 WS hub（可选） */
   hub?: { broadcast: (event: MatchEvent) => void };
   /** 实时观战节奏：本杆广播后，下一次 Agent 决策前等待。 */
@@ -84,12 +89,14 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
   reason: string | null;
   shots: number;
 }> {
-  const session = new MatchSession({
-    seed: opts.seed,
-    nameA: opts.nameA,
-    nameB: opts.nameB,
-    maxShots: opts.maxShots,
-  });
+  const session =
+    opts.session ??
+    new MatchSession({
+      seed: opts.seed,
+      nameA: opts.nameA,
+      nameB: opts.nameB,
+      maxShots: opts.maxShots,
+    });
   const mkPlayer = (spec: string) =>
     spec === "llm" ? new LlmAgentSession(undefined, "match") : null;
   const llmA = mkPlayer(opts.specA);
@@ -117,7 +124,16 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
     let intent: { angle: number; power: number; spin?: { x: number; y: number; z: number } };
     let extra: { targetBall?: string; targetPocket?: string | null } = {};
     let publicPlan: MatchPublicPlan;
-    if (obs.breakShot) {
+    let prediction: string | null = null;
+    const spec = isA ? opts.specA : opts.specB;
+    if (spec === "external") {
+      const external = await externalDecision(opts, session, obs);
+      if (external === "abort") break;
+      intent = external.intent;
+      extra = { targetBall: external.targetBall, targetPocket: external.targetPocket };
+      publicPlan = externalPlan(external.prediction);
+      prediction = external.prediction;
+    } else if (obs.breakShot) {
       intent = session.breakIntent();
       extra = { targetBall: "1", targetPocket: null };
       publicPlan = oraclePlan(obs, "1", null);
@@ -144,6 +160,7 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
       shot: rec.shot,
       by: rec.byPlayer,
       ...extra,
+      prediction,
       pottedBalls: rec.pottedBalls,
       scratch: rec.scratch,
       firstContact: rec.firstContact,
@@ -218,6 +235,51 @@ function reviewOf(rec: MatchShotResult, target: string | undefined): string {
   if (rec.foul) return `计划未完成：${rec.foul}`;
   if (rec.pottedBalls.length > 0) return `计划结果：进袋 ${rec.pottedBalls.join("、")} 号球`;
   return `计划未命中：${missDescOf(rec, target)}`;
+}
+
+/** 外部选手一杆：等 HTTP 出杆，超时则判负；进程被打断时返回 "abort" */
+async function externalDecision(
+  opts: MatchRunOpts,
+  session: MatchSession,
+  obs: MatchObserve,
+): Promise<
+  | "abort"
+  | {
+      intent: { angle: number; power: number; spin?: { x: number; y: number; z: number } };
+      targetBall: string;
+      targetPocket: string;
+      prediction: string | null;
+    }
+> {
+  if (!opts.externalShot) throw new Error("spec=external 必须提供 externalShot 回调");
+  const wait = await opts.externalShot(obs.turn, obs);
+  if (wait.kind === "timeout") {
+    if (!opts.shouldStop?.()) {
+      const loser = obs.turn === "A" ? opts.nameA : opts.nameB;
+      session.resign(obs.turn, `${loser} 出杆超时——判负`);
+    }
+    return "abort";
+  }
+  const cue = obs.balls.find((b) => b.id === "cue")!;
+  const angle = (Math.atan2(-(wait.shot.aimY - cue.y), wait.shot.aimX - cue.x) * 180) / Math.PI;
+  return {
+    intent: { angle, power: wait.shot.power, spin: wait.shot.spin },
+    targetBall: wait.shot.targetBall,
+    targetPocket: wait.shot.targetPocket,
+    prediction: wait.shot.prediction ?? null,
+  };
+}
+
+/** 外部选手的公开计划：预测文本即叙事，缺省占位 */
+function externalPlan(prediction: string | null): MatchPublicPlan {
+  const text = (prediction ?? "").trim() || "外部选手通过 MCP 接入本桌";
+  return {
+    observation: text.slice(0, 160),
+    choice: "外部选手出杆（详见观察摘要）",
+    cuePlan: "由外部选手自行决定",
+    risk: "由外部选手自行评估",
+    confidence: "medium",
+  };
 }
 
 function missDescOf(rec: MatchShotResult, target: string | undefined): string {

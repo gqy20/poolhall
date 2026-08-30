@@ -1,5 +1,5 @@
 import { appendFileSync, createReadStream, mkdirSync, statSync, writeFileSync } from "node:fs";
-import { createServer, type Server } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -9,7 +9,9 @@ import {
   MATCH_EVENT_SCHEMA,
   MATCH_TABLE,
   type MatchEvent,
+  MatchSession,
 } from "@poolhall/core";
+import { MatchHttp } from "./match-http.ts";
 import { runMatch } from "./match-run.ts";
 import { WsHub } from "./match-ws/server.ts";
 import { promptFingerprint } from "./prompt.ts";
@@ -25,25 +27,35 @@ export interface WebMatchOpts {
   maxShots: string;
   out: string;
   eventOut: string;
+  /** 外部选手出杆限时（秒，默认 600；0=不限时） */
+  shotClock: string;
 }
+
+/** 合法选手规格（external = MCP 远程入座，M6.3） */
+const PLAYER_SPECS = new Set(["synthetic:oracle", "llm", "external"]);
 
 interface MatchEventSink {
   broadcast(event: MatchEvent): void;
   reset(): void;
 }
 
-function startWebServer(port: number, host: string): Promise<Server> {
+function startWebServer(port: number, host: string, matchHttp: MatchHttp): Promise<Server> {
   const webDir = join(dirname(fileURLToPath(import.meta.url)), "../../../experiments/web");
   const server = createServer((req, res) => {
+    const path = (req.url ?? "").split("?")[0]!;
+    if (path.startsWith("/match/")) {
+      void handleMatchRoute(req, res, matchHttp);
+      return;
+    }
     if (req.url !== "/" && req.url !== "/index.html") {
       res.writeHead(404).end();
       return;
     }
-    const path = join(webDir, "index.html");
+    const filePath = join(webDir, "index.html");
     try {
-      statSync(path);
+      statSync(filePath);
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      createReadStream(path).pipe(res);
+      createReadStream(filePath).pipe(res);
     } catch {
       res.writeHead(404).end("experiments/web/index.html not found");
     }
@@ -100,10 +112,59 @@ function broadcastHello(
   });
 }
 
+/** /match/* HTTP 路由：外部选手入座层（回合门控在 MatchHttp 内部） */
+async function handleMatchRoute(
+  req: IncomingMessage,
+  res: ServerResponse,
+  matchHttp: MatchHttp,
+): Promise<void> {
+  let body: unknown = null;
+  if (req.method === "POST") {
+    try {
+      body = await readJsonBody(req);
+    } catch {
+      res.writeHead(413, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "请求体过大" }));
+      return;
+    }
+  }
+  const route = matchHttp.route(req.method ?? "GET", req.url ?? "/", body);
+  res.writeHead(route.status, { "content-type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify(route.body));
+}
+
+/** 读请求体为 JSON（上限 64KiB；空体/非法 JSON → null，由路由层回 400） */
+function readJsonBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > 65536) {
+        req.destroy();
+        reject(new Error("body too large"));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      const text = Buffer.concat(chunks).toString("utf8");
+      if (!text.trim()) return resolve(null);
+      try {
+        resolve(JSON.parse(text));
+      } catch {
+        resolve(null);
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
 async function playGame(
   opts: WebMatchOpts,
   sink: MatchEventSink,
   hub: WsHub,
+  matchHttp: MatchHttp,
   seed: number,
   maxShots: number,
   signal: AbortSignal,
@@ -111,6 +172,9 @@ async function playGame(
   sink.reset();
   hub.notify({ type: "control", state: "starting", message: "新局准备中" });
   broadcastHello(sink, opts, seed, maxShots);
+  const session = new MatchSession({ seed, nameA: opts.nameA, nameB: opts.nameB, maxShots });
+  matchHttp.attach(session);
+  const hasExternal = opts.a === "external" || opts.b === "external";
   const result = await runMatch({
     specA: opts.a,
     specB: opts.b,
@@ -119,6 +183,19 @@ async function playGame(
     seed,
     maxShots,
     out: opts.out || "/dev/null",
+    session,
+    externalShot: hasExternal
+      ? (player) => {
+          const name = player === "A" ? opts.nameA : opts.nameB;
+          hub.notify({
+            type: "control",
+            state: "thinking",
+            actor: player,
+            message: `等待外部选手 ${name} 出杆`,
+          });
+          return matchHttp.waitForShot(player, signal);
+        }
+      : undefined,
     hub: sink,
     shouldStop: () => signal.aborted,
     onThinking: (actor) => {
@@ -166,12 +243,20 @@ function broadcastSummary(
 }
 
 export async function runWebMatch(opts: WebMatchOpts): Promise<void> {
+  if (!PLAYER_SPECS.has(opts.a) || !PLAYER_SPECS.has(opts.b)) {
+    throw new Error(`选手规格非法（--a/--b）：可选 ${[...PLAYER_SPECS].join(" | ")}`);
+  }
   const port = Number(opts.port);
   const hub = new WsHub(port, opts.host);
   await hub.start();
+  const matchHttp = new MatchHttp({
+    nameA: opts.nameA,
+    nameB: opts.nameB,
+    shotClockMs: Math.max(0, Number(opts.shotClock || 600)) * 1000,
+  });
   let web: Server;
   try {
-    web = await startWebServer(port + 1, opts.host);
+    web = await startWebServer(port + 1, opts.host, matchHttp);
   } catch (error) {
     await hub.close();
     throw error;
@@ -204,7 +289,7 @@ export async function runWebMatch(opts: WebMatchOpts): Promise<void> {
     if (incrementSeed) seed += 1;
     running = true;
     try {
-      await playGame(opts, sink, hub, seed, maxShots, abort.signal);
+      await playGame(opts, sink, hub, matchHttp, seed, maxShots, abort.signal);
     } catch (error) {
       hub.notify({ type: "control", state: "error", message: "新局生成失败" });
       console.error(error);

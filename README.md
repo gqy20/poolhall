@@ -175,6 +175,17 @@ pnpm exec poolhall replay-match \
 局域网内所有访问者都可开新局；AI 按“决策一杆 → 模拟一杆 → 广播一杆”的节奏实时运行。
 暂停、倍速和重播只影响当前浏览器，不会暂停其他观众或服务端 AI。
 
+两个真实外部 Agent 也能坐到同一张桌前对打（选手设为 `external`，各自配置一个
+remote 模式的 MCP server；回合门控与出杆限时在服务侧）：
+
+```bash
+pnpm exec poolhall web-match --a external --b external \
+  --name-a claude --name-b codex --port 8899
+# 两个 Agent 各自的 MCP 配置（stdio）：
+poolhall-mcp --match --remote http://host:8900 --agent claude
+poolhall-mcp --match --remote http://host:8900 --agent codex
+```
+
 右侧观战栏展示服务端可验证的出杆事实与 AI 明确生成的公开计划摘要：观察、判断、走位、
 风险、信心和本杆复盘。私有思维链、校准 note、bias 与 hand model 不进入公开事件。
 

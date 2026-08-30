@@ -5,8 +5,9 @@
  * 用法（Claude Code / pi / Codex 等 MCP 客户端）：
  *   poolhall-mcp                                       校准挑战 server（observe_table/take_shot/...）
  *   poolhall-mcp --match [--seed N]                   中式八球对局 server（4 工具：open/observe/shot/state）
+ *   poolhall-mcp --match --remote URL --agent NAME    入座 web-match 共享对局（M6.3 双外部同桌）
  */
-import { startStdio, startMatchStdio } from "./index.ts";
+import { startMatchRemoteStdio, startMatchStdio, startStdio } from "./index.ts";
 
 const args = process.argv.slice(2);
 const get = (flag: string, d: string): string => {
@@ -18,6 +19,16 @@ const isMatch = args.includes("--match");
 
 void (async () => {
   if (isMatch) {
+    const remote = get("--remote", "");
+    if (remote) {
+      const agent = get("--agent", "");
+      if (!agent) {
+        console.error("remote 模式必须提供 --agent <身份名>（与桌位 --name-a/--name-b 之一相符）");
+        process.exit(1);
+      }
+      await startMatchRemoteStdio({ remote, agent });
+      return;
+    }
     await startMatchStdio({
       seed: Number(get("--seed", "42")),
       nameA: get("--name-a", "playerA"),

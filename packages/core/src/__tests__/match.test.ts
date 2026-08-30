@@ -105,4 +105,21 @@ describe("MatchSession", () => {
     const s = new MatchSession({ seed: 42, nameA: "playerX", nameB: "playerY" });
     expect(s.handA).not.toEqual(s.handB);
   });
+
+  it("resign：中途认负 → 对手获胜，对局立即终止", () => {
+    const s = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
+    s.resign("A", "a 出杆超时——判负");
+    expect(s.finished).toBe(true);
+    expect(s.result.winner).toBe("B");
+    expect(s.result.reason).toBe("a 出杆超时——判负");
+    expect(() => s.shoot({ angle: 0, power: 0.5 })).toThrow("对局已结束");
+  });
+
+  it("resign：终局后重复认负不改变结果", () => {
+    const s = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
+    s.resign("A", "第一次判负");
+    s.resign("B", "第二次不应生效");
+    expect(s.result.winner).toBe("B");
+    expect(s.result.reason).toBe("第一次判负");
+  });
 });

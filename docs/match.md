@@ -1,6 +1,6 @@
 # 中式八球对局 · match
 
-状态：已定稿（2026-08-29，M6.2 首版）
+状态：已定稿（2026-08-30，M6.3 外部接入；首版 2026-08-29）
 
 ## 1. 规则（v1 简化，相对完整中式八球的裁剪）
 
@@ -31,6 +31,8 @@ A/B 各自独立 hand model（bias 由 `hash(seed, name)` 派生）——
 | prompt | `prompts/match.yaml` | 对局文案（m2；含"清组才能打 8"独立条款 + 心理层钩子） |
 | schema | 复用 ClearOutputSchema（llm.ts shotMatch） | 选球-袋 + 瞄点 + spin.y 低杆 + note |
 | mcp | `packages/mcp/src/match-tools.ts` + `server.ts:buildPoolhallMatchMcp` | 4 工具（open/observe/shot/state），独立 stdio 入口（`poolhall-mcp --match`） |
+| mcp-remote | `packages/mcp/src/remote.ts` + `server.ts:buildPoolhallMatchRemoteMcp` | 远程入座模式：工具面不变，经 HTTP 代理到共享对局（§5） |
+| http | `packages/cli/src/match-http.ts` | 外部选手入座层：/match/* 路由 + 回合门控 + 出杆限时 |
 | event | `packages/core/src/match-log.ts` | MatchEvent schema 3（公开计划/复盘、实时观战/回放共享、隐藏字段 fail fast） |
 | web | `packages/cli/src/web-match.ts` + `experiments/web/index.html` | 单桌实时观战；晚连历史回放；对局结束后持续服务至 Ctrl-C |
 
@@ -44,7 +46,39 @@ A/B 各自独立 hand model（bias 由 `hash(seed, name)` 派生）——
 实时页控制：所有局域网观众均可按当前双方配置开新局并设置 1–120 最大杆数；seed 每局递增。
 服务端每广播一杆后按该杆物理时长节流，再进入下一次 Agent 决策。暂停、重播和倍速为观众本地状态。
 
-## 4. 基线（2026-08-29 首测）
+## 4. 外部选手接入（M6.3：双外部 Agent 同桌）
+
+“一次 stdio 会话一局”升级为**共享对局**：权威 MatchSession 在 web-match 服务侧，
+外部 Agent 经 MCP remote 模式入座同一张桌，按回合出杆。内部选手（oracle/llm）
+与外部选手可混编。
+
+```
+poolhall web-match --a external --b external --name-a extA --name-b extB --port 8899
+# 两个外部 Agent 各自配置一个 MCP server（stdio）：
+poolhall-mcp --match --remote http://host:8900 --agent extA
+poolhall-mcp --match --remote http://host:8900 --agent extB
+```
+
+HTTP 入座接口（web-match HTTP 端口 = WS 端口 + 1，回合门控在服务端）：
+
+| 路由 | 语义 |
+|------|------|
+| `POST /match/join {name}` | 身份名认领桌位；不符 → 404 |
+| `GET /match/state` | 公开状态（轮次/比分/等待谁）；随时可查 |
+| `GET /match/observe?name=` | 当前选手视角；没轮到你 → 409 `{error, turn}` |
+| `POST /match/shot` | 出杆载荷（aimX/aimY/power/spin/targetBall/targetPocket/prediction）；非当前回合 → 409；受理 → 202 |
+
+行为约定：
+- 工具面不变（open/observe/shot/state）：remote 模式下 `open_match` 返回入座信息，
+  409 预期流程态转成 `{waiting: true, status, turn}` 文本供 Agent 轮询，不是工具错误。
+- **出杆限时**：`--shot-clock <秒>`（默认 600，0=不限时）；超时判负（`MatchSession.resign`）。
+- 进程中断（Ctrl-C）发生在等待期间时不判负，直接停局。
+- 隐藏状态红线：/match/* 只透出 `observe()/result` 已净化字段；公开事件日志不新增泄漏面。
+- 外部选手的 `prediction` 文本进入公开计划（观战右栏）；开球由外部选手自行决定。
+- 冒烟工具：`node packages/mcp/src/smoke.ts A|B [remote-url] [身份名]`（oracle 同款驱动）。
+- v1 未做：断线重连（超时判负已覆盖最低容错）、双方同时抢座（身份名预分配）。
+
+## 5. 基线（2026-08-29 首测）
 
 | 对局 | 结果 | 特征 |
 |------|------|------|
@@ -59,3 +93,6 @@ A/B 各自独立 hand model（bias 由 `hash(seed, name)` 派生）——
 - 2026-08-30 修正中式开球：比赛台尺寸、长轴摆球、开球区母球、独立 break、四球碰库与开球 8 重置。
 - 2026-08-30 实时控制：浏览器可开新局/设杆数；AI 按杆流式运行；观众支持暂停、重播、倍速与全屏。
 - 2026-08-30 观众叙事：AI 输出公开计划摘要，服务端生成事实复盘；右栏扩展为计划与事件时间线。
+- 2026-08-30 外部接入（M6.3）：web-match 支持 `--a/--b external`；`/match/*` 入座层 +
+  回合门控 + 出杆限时判负；`poolhall-mcp --match --remote` 入座同桌。端到端冒烟：
+  双外部 MCP 客户端打完 27 杆完整对局，公开日志零泄漏、可离线回放。

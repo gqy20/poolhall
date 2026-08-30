@@ -380,17 +380,18 @@ program
 
 program
   .command("web-match")
-  .description("B 路线：实时对局可视化（WS 推送每杆 + 静态前端）")
+  .description("单桌实时对局（WS 推送 + 静态前端；选手可为外部 MCP Agent）")
   .option("--host <host>", "WS host", "0.0.0.0")
-  .option("--port <n>", "WS port（前端也用此端口拉 index.html）", "8787")
+  .option("--port <n>", "WS port（HTTP = port+1：前端页 + /match/* 入座接口）", "8787")
   .option("--seed <n>", "种子", "42")
   .option("--name-a <name>", "选手A身份名", "playerA")
   .option("--name-b <name>", "选手B身份名", "playerB")
-  .requiredOption("--a <spec>", "选手A：synthetic:oracle 或 llm")
-  .requiredOption("--b <spec>", "选手B：synthetic:oracle 或 llm")
+  .requiredOption("--a <spec>", "选手A：synthetic:oracle / llm / external")
+  .requiredOption("--b <spec>", "选手B：synthetic:oracle / llm / external")
   .option("--max-shots <n>", "杆数预算", "60")
   .option("--out <file>", "研究日志 JSONL", "")
   .option("--event-out <file>", "公开 MatchEvent JSONL（可安全分享）", "")
+  .option("--shot-clock <sec>", "外部选手出杆限时（秒，0=不限时）", "600")
   .action(async (opts: import("./web-match.ts").WebMatchOpts) => {
     const { runWebMatch } = await import("./web-match.ts");
     await runWebMatch(opts);

@@ -250,6 +250,14 @@ export class MatchSession {
     return out;
   }
 
+  /** 认负：选手超时/离席等不可恢复原因 → 对手立即获胜（外部接入的掉线判负地基） */
+  resign(loser: PlayerId, reason: string): void {
+    if (this.over_) return;
+    this.over_ = true;
+    this.winner = loser === "A" ? "B" : "A";
+    this.reason = reason;
+  }
+
   /** 开球专用意图：从开球区中央直击顶球，不指定球袋。 */
   breakIntent(): { angle: number; power: number } {
     const cue = this.balls.find((b) => b.id === "cue")!;
