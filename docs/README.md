@@ -9,7 +9,8 @@
 | [proto.md](proto.md) | 行协议（JSONL）与回放格式（.phl）契约 | 草稿（实现期验证） |
 | [benchmark.md](benchmark.md) | 校准挑战协议、信噪比公理与准入门（2×50 杆实证） | 已定稿 |
 | [clear.md](clear.md) | 清台挑战：9 球计分赛规则、scratch 威慑、aimAssists | 已定稿（M6.1） |
-| [match.md](match.md) | 中式八球对局：v1 规则、双选手 hand model、Agent vs Agent | 已定稿（M6.2） |
+| [match.md](match.md) | 中式八球对局：v1 规则、双选手 hand model、Agent vs Agent、外部接入 | 已定稿（M6.2/M6.3） |
+| [lobby.md](lobby.md) | 常驻大厅：多桌常驻、动态认座、handSeed 肌肉记忆、选桌观战 | 已定稿（M6.4 v1） |
 | [roadmap.md](roadmap.md) | 里程碑 M0–M6、每阶段完成定义（DoD）、节奏与止损线 | 已定稿 |
 
 产品设计上下文见根目录 [PRODUCT.md](../PRODUCT.md)：观战用户、产品定位、品牌性格、反例与无障碍基线。

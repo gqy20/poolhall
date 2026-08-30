@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { MatchHttp } from "../match-http.ts";
 
 function mk(): { http: MatchHttp; session: MatchSession } {
-  const http = new MatchHttp({ nameA: "alice", nameB: "bob", shotClockMs: 0 });
+  const http = new MatchHttp({ fixed: { A: "alice", B: "bob" }, shotClockMs: 0 });
   const session = new MatchSession({ seed: 42, nameA: "alice", nameB: "bob", maxShots: 30 });
   http.attach(session);
   return { http, session };
@@ -26,7 +26,7 @@ describe("MatchHttp 入座与门控", () => {
   });
 
   it("未开局时 state/observe 返回 503", () => {
-    const http = new MatchHttp({ nameA: "a", nameB: "b", shotClockMs: 0 });
+    const http = new MatchHttp({ fixed: { A: "a", B: "b" }, shotClockMs: 0 });
     expect(http.route("GET", "/match/state", null).status).toBe(503);
     expect(http.route("GET", "/match/observe?name=a", null).status).toBe(503);
   });
@@ -37,6 +37,13 @@ describe("MatchHttp 入座与门控", () => {
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ turn: "A", shot: 0, over: false, waitingFor: null });
     expect(JSON.stringify(r.body)).not.toMatch(/bias|actual|hand/i);
+  });
+
+  it("固定席位模式：非预绑定身份 join 被拒（404）", () => {
+    const { http } = mk();
+    const join = http.route("POST", "/match/join", { name: "carol" });
+    expect(join.status).toBe(404);
+    expect(http.seatOf("carol")).toBeNull();
   });
 
   it("observe 回合门控：没轮到你 → 409 + 当前轮次", () => {
@@ -94,7 +101,7 @@ describe("MatchHttp 入座与门控", () => {
   });
 
   it("出杆限时：超时后等待以 timeout 结局", async () => {
-    const http = new MatchHttp({ nameA: "a", nameB: "b", shotClockMs: 30 });
+    const http = new MatchHttp({ fixed: { A: "a", B: "b" }, shotClockMs: 30 });
     http.attach(new MatchSession({ seed: 42, nameA: "a", nameB: "b" }));
     const wait = await http.waitForShot("A");
     expect(wait.kind).toBe("timeout");
@@ -106,5 +113,42 @@ describe("MatchHttp 入座与门控", () => {
     const waiting = http.waitForShot("A", ac.signal);
     ac.abort();
     expect((await waiting).kind).toBe("timeout");
+  });
+});
+
+describe("MatchHttp 动态认座（大厅模式）", () => {
+  function mkDynamic(): MatchHttp {
+    return new MatchHttp({ shotClockMs: 0 });
+  }
+
+  it("先认 A 后认 B；重复 join 幂等返回原席位", () => {
+    const http = mkDynamic();
+    expect(http.claim("alice")).toEqual({ ok: true, seat: "A" });
+    expect(http.claim("bob")).toEqual({ ok: true, seat: "B" });
+    expect(http.claim("alice")).toEqual({ ok: true, seat: "A" });
+  });
+
+  it("满员后认座 409；leave 后空位可再认", () => {
+    const http = mkDynamic();
+    http.claim("alice");
+    http.claim("bob");
+    const full = http.claim("carol");
+    expect(full.ok).toBe(false);
+    if (!full.ok) expect(full.status).toBe(409);
+    expect(http.leave("bob")).toBe(true);
+    expect(http.claim("carol")).toEqual({ ok: true, seat: "B" });
+  });
+
+  it("onClaim 监听在认座时触发（大厅凑齐开局钩子）", () => {
+    const http = mkDynamic();
+    const seen: Array<[string, string]> = [];
+    http.onClaim((seat, name) => seen.push([seat, name]));
+    http.claim("alice");
+    expect(seen).toEqual([["A", "alice"]]);
+  });
+
+  it("leave 路由：未认座者 404", () => {
+    const http = mkDynamic();
+    expect(http.route("POST", "/match/leave", { name: "nobody" }).status).toBe(404);
   });
 });

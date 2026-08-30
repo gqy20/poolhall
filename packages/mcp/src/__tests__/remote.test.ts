@@ -16,7 +16,7 @@ interface FakeRoute {
 
 interface FakeFetch {
   fetch: typeof fetch;
-  calls: Array<{ method: string; path: string; body: unknown }>;
+  calls: Array<{ method: string; path: string; search: string; body: unknown }>;
 }
 
 /** 按 "METHOD /path" 命中的 fetch 桩 */
@@ -28,6 +28,7 @@ function fakeFetch(routes: Record<string, FakeRoute>): FakeFetch {
     calls.push({
       method,
       path: url.pathname,
+      search: url.search,
       body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
     });
     const hit = routes[`${method} ${url.pathname}`];
@@ -75,6 +76,23 @@ describe("MatchRemoteClient", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(RemoteMatchError);
     }
+  });
+
+  it("大厅模式：join 响应携带 table，后续请求自动透传 ?table=", async () => {
+    const fake = fakeFetch({
+      "POST /match/join": {
+        body: { ok: true, seat: "A", seats: { A: "x", B: "y" }, shotClockMs: 0, table: "t2" },
+      },
+      "GET /match/state": { body: { turn: "A" } },
+      "GET /match/observe": { body: { kind: "match-observe" } },
+    });
+    const client = new MatchRemoteClient("http://h:8800", "x", fake.fetch);
+    await client.join();
+    await client.state();
+    await client.observe();
+    expect(fake.calls[1]!.search).toBe("?table=t2");
+    expect(fake.calls[2]!.search).toContain("table=t2");
+    expect(fake.calls[2]!.search).toContain("name=x");
   });
 });
 

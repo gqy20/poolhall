@@ -11,7 +11,7 @@ import {
   type MatchEvent,
   MatchSession,
 } from "@poolhall/core";
-import { MatchHttp } from "./match-http.ts";
+import { MatchHttp, readJsonBody } from "./match-http.ts";
 import { runMatch } from "./match-run.ts";
 import { WsHub } from "./match-ws/server.ts";
 import { promptFingerprint } from "./prompt.ts";
@@ -32,9 +32,9 @@ export interface WebMatchOpts {
 }
 
 /** 合法选手规格（external = MCP 远程入座，M6.3） */
-const PLAYER_SPECS = new Set(["synthetic:oracle", "llm", "external"]);
+export const PLAYER_SPECS = new Set(["synthetic:oracle", "llm", "external"]);
 
-interface MatchEventSink {
+export interface MatchEventSink {
   broadcast(event: MatchEvent): void;
   reset(): void;
 }
@@ -73,7 +73,7 @@ function closeServer(server: Server): Promise<void> {
   });
 }
 
-function createEventSink(hub: WsHub, eventOut: string): MatchEventSink {
+export function createEventSink(hub: WsHub, eventOut: string): MatchEventSink {
   if (eventOut) mkdirSync(dirname(eventOut), { recursive: true });
   return {
     broadcast(event: MatchEvent): void {
@@ -131,33 +131,6 @@ async function handleMatchRoute(
   const route = matchHttp.route(req.method ?? "GET", req.url ?? "/", body);
   res.writeHead(route.status, { "content-type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(route.body));
-}
-
-/** 读请求体为 JSON（上限 64KiB；空体/非法 JSON → null，由路由层回 400） */
-function readJsonBody(req: IncomingMessage): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let size = 0;
-    req.on("data", (chunk: Buffer) => {
-      size += chunk.length;
-      if (size > 65536) {
-        req.destroy();
-        reject(new Error("body too large"));
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on("end", () => {
-      const text = Buffer.concat(chunks).toString("utf8");
-      if (!text.trim()) return resolve(null);
-      try {
-        resolve(JSON.parse(text));
-      } catch {
-        resolve(null);
-      }
-    });
-    req.on("error", reject);
-  });
 }
 
 async function playGame(
@@ -250,8 +223,7 @@ export async function runWebMatch(opts: WebMatchOpts): Promise<void> {
   const hub = new WsHub(port, opts.host);
   await hub.start();
   const matchHttp = new MatchHttp({
-    nameA: opts.nameA,
-    nameB: opts.nameB,
+    fixed: { A: opts.nameA, B: opts.nameB },
     shotClockMs: Math.max(0, Number(opts.shotClock || 600)) * 1000,
   });
   let web: Server;

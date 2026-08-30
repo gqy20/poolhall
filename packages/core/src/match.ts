@@ -91,6 +91,8 @@ export interface MatchOpts {
   nameA: string;
   nameB: string;
   maxShots?: number;
+  /** 手感派生种子（跨局肌肉记忆）：缺省用对局 seed（向后兼容单桌模式） */
+  handSeed?: number;
 }
 
 const SOLIDS = new Set(["1", "2", "3", "4", "5", "6", "7"]);
@@ -165,11 +167,11 @@ export class MatchSession {
     this.nameB_ = opts.nameB;
     this.handA = {
       ...traitFrom(opts.seed, opts.nameA, 1),
-      biasBase: biasFrom(opts.seed, opts.nameA),
+      biasBase: biasFrom(opts.handSeed ?? opts.seed, opts.nameA),
     };
     this.handB = {
       ...traitFrom(opts.seed, opts.nameB, 1),
-      biasBase: biasFrom(opts.seed, opts.nameB),
+      biasBase: biasFrom(opts.handSeed ?? opts.seed, opts.nameB),
     };
     this.balls = rack(opts.seed, this.table);
   }

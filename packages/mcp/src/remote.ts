@@ -9,8 +9,10 @@
 export interface RemoteJoinResult {
   ok: boolean;
   seat: "A" | "B";
-  seats: { A: string; B: string };
+  seats: { A: string | null; B: string | null };
   shotClockMs: number;
+  /** 大厅模式：分到的桌号（后续请求自动携带；单桌模式无此字段） */
+  table?: string;
 }
 
 export interface RemoteShotArgs {
@@ -38,6 +40,8 @@ export class RemoteMatchError extends Error {
 export class MatchRemoteClient {
   readonly baseUrl: string;
   readonly name: string;
+  /** 大厅入座后分到的桌号；后续请求自动携带 */
+  table: string | null = null;
   private readonly fetchFn: typeof fetch;
 
   constructor(baseUrl: string, name: string, fetchFn: typeof fetch = fetch) {
@@ -46,24 +50,43 @@ export class MatchRemoteClient {
     this.fetchFn = fetchFn;
   }
 
-  /** 入座：身份名认领桌位（服务端校验，不符则 404） */
-  join(): Promise<RemoteJoinResult> {
-    return this.request("POST", "/match/join", { name: this.name }) as Promise<RemoteJoinResult>;
+  /** 入座：单桌校验身份名，大厅自动分配空桌（响应携带 table） */
+  async join(): Promise<RemoteJoinResult> {
+    const result = (await this.request("POST", "/match/join", {
+      name: this.name,
+    })) as RemoteJoinResult;
+    this.table = result.table ?? null;
+    return result;
+  }
+
+  /** 离席（大厅空位回收） */
+  leave(): Promise<unknown> {
+    return this.request("POST", this.withTable("/match/leave"), { name: this.name });
   }
 
   /** 公开对局状态（轮次/比分/等待谁）——随时可查 */
   state(): Promise<unknown> {
-    return this.request("GET", "/match/state");
+    return this.request("GET", this.withTable("/match/state"));
   }
 
   /** 当前选手视角观察（仅轮到自己时 200，否则 409） */
   observe(): Promise<unknown> {
-    return this.request("GET", `/match/observe?name=${encodeURIComponent(this.name)}`);
+    return this.request(
+      "GET",
+      this.withTable(`/match/observe?name=${encodeURIComponent(this.name)}`),
+    );
   }
 
   /** 出杆（仅轮到自己时受理，否则 409） */
   shot(args: RemoteShotArgs): Promise<unknown> {
-    return this.request("POST", "/match/shot", { ...args, name: this.name });
+    return this.request("POST", this.withTable("/match/shot"), { ...args, name: this.name });
+  }
+
+  /** 大厅模式追加 ?table= 参数 */
+  private withTable(path: string): string {
+    if (!this.table) return path;
+    const sep = path.includes("?") ? "&" : "?";
+    return `${path}${sep}table=${encodeURIComponent(this.table)}`;
   }
 
   private async request(method: string, path: string, body?: unknown): Promise<unknown> {

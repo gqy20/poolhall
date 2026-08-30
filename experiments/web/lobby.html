@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PoolHall · 台球厅</title>
+<style>
+  :root {
+    --bg: #12100e;
+    --panel: #1c1916;
+    --line: #2c2723;
+    --text: #ece5da;
+    --muted: #9a8f80;
+    --cloth: #2f5d46;
+    --accent: #d9a441;
+    --live: #7fb069;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 40px 24px 64px;
+  }
+  header { max-width: 960px; margin: 0 auto 36px; }
+  h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.06em; }
+  h1 .dot { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 8px; letter-spacing: 0.04em; }
+  main { max-width: 960px; margin: 0 auto; display: grid; gap: 14px; }
+  .table-card {
+    display: flex; align-items: center; gap: 20px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 18px 22px;
+    text-decoration: none; color: inherit;
+    transition: border-color 0.15s ease;
+  }
+  .table-card:hover { border-color: var(--accent); }
+  .mini-cloth {
+    flex: 0 0 auto; width: 84px; height: 44px;
+    background: var(--cloth); border-radius: 6px;
+    border: 3px solid #4a3b28; position: relative;
+  }
+  .mini-cloth .ball {
+    position: absolute; width: 7px; height: 7px; border-radius: 50%;
+    background: #f4ede1; top: 50%; transform: translateY(-50%);
+  }
+  .info { flex: 1 1 auto; min-width: 0; }
+  .name-row { display: flex; align-items: baseline; gap: 10px; }
+  .tid { font-weight: 600; font-size: 15px; }
+  .seats { color: var(--text); font-size: 14px; }
+  .seats .empty { color: var(--muted); }
+  .vs { color: var(--muted); font-size: 12px; }
+  .meta { color: var(--muted); font-size: 12px; margin-top: 6px; letter-spacing: 0.03em; }
+  .state { flex: 0 0 auto; font-size: 12px; letter-spacing: 0.08em; padding: 4px 10px;
+    border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .state.playing { color: var(--live); border-color: var(--live); }
+  .state.ready { color: var(--accent); border-color: var(--accent); }
+  .enter { flex: 0 0 auto; color: var(--muted); font-size: 13px; }
+  .waiting { max-width: 960px; margin: 28px auto 0; color: var(--muted); font-size: 12px; }
+  @media (prefers-reduced-motion: reduce) {
+    .table-card { transition: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>PoolHall<span class="dot"> · </span>台球厅</h1>
+  <div class="sub">物理永远精确，人类的不完美只住在注入层 · 选一张桌观战</div>
+</header>
+<main id="tables"></main>
+<div class="waiting" id="waiting"></div>
+<script>
+"use strict";
+const fmtSeat = (name) => (name ? name : '<span class="empty">虚位以待</span>');
+const stateText = { playing: "对局进行中", ready: "选手就位", waiting: "等待入座" };
+
+async function refresh() {
+  try {
+    const res = await fetch("/lobby/status");
+    const data = await res.json();
+    const main = document.getElementById("tables");
+    main.innerHTML = data.tables.map((t) => {
+      const ballLeft = 12 + ((t.shot * 13) % 60);
+      return `<a class="table-card" href="/table/${t.id}">
+        <div class="mini-cloth"><div class="ball" style="left:${ballLeft}%"></div></div>
+        <div class="info">
+          <div class="name-row">
+            <span class="tid">${t.id.toUpperCase()}</span>
+            <span class="seats">${fmtSeat(t.seats.A)} <span class="vs">vs</span> ${fmtSeat(t.seats.B)}</span>
+          </div>
+          <div class="meta">第 ${t.game + 1} 局 · 第 ${t.shot} 杆${t.winner ? ` · 胜负已分（${t.reason ?? ""}）` : ""}</div>
+        </div>
+        <span class="state ${t.state}">${stateText[t.state] ?? t.state}</span>
+        <span class="enter">观战 →</span>
+      </a>`;
+    }).join("");
+    const waitEl = document.getElementById("waiting");
+    waitEl.textContent = data.waiting.length ? `等候入座：${data.waiting.join("、")}` : "";
+  } catch {
+    /* 服务重启中，静默重试 */
+  }
+}
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

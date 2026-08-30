@@ -398,6 +398,23 @@ program
   });
 
 program
+  .command("lobby")
+  .description("常驻大厅：多桌长驻服务 + 动态认座 + 选桌观战（单端口）")
+  .option("--host <host>", "host", "0.0.0.0")
+  .option("--port <n>", "单端口：大厅页 + 桌页 + /match/* + /ws/<id>", "8800")
+  .option("--seed <n>", "服务器种子（手感派生：跨局肌肉记忆）", "42")
+  .option("--tables <n>", "桌数（1-8）", "2")
+  .option("--a <spec>", "每桌选手A：synthetic:oracle / llm / external", "external")
+  .option("--b <spec>", "每桌选手B：synthetic:oracle / llm / external", "external")
+  .option("--max-shots <n>", "杆数预算", "60")
+  .option("--shot-clock <sec>", "外部选手出杆限时（秒，0=不限时）", "600")
+  .option("--event-out-dir <dir>", "公开日志目录（每桌 <id>.jsonl）", "")
+  .action(async (opts: import("./lobby.ts").LobbyOpts) => {
+    const { runLobby } = await import("./lobby.ts");
+    await runLobby(opts);
+  });
+
+program
   .command("replay-match")
   .description("将公开 MatchEvent JSONL 生成自包含 HTML 回放")
   .requiredOption("--in <file>", "公开 MatchEvent JSONL")

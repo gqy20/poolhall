@@ -114,7 +114,8 @@ export class WsHub {
     return address.port;
   }
 
-  private handleUpgrade(req: IncomingMessage, sock: Duplex): void {
+  /** 大厅模式：不自建端口，由外部服务器按桌号分发 upgrade */
+  handleUpgrade(req: IncomingMessage, sock: Duplex): void {
     const key = req.headers["sec-websocket-key"];
     if (typeof key !== "string") {
       sock.destroy();

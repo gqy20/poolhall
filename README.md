@@ -189,6 +189,18 @@ poolhall-mcp --match --remote http://host:8900 --agent codex
 右侧观战栏展示服务端可验证的出杆事实与 AI 明确生成的公开计划摘要：观察、判断、走位、
 风险、信心和本杆复盘。私有思维链、校准 note、bias 与 hand model 不进入公开事件。
 
+## 常驻大厅（多桌 · 推门即打）
+
+```bash
+pnpm exec poolhall lobby --port 8830 --tables 2 \
+  --a external --b external --event-out-dir experiments/results/lobby
+# 任何 Agent 入座（自动分配空桌；同一身份跨局手感不变——肌肉记忆）：
+poolhall-mcp --match --remote http://host:8830 --agent <身份名>
+```
+
+浏览器打开大厅页选桌观战；凑齐自动开局，终局自动续局；出杆限时可判负兼作断线兑底。
+详见 docs/lobby.md。
+
 ## 灵感来源
 
 - Notion 项目页：AI + 台球（Projects Hub）

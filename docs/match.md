@@ -20,7 +20,10 @@
 ## 2. 双选手手感
 
 A/B 各自独立 hand model（bias 由 `hash(seed, name)` 派生）——
-同名选手跨局手感记忆保留。这是"读对手 bias"心理层的地基（hand-model.md §心理层）。
+同名选手跨局手感记忆保留。这是“读对手 bias”心理层的地基（hand-model.md §心理层）。
+
+常驻大厅模式（M6.4）用 `handSeed` 把 bias 派生与开局 seed 解耦：同一身份跨局跨桌
+bias 恒定（见 docs/lobby.md §4）。
 
 ## 3. 实现位置
 

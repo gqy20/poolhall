@@ -724,8 +724,14 @@ document.addEventListener("keydown", (event) => {
 
 function connectLive() {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  const wsPort = parseInt(location.port || "8788", 10) - 1;
-  socket = new WebSocket(`${proto}//${location.hostname}:${wsPort}`);
+  // 大厅模式（/table/<id>）：同源单端口 /ws/<id>；web-match 单桌模式：WS = HTTP 端口 - 1
+  const lobbyTable = location.pathname.match(/^\/table\/([^/]+)/);
+  if (lobbyTable) {
+    socket = new WebSocket(`${proto}//${location.host}/ws/${lobbyTable[1]}`);
+  } else {
+    const wsPort = parseInt(location.port || "8788", 10) - 1;
+    socket = new WebSocket(`${proto}//${location.hostname}:${wsPort}`);
+  }
   socket.addEventListener("open", () => {
     status.textContent = "🟢 已连接，等待首杆";
     controlStatus.textContent = "已连接";

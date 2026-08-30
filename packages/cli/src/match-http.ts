@@ -1,17 +1,46 @@
 /**
- * 外部选手入座层（M6.3：双外部 Agent 同桌）
+ * 外部选手入座层（M6.3：双外部 Agent 同桌；M6.4：大厅动态认座）
  *
- * web-match 服务端的 MatchSession 是唯一权威；外部 Agent 经 MCP remote
- * 模式走本层 HTTP 接口入座打球：
- * - POST /match/join     身份名认领桌位（A/B）
+ * 权威对局在服务端；外部 Agent 经 MCP remote 模式走本层 HTTP 接口：
+ * - POST /match/join     认座：固定席位模式校验身份名，大厅模式动态认领空位
+ * - POST /match/leave    离席（释放大厅空位）
  * - GET  /match/state    公开对局状态（轮次/比分/等待谁）
  * - GET  /match/observe  当前选手视角（仅轮到自己时可用——回合门控）
  * - POST /match/shot     出杆（仅轮到自己时受理，否则 409）
  *
  * 隐藏状态红线：本层只透出 MatchSession.observe()/result 已净化的字段。
  */
+
+import type { IncomingMessage } from "node:http";
 import type { MatchSession, PlayerId } from "@poolhall/core";
 import { z } from "zod";
+
+/** 读请求体为 JSON（上限 64KiB；空体/非法 JSON → null，由路由层回 400） */
+export function readJsonBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > 65536) {
+        req.destroy();
+        reject(new Error("body too large"));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      const text = Buffer.concat(chunks).toString("utf8");
+      if (!text.trim()) return resolve(null);
+      try {
+        resolve(JSON.parse(text));
+      } catch {
+        resolve(null);
+      }
+    });
+    req.on("error", reject);
+  });
+}
 
 /** 外部选手出杆载荷（与 mcp MatchShotInputSchema 同构，多带身份名） */
 export const ExternalShotSchema = z.object({
@@ -36,10 +65,10 @@ export type ExternalShot = z.infer<typeof ExternalShotSchema>;
 export type ShotWait = { kind: "shot"; shot: ExternalShot } | { kind: "timeout" };
 
 export interface MatchHttpOpts {
-  nameA: string;
-  nameB: string;
   /** 出杆限时（毫秒）；0 = 不限时 */
   shotClockMs: number;
+  /** 固定席位（web-match 单桌模式）：身份名预绑定。大厅模式缺省，认座时动态填充 */
+  fixed?: { A: string; B: string };
 }
 
 interface PendingShot {
@@ -60,17 +89,59 @@ export interface HttpRoute {
 export class MatchHttp {
   private session: MatchSession | null = null;
   private pending: PendingShot | null = null;
+  private claimed: { A: string | null; B: string | null };
+  private readonly claimListeners = new Set<(seat: PlayerId, name: string) => void>();
   readonly opts: MatchHttpOpts;
 
   constructor(opts: MatchHttpOpts) {
     this.opts = opts;
+    this.claimed = opts.fixed ? { A: opts.fixed.A, B: opts.fixed.B } : { A: null, B: null };
   }
 
-  /** 身份名 → 桌位；与桌位不符返回 null */
+  /** 身份名 → 桌位；未认座/不符返回 null */
   seatOf(name: string): PlayerId | null {
-    if (name === this.opts.nameA) return "A";
-    if (name === this.opts.nameB) return "B";
+    if (this.claimed.A === name) return "A";
+    if (this.claimed.B === name) return "B";
     return null;
+  }
+
+  /** 当前席位占有人（未认座为 null） */
+  seatNames(): { A: string | null; B: string | null } {
+    return { A: this.claimed.A, B: this.claimed.B };
+  }
+
+  /** 动态认座（大厅模式）。返回 seat 或失败原因；成功时触发 onClaim 监听 */
+  claim(name: string): { ok: true; seat: PlayerId } | { ok: false; status: number; body: unknown } {
+    const existing = this.seatOf(name);
+    if (existing) return { ok: true, seat: existing };
+    if (this.opts.fixed) {
+      return {
+        ok: false,
+        status: 404,
+        body: { error: "身份名与本桌席位不符", seats: this.seatNames() },
+      };
+    }
+    const seat: PlayerId | null =
+      this.claimed.A === null ? "A" : this.claimed.B === null ? "B" : null;
+    if (!seat)
+      return { ok: false, status: 409, body: { error: "本桌没有空位", seats: this.seatNames() } };
+    this.claimed[seat] = name;
+    for (const listener of this.claimListeners) listener(seat, name);
+    return { ok: true, seat };
+  }
+
+  /** 离席：释放席位（大厅空位回收）；返回是否释放成功 */
+  leave(name: string): boolean {
+    const seat = this.seatOf(name);
+    if (!seat || this.opts.fixed) return false;
+    this.claimed[seat] = null;
+    return true;
+  }
+
+  /** 认座事件订阅（大厅：凑齐两人即开局） */
+  onClaim(listener: (seat: PlayerId, name: string) => void): () => void {
+    this.claimListeners.add(listener);
+    return () => this.claimListeners.delete(listener);
   }
 
   /** 绑定本局的权威对局会话（每局一次） */
@@ -96,30 +167,41 @@ export class MatchHttp {
     });
   }
 
-  /** 纯路由：不碰 socket，web-match 负责读写请求体与响应 */
+  /** 纯路由：不碰 socket，服务端负责读写请求体与响应 */
   route(method: string, url: string, body: unknown): HttpRoute {
     const path = url.split("?")[0]!;
     const query = new URLSearchParams(url.split("?")[1] ?? "");
     if (method === "POST" && path === "/match/join") return this.routeJoin(body);
+    if (method === "POST" && path === "/match/leave") return this.routeLeave(body);
     if (method === "GET" && path === "/match/state") return this.routeState();
     if (method === "GET" && path === "/match/observe") return this.routeObserve(query.get("name"));
     if (method === "POST" && path === "/match/shot") return this.routeShot(body);
     return { status: 404, body: { error: `未知路由 ${method} ${path}` } };
   }
 
-  private seats(): { A: string; B: string } {
-    return { A: this.opts.nameA, B: this.opts.nameB };
+  private nameOf(body: unknown): string {
+    return typeof body === "object" && body !== null && "name" in body ? String(body.name) : "";
   }
 
   private routeJoin(body: unknown): HttpRoute {
-    const name =
-      typeof body === "object" && body !== null && "name" in body ? String(body.name) : "";
-    const seat = this.seatOf(name);
-    if (!seat) return { status: 404, body: { error: "身份名与本桌席位不符", seats: this.seats() } };
+    const claimed = this.claim(this.nameOf(body));
+    if (!claimed.ok) return { status: claimed.status, body: claimed.body };
     return {
       status: 200,
-      body: { ok: true, seat, seats: this.seats(), shotClockMs: this.opts.shotClockMs },
+      body: {
+        ok: true,
+        seat: claimed.seat,
+        seats: this.seatNames(),
+        shotClockMs: this.opts.shotClockMs,
+      },
     };
+  }
+
+  private routeLeave(body: unknown): HttpRoute {
+    const ok = this.leave(this.nameOf(body));
+    return ok
+      ? { status: 200, body: { ok: true } }
+      : { status: 404, body: { error: "未找到该席位" } };
   }
 
   private routeState(): HttpRoute {
@@ -129,8 +211,7 @@ export class MatchHttp {
     return {
       status: 200,
       body: {
-        nameA: this.opts.nameA,
-        nameB: this.opts.nameB,
+        seats: this.seatNames(),
         shot: r.shots,
         turn: session.currentTurn,
         groups: session.groups,
@@ -146,7 +227,8 @@ export class MatchHttp {
     const session = this.session;
     if (!session) return { status: 503, body: { error: "本桌尚未开局" } };
     const seat = this.seatOf(name ?? "");
-    if (!seat) return { status: 404, body: { error: "身份名与本桌席位不符", seats: this.seats() } };
+    if (!seat)
+      return { status: 404, body: { error: "身份名与本桌席位不符", seats: this.seatNames() } };
     if (session.finished) return { status: 409, body: { error: "对局已结束", ...session.result } };
     if (session.currentTurn !== seat) {
       return { status: 409, body: { error: "还没轮到你", turn: session.currentTurn } };
@@ -162,7 +244,8 @@ export class MatchHttp {
       return { status: 400, body: { error: "出杆载荷不合法", detail: parsed.error.issues } };
     const shot = parsed.data;
     const seat = this.seatOf(shot.name);
-    if (!seat) return { status: 404, body: { error: "身份名与本桌席位不符", seats: this.seats() } };
+    if (!seat)
+      return { status: 404, body: { error: "身份名与本桌席位不符", seats: this.seatNames() } };
     if (session.finished) return { status: 409, body: { error: "对局已结束", ...session.result } };
     if (!this.pending || this.pending.player !== seat) {
       return { status: 409, body: { error: "还没轮到你", turn: session.currentTurn } };

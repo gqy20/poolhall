@@ -106,6 +106,15 @@ describe("MatchSession", () => {
     expect(s.handA).not.toEqual(s.handB);
   });
 
+  it("handSeed：不同对局 seed 下 bias 恒定（跨局肌肉记忆）", () => {
+    const s1 = new MatchSession({ seed: 1, handSeed: 42, nameA: "alice", nameB: "bob" });
+    const s2 = new MatchSession({ seed: 99, handSeed: 42, nameA: "alice", nameB: "bob" });
+    expect(s1.handA.biasBase).toBe(s2.handA.biasBase);
+    expect(s1.handB.biasBase).toBe(s2.handB.biasBase);
+    const s3 = new MatchSession({ seed: 1, handSeed: 43, nameA: "alice", nameB: "bob" });
+    expect(s3.handA.biasBase).not.toBe(s1.handA.biasBase);
+  });
+
   it("resign：中途认负 → 对手获胜，对局立即终止", () => {
     const s = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
     s.resign("A", "a 出杆超时——判负");
