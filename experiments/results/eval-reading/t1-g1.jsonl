@@ -1,0 +1,2 @@
+{"type":"hello","schema":3,"seed":43,"nameA":"reader-b","nameB":"reader-a","promptA":null,"promptB":null,"maxShots":40,"table":{"width":2.54,"height":1.27,"breakLineX":0.635,"footSpotX":1.905}}
+{"type":"summary","schema":3,"winner":"B","reason":"reader-b 出杆超时——判负","shots":0}

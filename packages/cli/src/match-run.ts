@@ -188,6 +188,7 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
         pottedPockets: rec.pottedPockets,
         scratch: rec.scratch,
         firstContact: rec.firstContact,
+        cueHeading: cueHeadingOf(rec.samples),
         foul: rec.foul,
         nextTurn: rec.nextTurn,
         over: rec.over,
@@ -229,6 +230,23 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
   const r = session.result;
   log(opts.out, { kind: "summary", ...r });
   return r;
+}
+
+/** 母球初始出射角（可观测物理量）：轨迹中首个母球 ≥3cm 位移帧，出杆角约定；
+ *  与 intentAngle 之差 = 本杆注入（bias+ε）——读人信号；未动/无轨迹 → null */
+function cueHeadingOf(
+  samples: Array<{ t: number; pos: Record<string, { x: number; y: number }> }>,
+): number | null {
+  const first = samples[0]?.pos["cue"];
+  if (!first) return null;
+  for (const s of samples) {
+    const p = s.pos["cue"];
+    if (!p) return null;
+    const dx = p.x - first.x;
+    const dy = p.y - first.y;
+    if (Math.hypot(dx, dy) >= 0.03) return (Math.atan2(-dy, dx) * 180) / Math.PI;
+  }
+  return null;
 }
 
 function reviewOf(rec: MatchShotResult, target: string | undefined): string {

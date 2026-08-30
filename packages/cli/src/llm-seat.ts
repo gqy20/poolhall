@@ -15,6 +15,7 @@
 import type { MatchObserve } from "@poolhall/core";
 import { MatchRemoteClient, RemoteMatchError } from "@poolhall/mcp";
 import { LlmAgentSession } from "./llm.ts";
+import { OppTracker } from "./opp-read.ts";
 
 const name = process.argv[2] ?? "alice";
 const base = process.argv[3] ?? "http://127.0.0.1:8830";
@@ -36,6 +37,8 @@ async function soft<T>(fn: () => Promise<T>): Promise<T | null> {
 
 interface ShotFacts {
   shot: number;
+  /** 服务端杆号字段名为 trial；normalizeFact 归一到 shot */
+  trial?: number;
   by: "A" | "B";
   targetBall: string | null;
   targetPocket: string | null;
@@ -43,9 +46,12 @@ interface ShotFacts {
   pottedPockets: Array<{ ball: string; pocket: string }>;
   scratch: boolean;
   firstContact: string | null;
+  intentAngle?: number | null;
+  cueHeading?: number | null;
   foul: string | null;
   nextTurn: string;
   over: boolean;
+  finalBalls?: Record<string, { x: number; y: number }>;
 }
 
 interface StateView {
@@ -59,6 +65,11 @@ interface StateView {
   recentShots: ShotFacts[];
 }
 
+/** 服务端杆号字段是 trial，归一到 ShotFacts.shot */
+function normalizeFact(f: ShotFacts): ShotFacts {
+  return { ...f, shot: f.trial ?? f.shot };
+}
+
 async function main(): Promise<void> {
   const client = new MatchRemoteClient(base, name);
   const join = await client.join();
@@ -70,21 +81,78 @@ async function main(): Promise<void> {
   const llm = new LlmAgentSession(undefined, "match");
   let lastFactsShot = -1;
 
+  // 读人（心理层）：喂对手杆的公开事实 → 证据足够时请模型估计 → 提交 /match/read 计分
+  const tracker = new OppTracker();
+  tracker.opponent = seat === "A" ? "B" : "A";
+  let trackerLastShot = -1;
+  let readsMade = 0;
+  let readThreshold = 3;
+  let lastStateShot = 0;
+  let overLogged = false;
+  const MAX_READS = 2;
+
+  const ingestFacts = (facts: ShotFacts[]): void => {
+    const fresh = facts.filter((f) => f.shot > trackerLastShot).sort((a, b) => a.shot - b.shot);
+    for (const fact of fresh) {
+      tracker.ingest(fact);
+      trackerLastShot = fact.shot;
+    }
+  };
+
+  const maybeRead = async (): Promise<void> => {
+    if (readsMade >= MAX_READS || tracker.usable() < readThreshold) return;
+    readsMade += 1;
+    readThreshold += 3;
+    const decision = await llm.readOpponent(tracker.render());
+    if (!decision) return;
+    const scored = (await soft(() => client.read(decision.estimateDeg))) as {
+      errorDeg: number;
+      directionCorrect: boolean;
+      attemptsLeft: number;
+    } | null;
+    if (scored) {
+      console.error(
+        `[llm-seat] ${name} 读人#${readsMade}：估 ${decision.estimateDeg.toFixed(3)}° ` +
+          `(${decision.confidence}) → 服务端误差 ${scored.errorDeg}° 方向${scored.directionCorrect ? "对" : "错"}｜${decision.rationale}`,
+      );
+    }
+  };
+
   for (;;) {
     const state = (await soft(() => client.state())) as StateView | null;
     if (!state) {
       await sleep(500); // 未开局（等人入座）或门控竞态——等
       continue;
     }
-    if (state.over) {
-      console.error(
-        `[llm-seat] 对局结束：${state.winner ? `${state.winner} 胜` : "平局"}——${state.reason}（${state.shot} 杆）`,
-      );
-      break;
+    // 新局检测：杆号回退 → 重置反馈/读人状态（大厅自动续局）
+    if (state.shot < lastStateShot) {
+      lastFactsShot = -1;
+      trackerLastShot = -1;
+      readsMade = 0;
+      readThreshold = 3;
     }
+    lastStateShot = state.shot;
+    if (state.over) {
+      // 终局不退出：大厅自动续局、席位保留，重置单局状态后继续打（常驻语义）
+      if (!overLogged) {
+        console.error(
+          `[llm-seat] 对局结束：${state.winner ? `${state.winner} 胜` : "平局"}——${state.reason}（${state.shot} 杆）`,
+        );
+        overLogged = true;
+        lastFactsShot = -1;
+        trackerLastShot = -1;
+        readsMade = 0;
+        readThreshold = 3;
+      }
+      await sleep(1000);
+      continue;
+    }
+    overLogged = false;
+    ingestFacts((state.recentShots ?? []).map(normalizeFact));
     // 反馈回路：本座所有尚未回写的杆结果逐杆 feedback（recentShots 环形缓冲，
     // 不受对手下一杆覆盖；按 shot 序补齐）
     const own = (state.recentShots ?? [])
+      .map(normalizeFact)
       .filter((f) => f.by === seat && f.shot > lastFactsShot)
       .sort((a, b) => a.shot - b.shot);
     for (const fact of own) {
@@ -92,6 +160,7 @@ async function main(): Promise<void> {
       deliverFeedback(llm, fact);
     }
     if (state.turn !== seat) {
+      await maybeRead(); // 对手回合：喂证据 + 尝试读人，不阻塞自己出杆
       await sleep(300);
       continue;
     }

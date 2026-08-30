@@ -93,6 +93,25 @@ const MatchOutputSchema = ClearOutputSchema.extend({
   }),
 });
 
+/** 读人输出契约（心理层 v1）：对对手系统性偏差的估计 */
+const ReadOutputSchema = z.object({
+  estimateDeg: z
+    .number()
+    .finite()
+    .min(-5)
+    .max(5)
+    .describe("对手系统性瞄角偏差估计（度，带符号，与出杆角同约定：正=偏向台面 y 减小一侧）"),
+  confidence: z.enum(["low", "medium", "high"]).describe("对估计的信心"),
+  rationale: z.string().max(160).describe("判断依据：从哪几杆的一致性看出系统成分"),
+});
+
+/** 读人决策：模型对对手系统性偏差的估计 */
+export interface ReadDecision {
+  estimateDeg: number;
+  confidence: "low" | "medium" | "high";
+  rationale: string;
+}
+
 export interface LlmConfig {
   baseUrl: string;
   apiKey: string;
@@ -296,6 +315,45 @@ export class LlmAgentSession {
         publicPlan: obj.publicPlan,
       };
     });
+  }
+
+  /** 读对手（心理层 v1）：从对手出杆偏差证据归纳系统性 bias 估计。
+   *  与出杆调用同外壳（generateObject + schema 契约 + 重试），但独立于账本/笔记机制。 */
+  async readOpponent(evidence: string): Promise<ReadDecision | null> {
+    const userMessage =
+      "<read_task>\n" +
+      "估计对手的系统性瞄角偏差——稳定的偏左/偏右成分，不是单杆随机噪声。\n" +
+      `${evidence}\n` +
+      "给出 estimateDeg（度，带符号，与出杆角同约定）、confidence 与简要判断依据。\n" +
+      "</read_task>";
+    for (let retry = 0; retry < 3; retry++) {
+      const t0 = Date.now();
+      try {
+        const result = await generateObject({
+          model: this.model,
+          schema: ReadOutputSchema,
+          system: systemPrompt(this.task),
+          messages: [{ role: "user", content: userMessage }],
+          temperature: 0,
+          maxOutputTokens: 512,
+        });
+        const obj = result.object as ReadDecision;
+        llmLog("llm.read", {
+          estimateDeg: obj.estimateDeg,
+          confidence: obj.confidence,
+          rationale: obj.rationale,
+          latencyMs: Date.now() - t0,
+        });
+        return obj;
+      } catch (error) {
+        llmLog("llm.read_error", {
+          error: (error as Error).message.slice(0, 200),
+          retry: retry + 1,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (retry + 1)));
+      }
+    }
+    return null;
   }
 
   /** 任务共用的模型调用外壳（记忆块拼装 + generateObject + 重试 + usage 统计） */

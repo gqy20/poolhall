@@ -61,6 +61,8 @@ export const MatchShotEventSchema = z.object({
   pottedPockets: z.array(z.object({ ball: z.string(), pocket: z.string() })),
   scratch: z.boolean(),
   firstContact: z.string().nullable(),
+  /** 母球初始出射角（度，出杆角约定）——可观测物理量；与 intentAngle 之差即本杆注入（bias+ε） */
+  cueHeading: z.number().finite().nullable().optional(),
   foul: z.string().nullable(),
   nextTurn: PlayerSchema,
   over: z.boolean(),
