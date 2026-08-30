@@ -3,7 +3,7 @@
  */
 import { MatchSession } from "@poolhall/core";
 import { describe, expect, it } from "vitest";
-import { MatchHttp } from "../match-http.ts";
+import { attachLastShot, MatchHttp } from "../match-http.ts";
 
 function mk(): { http: MatchHttp; session: MatchSession } {
   const http = new MatchHttp({ fixed: { A: "alice", B: "bob" }, shotClockMs: 0 });
@@ -37,6 +37,41 @@ describe("MatchHttp 入座与门控", () => {
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ turn: "A", shot: 0, over: false, waitingFor: null });
     expect(JSON.stringify(r.body)).not.toMatch(/bias|actual|hand/i);
+  });
+
+  it("recentShots：lastShot 不被对手下一杆覆盖（反馈不丢）", () => {
+    const { http } = mk();
+    http.lastShot = { shot: 0, by: "A" };
+    http.lastShot = { shot: 1, by: "B" };
+    const r = http.route("GET", "/match/state", null);
+    const body = r.body as { recentShots: Array<{ by: string }>; lastShot: { by: string } };
+    expect(body.recentShots.map((s) => s.by)).toEqual(["A", "B"]);
+    expect(body.lastShot.by).toBe("B");
+  });
+
+  it("state：透出 lastShot（最近一杆公开事实，反馈回路原料）", () => {
+    const { http } = mk();
+    http.lastShot = { shot: 0, by: "A", pottedBalls: ["3"] };
+    const r = http.route("GET", "/match/state", null);
+    expect(r.body).toMatchObject({ lastShot: { shot: 0, by: "A" } });
+  });
+
+  it("attachLastShot：shot 事件记入 lastShot（去轨迹），reset 清空", () => {
+    const http = new MatchHttp({ fixed: { A: "a", B: "b" }, shotClockMs: 0 });
+    const seen: unknown[] = [];
+    const sink = attachLastShot({ broadcast: (event) => seen.push(event), reset: () => {} }, http);
+    sink.broadcast({
+      type: "shot",
+      schema: 3,
+      trial: 0,
+      by: "A",
+      samples: [{ t: 0, pos: {} }],
+    } as never);
+    expect(http.lastShot).toMatchObject({ trial: 0, by: "A" });
+    expect(http.lastShot).not.toHaveProperty("samples");
+    expect(seen).toHaveLength(1);
+    sink.reset();
+    expect(http.lastShot).toBeNull();
   });
 
   it("固定席位模式：非预绑定身份 join 被拒（404）", () => {
@@ -113,6 +148,12 @@ describe("MatchHttp 入座与门控", () => {
     const waiting = http.waitForShot("A", ac.signal);
     ac.abort();
     expect((await waiting).kind).toBe("timeout");
+  });
+  it("presetSeat：预占座外部 agent 不可抢（混编规格防抢座）", () => {
+    const http = new MatchHttp({ shotClockMs: 0 });
+    http.presetSeat("A", "t1-a");
+    expect(http.claim("alice")).toEqual({ ok: true, seat: "B" });
+    expect(http.claim("bob").ok).toBe(false);
   });
 });
 

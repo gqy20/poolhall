@@ -23,7 +23,7 @@ import {
   type PlayerId,
   Store,
 } from "@poolhall/core";
-import { MatchHttp, readJsonBody } from "./match-http.ts";
+import { attachLastShot, MatchHttp, readJsonBody } from "./match-http.ts";
 import { runMatch } from "./match-run.ts";
 import { WsHub } from "./match-ws/server.ts";
 import { promptFingerprint } from "./prompt.ts";
@@ -81,6 +81,9 @@ export class TableRoom {
     this.cfg = cfg;
     this.id = cfg.id;
     this.http = new MatchHttp({ shotClockMs: cfg.shotClockMs });
+    // 预占内部（非 external）座位：外部 agent 只能认 external 座（混编规格防抢座）
+    if (cfg.specA !== "external") this.http.presetSeat("A", `${cfg.id}-a`);
+    if (cfg.specB !== "external") this.http.presetSeat("B", `${cfg.id}-b`);
     this.hub.onControl(() => {
       if (this.playing) {
         this.hub.notify({ type: "control", state: "busy", message: "对局进行中，结束后自动续局" });
@@ -175,7 +178,7 @@ export class TableRoom {
     const eventOut = this.cfg.eventOutDir
       ? join(this.cfg.eventOutDir, `${this.id}-g${this.gameIdx}.jsonl`)
       : "";
-    const sink: MatchEventSink = createEventSink(this.hub, eventOut);
+    const sink = attachLastShot(createEventSink(this.hub, eventOut), this.http);
     const session = new MatchSession({
       seed,
       handSeed: this.cfg.handSeed,

@@ -45,6 +45,7 @@ bias 恒定（见 docs/lobby.md §4）。
 - 实时观战：`poolhall web-match --a synthetic:oracle --b synthetic:oracle --seed 42`
 - 持久公开日志：在上述命令追加 `--event-out experiments/results/live-match.jsonl`
 - 离线分享：`poolhall replay-match --in experiments/results/live-match.jsonl --out replay.html`
+- 真模型外部座：`node packages/cli/src/llm-seat.ts <身份名> [remote 基址]`（llm-seat.ts，对大厅/单桌均可）
 
 实时页控制：所有局域网观众均可按当前双方配置开新局并设置 1–120 最大杆数；seed 每局递增。
 服务端每广播一杆后按该杆物理时长节流，再进入下一次 Agent 决策。暂停、重播和倍速为观众本地状态。
@@ -81,12 +82,51 @@ HTTP 入座接口（web-match HTTP 端口 = WS 端口 + 1，回合门控在服�
 - 冒烟工具：`node packages/mcp/src/smoke.ts A|B [remote-url] [身份名]`（oracle 同款驱动）。
 - v1 未做：断线重连（超时判负已覆盖最低容错）、双方同时抢座（身份名预分配）。
 
-## 5. 基线（2026-08-29 首测）
+## 6. 实测（2026-08-30，真模型经 MCP remote 入座大厅）
 
-| 对局 | 结果 | 特征 |
-|------|------|------|
-| oracle vs oracle（4 seed） | 合法清台胜 / 提前进 8 负 / 打 8 scratch 负 | 犯规 4-20 次/局（naive 双方互喂） |
-| llm vs oracle（seed 42，12 杆） | **LLM 胜**（oracle 第 8 杆误进 8 判负） | LLM 会自选目标组合；管线全通 |
+用 `packages/cli/src/llm-seat.ts`（LlmAgentSession + prompts/match.yaml，MiniMax-M3）
+经外部入座链路打了 3 局中式八球（每局 40 杆预算、出杆限时 600s、Elo 入账、公开日志落盘）。
+数据在 `experiments/results/eval-*`。
+
+### 6.1 结果总览（n=3，均平局）
+
+| 局 | 对阵 | 结果 | 进球 | 犯规（含 scratch） |
+|---|---|---|---|---|
+| run1 | MiniMax-M3 ×2（反馈链路缺陷期） | 40 杆平局 | 7 | A 3（2）/ B **10**（2） |
+| run2 | MiniMax-M3 ×2（反馈修复后） | 40 杆平局 | 8 | A 3（2）/ B 8（**5**） |
+| run3 | oracle vs MiniMax-M3 | 40 杆平局 | 8 | oracle 9 / LLM 8 |
+
+三局无一分出——**对局模式比校准/清台难得多**：要清组 + 打 8，任何一侧的 scratch/错组
+都会打断连贯清台。连 oracle 也只在 naive 贪心下拿 3 次合法进袋（与 §5 基线一致：oracle 并不稳赢）。
+
+### 6.2 真模型行为观察（评估核心）
+
+- **计划质量高、执行打折**：模型能正确推理球组（"8 号在我组未清前不能打"）、
+  主动用 `spin.y<0` 防 scratch、给出力度与走位意图；但手感噪声 + 自身校准不足 →
+  实际命中率远低于计划预期。知与行的分裂在对局里被放大成胜负手。
+- **scratch 是主要失分源**：run2 的 B 选手 5 次母球进袋——力度控制是真模型最薄弱环。
+- **目标锚定**：模型会连续多杆打同一球/同一袋（run1 双方反复打 `11→lb`），
+  反馈回路断裂时尤其明显（见 6.3）；修复后行为更发散、进球更多。
+- **错组犯规仍发生**：反馈里已含“首触错组”文本，但模型不完全据此改换目标——
+  “读规则”≠“执行规则”，这是心理层（读对手/读规则）的后续抓手。
+- **延迟/成本**：MiniMax-M3 单次决策 p50 ≈ 5–6.5s、max ≈ 21s；单局累计 ≈ 6–9 万 input tokens。
+
+### 6.3 实测抓出并修复的两个真 bug（本轮最大产出）
+
+1. **反馈丢失**：`/match/state` 只带单杆 `lastShot`，对手下一杆即覆盖本座结果，
+   导致选手几乎收不到自己的进袋/犯规反馈（run1 的 B 因此 10 犯规不收敛）。
+   修复：`MatchHttp.recentShots` 环形缓冲（16 杆）+ 驱动按 `shot` 序补齐 feedback。
+   对照：run2 的 B 合法进袋从 1 → 6。
+2. **混编抢座**：大厅里内部座（oracle/llm）未预占，外部 agent 会抢到本属 oracle 的座。
+   修复：`MatchHttp.presetSeat` 在 TableRoom 构造时预占非 external 座。
+   两者均有回归测试（match-http.test.ts / lobby.test.ts）。
+
+### 6.4 结论与后续
+
+- 外部接入全链路（认座→回合门控→出杆→反馈→续局→Elo→回放）**真模型验证通过**。
+- 对局模式天然是高难度 benchmark：40 杆内三方皆平，适合作为“长程规划 + 手感校准”综合考题。
+- 后续：加大样本与模型种类（强模型对照）、接心理层（读对手 bias）、
+  以及把“首触错组”反馈升级为结构化字段（当前为文本，模型利用率低）。
 
 ## 变更记录
 
@@ -99,3 +139,6 @@ HTTP 入座接口（web-match HTTP 端口 = WS 端口 + 1，回合门控在服�
 - 2026-08-30 外部接入（M6.3）：web-match 支持 `--a/--b external`；`/match/*` 入座层 +
   回合门控 + 出杆限时判负；`poolhall-mcp --match --remote` 入座同桌。端到端冒烟：
   双外部 MCP 客户端打完 27 杆完整对局，公开日志零泄漏、可离线回放。
+- 2026-08-30 真模型实测（§6）：MiniMax-M3 经 llm-seat.ts 打完 3 局（均平局）；
+  抓出并修复反馈丢失（recentShots 环缓冲）与混编抢座（presetSeat）两个真 bug；
+  新增 lastShot/recentShots 透出（外部选手反馈回路原料）。

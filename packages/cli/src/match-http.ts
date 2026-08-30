@@ -12,8 +12,30 @@
  */
 
 import type { IncomingMessage } from "node:http";
-import type { MatchSession, PlayerId } from "@poolhall/core";
+import type { MatchEvent, MatchSession, PlayerId } from "@poolhall/core";
 import { z } from "zod";
+
+export interface EventSink {
+  broadcast(event: MatchEvent): void;
+  reset(): void;
+}
+
+/** 包装事件汇：把 shot 事件的公开事实（去轨迹）记入入座层 lastShot（外部选手反馈回路） */
+export function attachLastShot(inner: EventSink, http: MatchHttp): EventSink {
+  return {
+    broadcast(event: MatchEvent): void {
+      inner.broadcast(event);
+      if (event.type !== "shot") return;
+      const facts: Record<string, unknown> = { ...event };
+      delete facts.samples;
+      http.lastShot = facts;
+    },
+    reset(): void {
+      inner.reset();
+      http.lastShot = null;
+    },
+  };
+}
 
 /** 读请求体为 JSON（上限 64KiB；空体/非法 JSON → null，由路由层回 400） */
 export function readJsonBody(req: IncomingMessage): Promise<unknown> {
@@ -90,6 +112,21 @@ export class MatchHttp {
   private session: MatchSession | null = null;
   private pending: PendingShot | null = null;
   private claimed: { A: string | null; B: string | null };
+  /** 最近若干杆的公开事实环形缓冲（外部选手反馈回路；单杆 lastShot 会被对手下一杆覆盖） */
+  readonly recentShots: Array<Record<string, unknown>> = [];
+  private static readonly RECENT_CAP = 16;
+  /** 最近一杆的公开事实（= recentShots 末元，历史兼容字段） */
+  get lastShot(): Record<string, unknown> | null {
+    return this.recentShots.at(-1) ?? null;
+  }
+  set lastShot(value: Record<string, unknown> | null) {
+    if (value === null) {
+      this.recentShots.length = 0;
+      return;
+    }
+    this.recentShots.push(value);
+    if (this.recentShots.length > MatchHttp.RECENT_CAP) this.recentShots.shift();
+  }
   private readonly claimListeners = new Set<(seat: PlayerId, name: string) => void>();
   readonly opts: MatchHttpOpts;
 
@@ -142,6 +179,11 @@ export class MatchHttp {
   onClaim(listener: (seat: PlayerId, name: string) => void): () => void {
     this.claimListeners.add(listener);
     return () => this.claimListeners.delete(listener);
+  }
+
+  /** 预占内部（非 external）座位：防止外部 agent 抢到 oracle/llm 的座（混编规格） */
+  presetSeat(seat: PlayerId, name: string): void {
+    this.claimed[seat] = name;
   }
 
   /** 绑定本局的权威对局会话（每局一次） */
@@ -219,6 +261,8 @@ export class MatchHttp {
         winner: r.winner,
         reason: r.reason,
         waitingFor: this.pending?.player ?? null,
+        lastShot: this.lastShot,
+        recentShots: this.recentShots,
       },
     };
   }

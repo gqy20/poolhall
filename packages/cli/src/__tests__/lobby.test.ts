@@ -118,6 +118,9 @@ describe("常驻大厅（M6.4）", () => {
       });
       await until(async () => Number((await status()).shot) > i);
     }
+    // 最近一杆公开事实已透出（外部选手反馈回路，在桌级 /match/state）
+    const tableState = (await api("/match/state?table=t1")).body;
+    expect(tableState.lastShot).toBeTruthy();
     // 杆数预算 2 耗尽 → 本局结束（终局瞬间捕获 reason）→ 席位仍在 → 自动续局（game=1）
     let ended: Record<string, unknown> | null = null;
     await until(async () => {

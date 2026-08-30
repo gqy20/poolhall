@@ -11,7 +11,7 @@ import {
   type MatchEvent,
   MatchSession,
 } from "@poolhall/core";
-import { MatchHttp, readJsonBody } from "./match-http.ts";
+import { attachLastShot, type EventSink, MatchHttp, readJsonBody } from "./match-http.ts";
 import { runMatch } from "./match-run.ts";
 import { WsHub } from "./match-ws/server.ts";
 import { promptFingerprint } from "./prompt.ts";
@@ -34,10 +34,8 @@ export interface WebMatchOpts {
 /** 合法选手规格（external = MCP 远程入座，M6.3） */
 export const PLAYER_SPECS = new Set(["synthetic:oracle", "llm", "external"]);
 
-export interface MatchEventSink {
-  broadcast(event: MatchEvent): void;
-  reset(): void;
-}
+/** 事件汇别名（历史兼容；单一来源在 match-http.ts） */
+export type MatchEventSink = EventSink;
 
 function startWebServer(port: number, host: string, matchHttp: MatchHttp): Promise<Server> {
   const webDir = join(dirname(fileURLToPath(import.meta.url)), "../../../experiments/web");
@@ -73,7 +71,7 @@ function closeServer(server: Server): Promise<void> {
   });
 }
 
-export function createEventSink(hub: WsHub, eventOut: string): MatchEventSink {
+export function createEventSink(hub: WsHub, eventOut: string): EventSink {
   if (eventOut) mkdirSync(dirname(eventOut), { recursive: true });
   return {
     broadcast(event: MatchEvent): void {
@@ -169,7 +167,7 @@ async function playGame(
           return matchHttp.waitForShot(player, signal);
         }
       : undefined,
-    hub: sink,
+    hub: hasExternal ? attachLastShot(sink, matchHttp) : sink,
     shouldStop: () => signal.aborted,
     onThinking: (actor) => {
       hub.notify({ type: "control", state: "thinking", actor, message: `${actor} 正在分析桌面` });
