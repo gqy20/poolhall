@@ -39,13 +39,75 @@ describe("MatchEvent 公开事件契约", () => {
     expect(() => parsePublicMatchEvent({ type: "summary", schema: 1 })).toThrow();
   });
 
-  it("schema 1 日志迁移到 schema 3，并补旧台面尺寸", () => {
+  it("schema 1 日志迁移到当前 schema，并补旧台面尺寸", () => {
     const legacy = { ...hello(), schema: 1 } as Record<string, unknown>;
     delete legacy.table;
     expect(decodeMatchEventLine(JSON.stringify(legacy))).toMatchObject({
-      schema: 3,
+      schema: MATCH_EVENT_SCHEMA,
       table: { width: 1.9812, height: 0.9906 },
     });
+    const schema3 = JSON.stringify({ ...hello(), schema: 3 });
+    expect(decodeMatchEventLine(schema3)).toMatchObject({ schema: MATCH_EVENT_SCHEMA });
+  });
+
+  it("read 事件：合法通过红线，隐藏字段仍 fail fast；日志顺序校验允许杆间插入", () => {
+    const read: MatchEvent = {
+      type: "read",
+      schema: MATCH_EVENT_SCHEMA,
+      shot: 1,
+      reader: "A",
+      target: "B",
+      estimateDeg: -0.1,
+      errorDeg: 0.015,
+      directionCorrect: true,
+      attemptsLeft: 1,
+    };
+    expect(() => assertPublicMatchEvent(read)).not.toThrow();
+    const poisoned = { ...read, readerHand: { bias: 0.2 } } as unknown as MatchEvent;
+    expect(() => assertPublicMatchEvent(poisoned)).toThrow(/readerHand/);
+    // 整局校验：hello + shot + read + summary 合法；read 杆号超前被拒
+    const shot: MatchEvent = {
+      type: "shot",
+      schema: MATCH_EVENT_SCHEMA,
+      trial: 0,
+      by: "A",
+      targetBall: "1",
+      targetPocket: "lt",
+      intentAngle: 0,
+      intentPower: 0.5,
+      intentSpin: null,
+      publicPlan: null,
+      review: "x",
+      pottedBalls: [],
+      pottedPockets: [],
+      scratch: false,
+      firstContact: null,
+      foul: null,
+      nextTurn: "B",
+      over: false,
+      winner: null,
+      reason: null,
+      sampleMode: "delta-v1",
+      samples: [],
+      cueFinal: null,
+      finalBalls: {},
+    } as MatchEvent;
+    const summary: MatchEvent = {
+      type: "summary",
+      schema: MATCH_EVENT_SCHEMA,
+      winner: null,
+      reason: "t",
+      shots: 1,
+    };
+    const valid = [hello(), shot, read, summary].map(encodeMatchEvent).join("\n");
+    expect(decodeMatchEventLog(valid).map((e) => e.type)).toEqual([
+      "hello",
+      "shot",
+      "read",
+      "summary",
+    ]);
+    const early = [hello(), { ...read, shot: 5 }, summary].map(encodeMatchEvent).join("\n");
+    expect(() => decodeMatchEventLog(early)).toThrow(/超前/);
   });
 
   it("杆号沿用 MatchSession 的 0 基约定", () => {

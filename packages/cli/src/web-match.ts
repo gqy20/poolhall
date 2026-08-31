@@ -145,6 +145,7 @@ async function playGame(
   broadcastHello(sink, opts, seed, maxShots);
   const session = new MatchSession({ seed, nameA: opts.nameA, nameB: opts.nameB, maxShots });
   matchHttp.attach(session);
+  matchHttp.bindReadSink((event) => sink.broadcast(event as MatchEvent));
   const hasExternal = opts.a === "external" || opts.b === "external";
   const result = await runMatch({
     specA: opts.a,

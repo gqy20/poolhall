@@ -19,6 +19,7 @@ import {
   FOOT_SPOT_X,
   MATCH_EVENT_SCHEMA,
   MATCH_TABLE,
+  type MatchEvent,
   MatchSession,
   type PlayerId,
   Store,
@@ -179,6 +180,8 @@ export class TableRoom {
       ? join(this.cfg.eventOutDir, `${this.id}-g${this.gameIdx}.jsonl`)
       : "";
     const sink = attachLastShot(createEventSink(this.hub, eventOut), this.http);
+    // 读人事件进观战流与公开日志（心理层高光时刻）
+    this.http.bindReadSink((event) => sink.broadcast(event as MatchEvent));
     const session = new MatchSession({
       seed,
       handSeed: this.cfg.handSeed,

@@ -79,7 +79,7 @@ zod schema（core 包 `proto.ts`）双端共用；CLI 侧、未来 MCP 侧同一
 - `spin` 全量启用、`throw` 事件
 - 对弈模式：`actor` 字段（当前出杆方）
 
-### 3.1 Match 公开事件流（schema 3）
+### 3.1 Match 公开事件流（schema 4）
 
 中式八球实时观战与后续静态回放共用 `core/match-log.ts` 的 `MatchEvent`：
 
@@ -87,7 +87,9 @@ zod schema（core 包 `proto.ts`）双端共用；CLI 侧、未来 MCP 侧同一
 - `shot`：出杆意图、裁判结果、公开终态、`publicPlan/review`，以及 `sampleMode: "delta-v1"` 的稀疏轨迹
 - `summary`：胜者、原因、总杆数
 
-每条事件携带 `schema: 3`；`hello.table` 给出中式台面的 width/height、开球线和置球点。
+每条事件携带 `schema: 4`；`hello.table` 给出中式台面的 width/height、开球线和置球点。
+事件类型：`hello` / `shot` / `read`（读人公开事件：reader/target/估计/带噪声误差/方向/剩余次数）
+/ `summary`。`read` 可插在任意两杆之间，`read.shot` 为读人时已完成的杆数（不得超前）。
 CLI 的 WebSocket hub 在广播前递归检查字段名，任何层级出现
 `actual/bias/optimal/sigma/drift/hand/noise` 都立即抛错。研究日志与公开事件流保持物理隔离。
 
@@ -125,3 +127,5 @@ schema 版本号只增不减。破坏性变更：升版本 → 写迁移脚本�
 - 2026-08-30 增加整局事件序列校验与 `replay-match` 自包含 HTML；实时历史和离线日志统一按杆排队播放。
 - 2026-08-30 MatchEvent 升 schema 2：hello 增加台面几何；读取 schema 1 时自动补旧 7 尺台尺寸并迁移。
 - 2026-08-30 MatchEvent 升 schema 3：shot 增加公开计划与服务端复盘；schema 1/2 日志自动迁移。
+- 2026-08-31 MatchEvent 升 schema 4：新增 `read` 事件（读人公开事件，心理层）；schema 1/2/3 日志自动迁移。
+  观战/回放页新增读人字幕与金环特效；`cueHeading`（母球出射角，可观测）随 shot 事件透出。

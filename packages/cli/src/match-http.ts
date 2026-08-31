@@ -13,6 +13,7 @@
 
 import type { IncomingMessage } from "node:http";
 import type { MatchEvent, MatchSession, PlayerId, Store } from "@poolhall/core";
+import { MATCH_EVENT_SCHEMA } from "@poolhall/core";
 import { z } from "zod";
 
 export interface EventSink {
@@ -93,6 +94,21 @@ export interface MatchHttpOpts {
   fixed?: { A: string; B: string };
   /** 战绩库（可选）：读人记录入库（读人准确率指标） */
   store?: Store;
+  /** 读人广播（可选）：评分完成后向观战/回放流注入 read 事件 */
+  onRead?: (event: ReadEvent) => void;
+}
+
+/** 读人公开事件载荷（与 MatchReadEvent 同构） */
+export interface ReadEvent {
+  type: "read";
+  schema: number;
+  shot: number;
+  reader: PlayerId;
+  target: PlayerId;
+  estimateDeg: number;
+  errorDeg: number;
+  directionCorrect: boolean;
+  attemptsLeft: number;
 }
 
 /** 每座每局读人次数上限（防把打分接口当二分 oracle 反推隐藏 bias） */
@@ -117,6 +133,8 @@ export class MatchHttp {
   private session: MatchSession | null = null;
   private pending: PendingShot | null = null;
   private claimed: { A: string | null; B: string | null };
+  /** 读人事件转发（大厅：每局换 sink；构造时绑定当前汇） */
+  private readSink: ((event: ReadEvent) => void) | null = null;
   /** 最近若干杆的公开事实环形缓冲（外部选手反馈回路；单杆 lastShot 会被对手下一杆覆盖） */
   readonly recentShots: Array<Record<string, unknown>> = [];
   private static readonly RECENT_CAP = 16;
@@ -191,6 +209,11 @@ export class MatchHttp {
   /** 预占内部（非 external）座位：防止外部 agent 抢到 oracle/llm 的座（混编规格） */
   presetSeat(seat: PlayerId, name: string): void {
     this.claimed[seat] = name;
+  }
+
+  /** 绑定读人事件汇（每局开始时调用；传 null 解绑） */
+  bindReadSink(sink: ((event: ReadEvent) => void) | null): void {
+    this.readSink = sink;
   }
 
   /** 绑定本局的权威对局会话（每局一次；同时重置读人限次） */
@@ -286,6 +309,19 @@ export class MatchHttp {
       scored.errorDeg,
       scored.directionCorrect,
     );
+    const attemptsLeft = READ_MAX - (attempt + 1);
+    const readEvent: ReadEvent = {
+      type: "read",
+      schema: MATCH_EVENT_SCHEMA,
+      shot: session.result.shots,
+      reader: seat,
+      target: scored.target,
+      estimateDeg: parsed.data.estimateDeg,
+      errorDeg: Number(scored.errorDeg.toFixed(3)),
+      directionCorrect: scored.directionCorrect,
+      attemptsLeft,
+    };
+    (this.readSink ?? this.opts.onRead)?.(readEvent);
     return {
       status: 200,
       body: {
@@ -293,7 +329,7 @@ export class MatchHttp {
         target: scored.target,
         errorDeg: Number(scored.errorDeg.toFixed(3)),
         directionCorrect: scored.directionCorrect,
-        attemptsLeft: READ_MAX - (attempt + 1),
+        attemptsLeft,
       },
     };
   }

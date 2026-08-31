@@ -27,6 +27,7 @@ export type {
   MatchEvent,
   MatchHelloEvent,
   MatchPublicPlan,
+  MatchReadEvent,
   MatchShotEvent,
   MatchSummaryEvent,
 } from "./match-log.ts";
@@ -42,6 +43,7 @@ export {
   MatchEventSchema,
   MatchHelloEventSchema,
   MatchPublicPlanSchema,
+  MatchReadEventSchema,
   MatchShotEventSchema,
   MatchSummaryEventSchema,
   parsePublicMatchEvent,

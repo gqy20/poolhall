@@ -80,6 +80,8 @@ body.offline .server-control { display: none; }
 .caption.mock b { color: #FFD9A0; }
 .caption.mock span { color: #E8C9A0; font-style: italic; }
 .caption.victory b { color: #E8B84B; }
+.caption.read b { color: #F5E6B8; text-shadow: 0 2px 18px rgba(232,184,75,.45), 0 0 2px rgba(11,20,16,.8); }
+.caption.read span { color: #E8B84B; }
 .caption.streak b { font-size: clamp(18px, 3vw, 30px); color: #F5E6B8; }
 @keyframes capPop { from { opacity: 0; transform: translate(-50%, 12px) scale(.82); }
   to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
@@ -902,6 +904,48 @@ let playback = Promise.resolve();
 let playbackGeneration = 0;
 let currentEvents = [];
 
+/* 读人高光：金环凝视特效 + 字幕（心理层招牌时刻） */
+function renderRead(msg, generation) {
+  if (generation !== playbackGeneration) return;
+  const readerName = names[msg.reader] ?? msg.reader;
+  const dirText = msg.directionCorrect ? "方向读对" : "方向读错";
+  const dirKind = msg.directionCorrect ? "✓" : "✗";
+  showCaption(
+    `👁 ${readerName} 读人：${msg.estimateDeg.toFixed(3)}°`,
+    `误差 ${msg.errorDeg.toFixed(3)}° · ${dirText} ${dirKind} · 剩余 ${msg.attemptsLeft} 次`,
+    "read",
+    2400,
+  );
+  if (!reduceMotion && scene.fx) {
+    const cx = TABLE_W / 2, cy = TABLE_H / 2;
+    // 金环双击：从中心扩散再回收（凝视的意象）
+    for (let i = 0; i < 2; i++) {
+      const ring = el("circle", { cx, cy, r: 0.06, fill: "none",
+        stroke: i ? "#E8B84B" : "#F5E6B8", "stroke-width": 0.004, opacity: 0 });
+      scene.fx.appendChild(ring);
+      fxAdd({ ms: 900, delay: i * 260, step: (k) => {
+        const grow = k < 0.45 ? k / 0.45 : 1 - (k - 0.45) / 0.55;
+        ring.setAttribute("r", String(0.06 + grow * 0.3));
+        ring.setAttribute("opacity", String(0.85 * grow));
+      }, end: () => ring.remove() });
+    }
+    // 眼睛意象：中心水平凝视线
+    const gaze = el("line", { x1: cx - 0.22, y1: cy, x2: cx + 0.22, y2: cy,
+      stroke: "#F5E6B8", "stroke-width": 0.0035, "stroke-linecap": "round", opacity: 0 });
+    scene.fx.appendChild(gaze);
+    fxAdd({ ms: 700, delay: 200, step: (k) => {
+      const inn = Math.min(1, k * 3);
+      const out = Math.max(0, k * 3 - 2);
+      gaze.setAttribute("x1", String(cx - 0.22 * inn * (1 - out * 0.6)));
+      gaze.setAttribute("x2", String(cx + 0.22 * inn * (1 - out * 0.6)));
+      gaze.setAttribute("opacity", String(0.9 * inn * (1 - out)));
+    }, end: () => gaze.remove() });
+  }
+  appendLog(msg.reader,
+    `读人：估 ${msg.estimateDeg.toFixed(3)}° → 误差 ${msg.errorDeg.toFixed(3)}°（${dirText}）`,
+    msg.directionCorrect ? "pot" : "miss");
+}
+
 function renderSummary(msg, generation) {
   if (generation !== playbackGeneration) return;
   const w = msg.winner === "A" ? "A 胜" : msg.winner === "B" ? "B 胜" : "平局";
@@ -985,6 +1029,11 @@ function handle(msg, record = true) {
     const generation = playbackGeneration;
     playback = playback.then(() =>
       generation === playbackGeneration ? renderShot(msg, generation) : undefined,
+    );
+  } else if (msg.type === "read") {
+    const generation = playbackGeneration;
+    playback = playback.then(() =>
+      generation === playbackGeneration ? renderRead(msg, generation) : undefined,
     );
   } else if (msg.type === "summary") {
     const generation = playbackGeneration;

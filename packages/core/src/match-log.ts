@@ -6,7 +6,7 @@
  */
 import { z } from "zod";
 
-export const MATCH_EVENT_SCHEMA = 3 as const;
+export const MATCH_EVENT_SCHEMA = 4 as const;
 
 const PositionSchema = z.object({ x: z.number().finite(), y: z.number().finite() });
 const PlayerSchema = z.enum(["A", "B"]);
@@ -82,13 +82,29 @@ export const MatchSummaryEventSchema = z.object({
   shots: z.number().int().nonnegative(),
 });
 
+/** 读人事件（心理层）：选手提交对对手偏差的估计与服务端带噪声评分 */
+export const MatchReadEventSchema = z.object({
+  type: z.literal("read"),
+  schema: z.literal(MATCH_EVENT_SCHEMA),
+  shot: z.number().int().nonnegative(),
+  reader: PlayerSchema,
+  target: PlayerSchema,
+  estimateDeg: z.number().finite(),
+  /** 服务端返回的带噪声误差（度，非负）；真实偏差永不出库 */
+  errorDeg: z.number().finite().nonnegative(),
+  directionCorrect: z.boolean(),
+  attemptsLeft: z.number().int().nonnegative(),
+});
+
 export const MatchEventSchema = z.discriminatedUnion("type", [
   MatchHelloEventSchema,
   MatchShotEventSchema,
+  MatchReadEventSchema,
   MatchSummaryEventSchema,
 ]);
 export type MatchHelloEvent = z.infer<typeof MatchHelloEventSchema>;
 export type MatchShotEvent = z.infer<typeof MatchShotEventSchema>;
+export type MatchReadEvent = z.infer<typeof MatchReadEventSchema>;
 export type MatchSummaryEvent = z.infer<typeof MatchSummaryEventSchema>;
 export type MatchEvent = z.infer<typeof MatchEventSchema>;
 export type MatchDeltaSample = z.infer<typeof DeltaSampleSchema>;
@@ -178,7 +194,7 @@ export function encodeMatchEvent(event: MatchEvent): string {
 
 export function decodeMatchEventLine(line: string): MatchEvent {
   const payload = JSON.parse(line) as Record<string, unknown>;
-  if (payload.schema === 1 || payload.schema === 2) {
+  if (payload.schema === 1 || payload.schema === 2 || payload.schema === 3) {
     const legacySchema = payload.schema;
     payload.schema = MATCH_EVENT_SCHEMA;
     if (payload.type === "hello" && legacySchema === 1) {
@@ -215,6 +231,9 @@ export function decodeMatchEventLog(text: string): MatchEvent[] {
       if (event.trial !== shots)
         throw new Error(`MatchEvent 杆号不连续：期待 ${shots}，得到 ${event.trial}`);
       shots++;
+    }
+    if (event.type === "read" && event.shot > shots) {
+      throw new Error(`MatchEvent 读人杆号超前：read.shot=${event.shot}，当前 ${shots}`);
     }
     if (event.type === "summary") {
       if (index !== events.length - 1) throw new Error("MatchEvent summary 必须是末条");
