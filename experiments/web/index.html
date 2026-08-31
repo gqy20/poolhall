@@ -724,7 +724,7 @@ function absorbBall(id, pocketId) {
 }
 
 /* 开球：接触点冲击波 + 震屏 + 字幕 */
-function showBreakShock(x, y) {
+function showBreakShock(x, y, by) {
   if (!scene.fx || reduceMotion) return;
   for (let i = 0; i < 3; i++) {
     const ring = el("circle", { cx: x, cy: y, r: 0.02, fill: "none",
@@ -736,7 +736,7 @@ function showBreakShock(x, y) {
     }, end: () => ring.remove() });
   }
   shakeTable(false);
-  showCaption("💥 开球", `${names[s.by] ?? s.by} 冲击球堆`, "break", 1200);
+  showCaption("💥 开球", `${names[by] ?? by} 冲击球堆`, "break", 1200);
 }
 
 /* 白球进袋：全场暗场 + 袋口聚光灯 + 白球幽灵（画 × 眼）+ 嘲讽字幕 + 重震 */
@@ -798,13 +798,13 @@ function onRemoval(s, r) {
   potFlash(pocketId);
 }
 
-function detectBreak(live) {
+function detectBreak(live, by) {
   const cue = live.cue;
   if (!cue) return false;
   for (const [id, p] of Object.entries(live)) {
     if (id === "cue") continue;
     if (Math.hypot(p.x - cue.x, p.y - cue.y) < 2 * R + 0.006) {
-      showBreakShock(p.x, p.y);
+      showBreakShock(p.x, p.y, by);
       return true;
     }
   }
@@ -885,7 +885,7 @@ function animateShot(s) {
       const liveBalls = interpolateBalls(samples.frames, targetT);
       pushActual(liveBalls, s);
       updateScene(liveBalls, playerColor);
-      if (!broken && s.trial === 0) broken = detectBreak(liveBalls);
+      if (!broken && s.trial === 0) broken = detectBreak(liveBalls, s.by);
       while (removalIdx < removals.length && removals[removalIdx].t <= targetT) {
         onRemoval(s, removals[removalIdx]);
         removalIdx++;
