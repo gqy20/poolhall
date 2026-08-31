@@ -32,6 +32,22 @@ describe("实时对局前端", () => {
     expect(source).toContain("renderPublicPlan");
     expect(source).toContain("logEl.prepend(div)");
     expect(html).toContain("overflow: hidden; background: var(--bg)");
+    // 知行差距可视化 + 三套特效（开球冲击波/进球闪光/白球嘲讽聚光灯）
+    expect(source).toContain('class: "aim-layer"');
+    expect(source).toContain('class: "aim-pred"');
+    expect(source).toContain('class: "aim-act"');
+    expect(source).toContain("drawPrediction");
+    expect(source).toContain("pushActual");
+    expect(source).toContain("showBreakShock");
+    expect(source).toContain("potFlash");
+    expect(source).toContain("showScratchMock");
+    expect(source).toContain("showVictory");
+    expect(source).toContain("shakeTable");
+    expect(html).toContain("tableShake");
+    expect(html).toContain("shake-hard");
+    expect(html).toContain('id="caption"');
+    expect(html).toContain("capPop");
+    expect(source).toContain("removals");
   });
 
   it("公开 JSONL 可生成无网络依赖的自包含 HTML", async () => {

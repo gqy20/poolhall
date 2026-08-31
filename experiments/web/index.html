@@ -63,6 +63,33 @@ body.offline .server-control { display: none; }
 .stage:fullscreen .control-label, .stage:fullscreen .control-status { color: #e4e8e5; }
 .legend { padding: 8px 12px; font-size: 12px; color: var(--ink-soft); display: flex; gap: 16px; flex-wrap: wrap; }
 .legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 1.5px; }
+/* 知行差距可视化：预测线（AI 的计划）vs 实际轨迹 */
+.aim-layer { transition: opacity .5s ease; }
+.aim-pred { stroke: rgba(58,92,128,.9); stroke-width: .0055; stroke-dasharray: .03 .024; }
+.aim-obj { stroke: rgba(58,92,128,.65); stroke-width: .0045; }
+.aim-act { fill: none; stroke: #E8872D; stroke-width: .008; stroke-linecap: round; opacity: .92; }
+/* 大字幕（开球/进球连击/白球进袋嘲讽/胜负） */
+.caption { position: absolute; left: 50%; top: 11%; transform: translate(-50%, 0);
+  pointer-events: none; text-align: center; opacity: 0; z-index: 5; white-space: nowrap; }
+.caption b { display: block; font-size: clamp(22px, 4.6vw, 46px); font-weight: 800;
+  letter-spacing: .08em; color: #F7F4EE; text-shadow: 0 2px 16px rgba(11,20,16,.6), 0 0 2px rgba(11,20,16,.8); }
+.caption span { display: block; margin-top: 3px; font-size: 13px; color: #F1EDE3;
+  text-shadow: 0 1px 8px rgba(11,20,16,.7); opacity: .95; }
+.caption.show { animation: capPop .5s cubic-bezier(.22,1,.36,1) both; }
+.caption.show.out { animation: capFade .38s ease both; }
+.caption.mock b { color: #FFD9A0; }
+.caption.mock span { color: #E8C9A0; font-style: italic; }
+.caption.victory b { color: #E8B84B; }
+.caption.streak b { font-size: clamp(18px, 3vw, 30px); color: #F5E6B8; }
+@keyframes capPop { from { opacity: 0; transform: translate(-50%, 12px) scale(.82); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes capFade { from { opacity: 1; } to { opacity: 0; } }
+/* 震屏：开球轻震 / 白球进袋重震 */
+@keyframes tableShake { 0%,100% { transform: translate(0,0) rotate(0); }
+  18% { transform: translate(3px,-2px) rotate(.3deg); } 36% { transform: translate(-3px,2px) rotate(-.25deg); }
+  54% { transform: translate(2px,2px) rotate(.18deg); } 72% { transform: translate(-2px,-1px) rotate(-.12deg); } }
+.table-frame.shake { animation: tableShake .5s cubic-bezier(.36,.07,.19,.97); }
+.table-frame.shake-hard { animation: tableShake .75s cubic-bezier(.36,.07,.19,.97); }
 .side { height: 100%; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .kpi { padding: 4px 4px 16px; border-bottom: 1px solid var(--grid); }
 .kpi h3 { margin: 0 0 6px; font-size: 12px; color: var(--ink-soft); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -120,6 +147,9 @@ body.offline .server-control { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .control, .stage:fullscreen .controls { transition: none; }
+  .table-frame.shake, .table-frame.shake-hard { animation: none; }
+  .caption.show, .caption.show.out { animation: none; }
+  .aim-layer { transition: none; }
 }
 </style>
 </head>
@@ -155,12 +185,15 @@ body.offline .server-control { display: none; }
     <div class="table-frame" id="table">
       <div class="placeholder">球台将在第一杆时激活</div>
     </div>
+    <div class="caption" id="caption" aria-live="polite"></div>
     </div>
     <div class="legend">
       <span><i style="background:var(--A)"></i>A 选手</span>
       <span><i style="background:var(--B)"></i>B 选手</span>
       <span><i style="background:var(--pot)"></i>进球</span>
       <span><i style="background:var(--miss)"></i>未中/犯规</span>
+      <span><i style="background:rgba(58,92,128,.9)"></i>预测线（AI 计划）</span>
+      <span><i style="background:#E8872D"></i>实际轨迹</span>
     </div>
   </div>
 
@@ -344,8 +377,14 @@ function createScene() {
   }
   scene.cue = createCueStick();
   scene.ballLayer = el("g", { class: "ball-layer" });
+  scene.aim = el("g", { class: "aim-layer" });
+  scene.fx = el("g", { class: "fx-layer" });
+  scene.pockets = {};
+  for (const p of pockets) scene.pockets[p.id] = { x: p.x, y: p.y };
+  root.appendChild(scene.aim);
   root.appendChild(scene.cue);
   root.appendChild(scene.ballLayer);
+  root.appendChild(scene.fx);
   scene.root = root;
   tableFrame.replaceChildren(root);
 }
@@ -362,9 +401,11 @@ function updateScene(positions, playerColor, cueAngle) {
       scene.ballLayer.appendChild(group);
     }
     updateBallNode(group, p);
+    group.__p = p;
+    if (id === "cue") lastCuePos = p;
   }
   for (const [id, group] of scene.balls) {
-    if (!live.has(id)) group.setAttribute("display", "none");
+    if (!live.has(id) && !tweening.has(id)) group.setAttribute("display", "none");
   }
 }
 
@@ -430,6 +471,19 @@ async function renderShot(s, generation) {
   if (s.pottedBalls?.length > 0) {
     if (s.by === "A") kpi.A += s.pottedBalls.length;
     else kpi.B += s.pottedBalls.length;
+    if (!s.foul) {
+      const balls = s.pottedBalls.join("、");
+      if (lastPotBy === s.by) potStreak += 1;
+      else { lastPotBy = s.by; potStreak = 1; }
+      if (potStreak >= 2) {
+        showCaption(`${names[s.by] ?? s.by} 连击 ×${potStreak}`, `连进 ${balls} 号球`, "streak", 1300);
+      } else {
+        showCaption(`⚫ ${balls} 号进袋`, s.pottedPockets?.[0] ? `${s.pottedPockets[0].pocket.toUpperCase()} 袋` : "", "streak", 1100);
+      }
+    }
+  } else if (!s.foul) {
+    lastPotBy = null;
+    potStreak = 0;
   }
   const label = resultLabel(s);
   const cls = s.scratch ? "miss" : s.foul ? "foul" : s.pottedBalls?.length > 0 ? "pot" : "";
@@ -456,13 +510,27 @@ function cancelAnimation() {
 }
 function expandSamples(s) {
   const input = s.samples || [];
-  if (s.sampleMode !== "delta-v1") return input;
+  if (s.sampleMode !== "delta-v1") {
+    const removals = [];
+    let prev = null;
+    for (const f of input) {
+      if (prev) for (const id of Object.keys(prev)) if (!(id in f.pos)) removals.push({ t: f.t, id });
+      prev = f.pos;
+    }
+    return { frames: input, removals };
+  }
   const state = {};
-  return input.map((sample) => {
-    for (const id of sample.removed) delete state[id];
+  const frames = [];
+  const removals = [];
+  for (const sample of input) {
+    for (const id of sample.removed ?? []) {
+      removals.push({ t: sample.t, id });
+      delete state[id];
+    }
     for (const [id, pos] of Object.entries(sample.pos)) state[id] = { x: pos.x, y: pos.y };
-    return { t: sample.t, pos: Object.fromEntries(Object.entries(state).map(([id, pos]) => [id, { ...pos }])) };
-  });
+    frames.push({ t: sample.t, pos: Object.fromEntries(Object.entries(state).map(([id, pos]) => [id, { ...pos }])) });
+  }
+  return { frames, removals };
 }
 
 function interpolateBalls(samples, targetT) {
@@ -486,10 +554,280 @@ function interpolateBalls(samples, targetT) {
   return liveBalls;
 }
 
+/* ---------- 特效引擎 + 知行差距可视化 ---------- */
+const tweening = new Set();
+const FX = { items: [], raf: 0 };
+const names = { A: "A", B: "B" };
+let lastCuePos = null;
+let lastPotBy = null;
+let potStreak = 0;
+let actCue = null, actObj = null, lastCuePt = null, lastObjPt = null;
+const MOCKS = [
+  "对手礼貌性地没有笑出声",
+  "观众席传来一声轻咳",
+  "母球表示想静静",
+  "解说员沉默了两秒",
+  "这一杆，收走了一颗白球",
+  "掌声给了勇气，没给准度",
+];
+
+function fxAdd(item) {
+  item.t0 = performance.now();
+  FX.items.push(item);
+  if (!FX.raf) FX.raf = requestAnimationFrame(fxFrame);
+}
+function fxFrame(now) {
+  FX.items = FX.items.filter((it) => {
+    const k = (now - it.t0 - (it.delay ?? 0)) / it.ms;
+    if (k < 0) return true;
+    const done = k >= 1;
+    it.step(Math.min(1, k), now);
+    if (done) it.end?.();
+    return !done;
+  });
+  FX.raf = FX.items.length ? requestAnimationFrame(fxFrame) : 0;
+}
+
+function showCaption(main, sub, kind = "", ms = 1500) {
+  captionEl.className = `caption ${kind}`;
+  captionEl.innerHTML = `<b>${main}</b>${sub ? `<span>${sub}</span>` : ""}`;
+  void captionEl.offsetWidth;
+  captionEl.classList.add("show");
+  clearTimeout(captionEl.__t1);
+  clearTimeout(captionEl.__t2);
+  captionEl.__t1 = setTimeout(() => captionEl.classList.add("out"), Math.max(0, ms - 380));
+  captionEl.__t2 = setTimeout(() => { captionEl.className = "caption"; }, ms);
+}
+
+function shakeTable(hard) {
+  tableFrame.classList.remove("shake", "shake-hard");
+  void tableFrame.offsetWidth;
+  tableFrame.classList.add(hard ? "shake-hard" : "shake");
+}
+
+function nearestPocket(p) {
+  let best = "ct";
+  let d0 = Infinity;
+  for (const [id, c] of Object.entries(scene.pockets ?? {})) {
+    const d = Math.hypot(c.x - p.x, c.y - p.y);
+    if (d < d0) { d0 = d; best = id; }
+  }
+  return best;
+}
+
+function rayLen(x, y, dx, dy, maxLen) {
+  let t = maxLen;
+  if (dx > 1e-9) t = Math.min(t, (TABLE_W - R - x) / dx);
+  if (dx < -1e-9) t = Math.min(t, (x - R) / -dx);
+  if (dy > 1e-9) t = Math.min(t, (TABLE_H - R - y) / dy);
+  if (dy < -1e-9) t = Math.min(t, (y - R) / -dy);
+  return Math.max(0, t);
+}
+
+function drawPrediction(s, startPos) {
+  if (scene.aim) {
+    scene.aim.replaceChildren();
+    scene.aim.style.opacity = "1";
+  }
+  const cue = startPos?.cue;
+  const rad = ((s.intentAngle ?? 0) * Math.PI) / 180;
+  const dx = Math.cos(rad), dy = -Math.sin(rad);
+  if (cue && Number.isFinite(s.intentAngle)) {
+    const len = rayLen(cue.x, cue.y, dx, dy, 1.9);
+    if (len > 0.04) {
+      scene.aim.appendChild(el("line", {
+        class: "aim-pred",
+        x1: cue.x + dx * R * 1.6, y1: cue.y + dy * R * 1.6,
+        x2: cue.x + dx * (R * 1.6 + len), y2: cue.y + dy * (R * 1.6 + len),
+      }));
+    }
+  }
+  const tb = s.targetBall;
+  const pk = tb && s.targetPocket ? scene.pockets?.[s.targetPocket] : null;
+  const tPos = tb ? startPos?.[tb] : null;
+  if (tPos && pk) {
+    scene.aim.appendChild(el("line", {
+      class: "aim-pred aim-obj", x1: tPos.x, y1: tPos.y, x2: pk.x, y2: pk.y,
+    }));
+  }
+  actCue = el("polyline", { class: "aim-act" });
+  scene.aim.appendChild(actCue);
+  actObj = null;
+  lastCuePt = null;
+  lastObjPt = null;
+  if (tb) {
+    actObj = el("polyline", { class: "aim-act" });
+    scene.aim.appendChild(actObj);
+  }
+}
+
+function pushActual(live, s) {
+  const push = (line, p, last) => {
+    if (!line || !p) return last;
+    if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 0.006) {
+      line.__pts = `${line.__pts ?? ""}${p.x.toFixed(3)},${p.y.toFixed(3)} `;
+      line.setAttribute("points", line.__pts);
+      return p;
+    }
+    return last;
+  };
+  lastCuePt = push(actCue, live.cue, lastCuePt);
+  lastObjPt = push(actObj, live[s.targetBall ?? ""], lastObjPt);
+}
+
+function fadeAimLater() {
+  setTimeout(() => {
+    if (scene.aim) scene.aim.style.opacity = "0";
+  }, 1500);
+}
+
+/* 进球：袋口金圈闪光 + 球被吸入袋口 */
+function potFlash(pocketId) {
+  const pk = scene.pockets?.[pocketId];
+  if (!pk || !scene.fx || reduceMotion) return;
+  for (let i = 0; i < 2; i++) {
+    const ring = el("circle", { class: "fx-pot", cx: pk.x, cy: pk.y, r: 0.03,
+      fill: "none", stroke: "#E8B84B", "stroke-width": 0.005 });
+    scene.fx.appendChild(ring);
+    fxAdd({ ms: 520 + i * 150, delay: i * 110, step: (k) => {
+      ring.setAttribute("r", String(0.03 + k * (0.09 + i * 0.04)));
+      ring.setAttribute("opacity", String(0.9 * (1 - k)));
+    }, end: () => ring.remove() });
+  }
+  const glow = el("circle", { cx: pk.x, cy: pk.y, r: 0.05, fill: "#E8B84B", opacity: 0.5 });
+  scene.fx.appendChild(glow);
+  fxAdd({ ms: 400, step: (k) => {
+    glow.setAttribute("r", String(0.05 + k * 0.025));
+    glow.setAttribute("opacity", String(0.5 * (1 - k)));
+  }, end: () => glow.remove() });
+}
+
+function absorbBall(id, pocketId) {
+  const group = scene.balls.get(id);
+  const pk = scene.pockets?.[pocketId];
+  if (!group || !pk || reduceMotion) return;
+  const from = group.__p ?? pk;
+  tweening.add(id);
+  fxAdd({ ms: 340, step: (k) => {
+    const e = k * k;
+    const x = from.x + (pk.x - from.x) * e;
+    const y = from.y + (pk.y - from.y) * e;
+    group.setAttribute("transform", `translate(${x} ${y}) scale(${1 - 0.72 * e})`);
+    group.setAttribute("opacity", String(1 - 0.55 * e));
+  }, end: () => {
+    group.setAttribute("display", "none");
+    group.setAttribute("opacity", "1");
+    tweening.delete(id);
+  } });
+}
+
+/* 开球：接触点冲击波 + 震屏 + 字幕 */
+function showBreakShock(x, y) {
+  if (!scene.fx || reduceMotion) return;
+  for (let i = 0; i < 3; i++) {
+    const ring = el("circle", { cx: x, cy: y, r: 0.02, fill: "none",
+      stroke: "rgba(247,244,238,.9)", "stroke-width": 0.005 });
+    scene.fx.appendChild(ring);
+    fxAdd({ ms: 720, delay: i * 90, step: (k) => {
+      ring.setAttribute("r", String(0.02 + k * (0.48 + i * 0.16)));
+      ring.setAttribute("opacity", String(0.9 * (1 - k) * (1 - k)));
+    }, end: () => ring.remove() });
+  }
+  shakeTable(false);
+  showCaption("💥 开球", `${names[s.by] ?? s.by} 冲击球堆`, "break", 1200);
+}
+
+/* 白球进袋：全场暗场 + 袋口聚光灯 + 白球幽灵（画 × 眼）+ 嘲讽字幕 + 重震 */
+function showScratchMock(s) {
+  if (!scene.fx || reduceMotion) return;
+  const pk = scene.pockets?.[nearestPocket(lastCuePos ?? { x: TABLE_W / 2, y: TABLE_H / 2 })];
+  if (!pk) return;
+  const dim = el("rect", { x: 0, y: 0, width: TABLE_W, height: TABLE_H, fill: "#0B1410", opacity: 0 });
+  const pool = el("circle", { cx: pk.x, cy: pk.y, r: 0.17, fill: "#F5E6B8", opacity: 0 });
+  const core = el("circle", { cx: pk.x, cy: pk.y, r: 0.07, fill: "#FFF6DE", opacity: 0 });
+  const ghost = el("g", { opacity: 0 }, [
+    el("circle", { cx: pk.x, cy: pk.y, r: R, fill: "#FAFAF7", stroke: "#343A3D", "stroke-width": 0.0025 }),
+    el("line", { x1: pk.x - 0.007, y1: pk.y - 0.007, x2: pk.x + 0.007, y2: pk.y + 0.007,
+      stroke: "#8C2F3C", "stroke-width": 0.003 }),
+    el("line", { x1: pk.x + 0.007, y1: pk.y - 0.007, x2: pk.x - 0.007, y2: pk.y + 0.007,
+      stroke: "#8C2F3C", "stroke-width": 0.003 }),
+  ]);
+  scene.fx.append(dim, pool, core, ghost);
+  fxAdd({ ms: 2300, step: (k, now) => {
+    const inn = Math.min(1, k * 4);
+    const out = Math.max(0, k * 4 - 3);
+    dim.setAttribute("opacity", String(0.5 * inn * (1 - out)));
+    const flick = 0.9 + 0.1 * Math.sin(now / 90);
+    pool.setAttribute("opacity", String(0.22 * inn * flick * (1 - out)));
+    core.setAttribute("opacity", String(0.38 * inn * (1 - out)));
+    ghost.setAttribute("opacity", String(inn * (k > 0.12 ? (0.5 + 0.5 * Math.sin(now / 160)) : 1) * (1 - out)));
+  }, end: () => { dim.remove(); pool.remove(); core.remove(); ghost.remove(); } });
+  shakeTable(true);
+  showCaption("母球进袋", MOCKS[s.trial % MOCKS.length], "mock", 2300);
+}
+
+/* 胜负：金色粒子爆发 + 字幕 */
+function showVictory(winner, msg) {
+  if (!scene.fx || reduceMotion) return;
+  const cx = TABLE_W / 2, cy = TABLE_H / 2;
+  for (let i = 0; i < 26; i++) {
+    const a = (i / 26) * Math.PI * 2 + 0.13;
+    const c = el("circle", { cx, cy, r: 0.012, fill: i % 3 ? "#E8B84B" : "#F5E6B8" });
+    scene.fx.appendChild(c);
+    fxAdd({ ms: 950 + (i % 5) * 110, step: (k) => {
+      const d = 0.08 + k * (0.72 + (i % 4) * 0.12);
+      c.setAttribute("cx", String(cx + Math.cos(a) * d));
+      c.setAttribute("cy", String(cy + Math.sin(a) * d * 0.62));
+      c.setAttribute("opacity", String(1 - k));
+    }, end: () => c.remove() });
+  }
+  const reason = (msg.reason ?? "").replaceAll("——", "：");
+  showCaption(`🏆 ${names[winner] ?? winner} 胜`, reason, "victory", 2800);
+}
+
+function onRemoval(s, r) {
+  if (r.id === "cue") {
+    absorbBall("cue", nearestPocket(scene.balls.get("cue")?.__p ?? { x: TABLE_W / 2, y: TABLE_H / 2 }));
+    return;
+  }
+  const pocketId = s.pottedPockets?.find((p) => p.ball === r.id)?.pocket;
+  if (!pocketId) return;
+  absorbBall(r.id, pocketId);
+  potFlash(pocketId);
+}
+
+function detectBreak(live) {
+  const cue = live.cue;
+  if (!cue) return false;
+  for (const [id, p] of Object.entries(live)) {
+    if (id === "cue") continue;
+    if (Math.hypot(p.x - cue.x, p.y - cue.y) < 2 * R + 0.006) {
+      showBreakShock(p.x, p.y);
+      return true;
+    }
+  }
+  return false;
+}
+
+function clearAimFx() {
+  if (scene.aim) {
+    scene.aim.replaceChildren();
+    scene.aim.style.opacity = "1";
+  }
+  if (scene.fx) scene.fx.replaceChildren();
+  for (const it of FX.items) it.end?.();
+  FX.items = [];
+  tweening.clear();
+  lastPotBy = null;
+  potStreak = 0;
+  lastCuePos = null;
+  captionEl.className = "caption";
+}
+
 function animateShot(s) {
   cancelAnimation();
   const samples = expandSamples(s);
-  if (samples.length < 2) {
+  if (samples.frames.length < 2) {
     updateScene(s.finalBalls);
     return Promise.resolve();
   }
@@ -497,14 +835,19 @@ function animateShot(s) {
     updateScene(s.finalBalls);
     return Promise.resolve();
   }
-  const t0 = samples[0].t;
-  const tEnd = samples[samples.length - 1].t;
+  const t0 = samples.frames[0].t;
+  const tEnd = samples.frames[samples.frames.length - 1].t;
   const dur = Math.max(1.5, Math.min(8, tEnd - t0));
   const cueHold = Array.isArray(embeddedEvents) ? 250 : 850;
   let playbackMs = 0;
   let lastNow = performance.now();
+  let broken = false;
+  let removalIdx = 0;
+  let scratchShown = false;
+  const removals = samples.removals;
   // 球员色：A 蓝、B 橙；瞄准线虚色用同色
   const playerColor = s.by === "A" ? "var(--A)" : "var(--B)";
+  drawPrediction(s, samples.frames[0].pos);
 
   return new Promise((resolve) => {
     animResolve = resolve;
@@ -518,7 +861,7 @@ function animateShot(s) {
       }
       playbackMs += delta * playbackSpeed;
       if (playbackMs < cueHold) {
-        updateScene(samples[0].pos, playerColor, s.intentAngle);
+        updateScene(samples.frames[0].pos, playerColor, s.intentAngle);
         animFrame = requestAnimationFrame(frame);
         return;
       }
@@ -526,14 +869,29 @@ function animateShot(s) {
       const tv = elapsed / dur;
       if (tv >= 1) {
         updateScene(s.finalBalls);
+        fadeAimLater();
+        if (s.scratch && !scratchShown) {
+          scratchShown = true;
+          showScratchMock(s);
+        }
         animFrame = null;
         animResolve = null;
         resolve();
         return;
       }
       const targetT = t0 + tv * (tEnd - t0);
-      const liveBalls = interpolateBalls(samples, targetT);
+      const liveBalls = interpolateBalls(samples.frames, targetT);
+      pushActual(liveBalls, s);
       updateScene(liveBalls, playerColor);
+      if (!broken && s.trial === 0) broken = detectBreak(liveBalls);
+      while (removalIdx < removals.length && removals[removalIdx].t <= targetT) {
+        onRemoval(s, removals[removalIdx]);
+        removalIdx++;
+      }
+      if (s.scratch && !scratchShown && !liveBalls.cue) {
+        scratchShown = true;
+        showScratchMock(s);
+      }
       animFrame = requestAnimationFrame(frame);
     }
     animFrame = requestAnimationFrame(frame);
@@ -549,6 +907,8 @@ function renderSummary(msg, generation) {
   const w = msg.winner === "A" ? "A 胜" : msg.winner === "B" ? "B 胜" : "平局";
   const color = msg.winner === "A" ? "var(--A)" : msg.winner === "B" ? "var(--B)" : "var(--ink-soft)";
   const reason = (msg.reason ?? "").replaceAll("——平局", "").replaceAll("——", "：");
+  if (msg.winner && !reduceMotion) showVictory(msg.winner, msg);
+  else showCaption(w, reason || "杆数耗尽", "victory", 2200);
   status.innerHTML = `<b style="color:${color}">${w}</b>${reason ? `：${reason}` : ""}（${msg.shots} 杆）`;
   aiPhase.textContent = "对局结束";
   replayButton.disabled = false;
@@ -564,6 +924,7 @@ function beginSession(msg) {
   replayButton.disabled = true;
   kpi.shot = 0; kpi.turn = "-"; kpi.A = 0; kpi.B = 0;
   setKpi();
+  clearAimFx();
   lastEventEl.textContent = "—";
   lastEventDetail.textContent = "AI 选择目标后将在这里展示公开计划";
   aiPhase.className = "ai-phase";
@@ -613,8 +974,13 @@ function handle(msg, record = true) {
     document.getElementById("meta").innerHTML =
       `seed <b>${msg.seed}</b> · <span class="A">A: ${msg.nameA}</span> vs <span class="B">B: ${msg.nameB}</span>` +
       (msg.promptA ? `<br/><span style="font-size:11px">promptA=${msg.promptA} · promptB=${msg.promptB}</span>` : "");
+    names.A = msg.nameA || "A";
+    names.B = msg.nameB || "B";
+    if (scene.root) createScene();
     status.textContent = "🔵 等待首杆";
     updateScene(null);
+    lastPotBy = null;
+    potStreak = 0;
   } else if (msg.type === "shot") {
     const generation = playbackGeneration;
     playback = playback.then(() =>
@@ -628,6 +994,7 @@ function handle(msg, record = true) {
 
 const status = document.getElementById("status");
 const tableFrame = document.getElementById("table");
+const captionEl = document.getElementById("caption");
 const lastEventEl = document.getElementById("last-event");
 const lastEventDetail = document.getElementById("last-event-detail");
 const logEl = document.getElementById("log");
