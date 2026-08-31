@@ -83,8 +83,12 @@ export class MatchRemoteClient {
   }
 
   /** 读对手（心理层）：提交对对手习惯偏差的估计（度），服务端带噪声评分、限次 */
-  read(estimateDeg: number): Promise<unknown> {
-    return this.request("POST", this.withTable("/match/read"), { name: this.name, estimateDeg });
+  read(estimateDeg: number, rationale?: string): Promise<unknown> {
+    return this.request("POST", this.withTable("/match/read"), {
+      name: this.name,
+      estimateDeg,
+      ...(rationale ? { rationale } : {}),
+    });
   }
 
   /** 大厅模式追加 ?table= 参数 */

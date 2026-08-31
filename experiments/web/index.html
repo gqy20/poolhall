@@ -82,6 +82,11 @@ body.offline .server-control { display: none; }
 .caption.victory b { color: #E8B84B; }
 .caption.read b { color: #F5E6B8; text-shadow: 0 2px 18px rgba(232,184,75,.45), 0 0 2px rgba(11,20,16,.8); }
 .caption.read span { color: #E8B84B; }
+.caption.read span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; max-width: min(72vw, 640px); margin: 4px auto 0; font-size: 12px; }
+/* AI 思路面板：新计划/读人推理到来时脉冲提醒视线 */
+.ai-panel.pulse { animation: panelPulse 1.1s ease-out 3; }
+@keyframes panelPulse { 0% { box-shadow: 0 0 0 0 rgba(27,77,62,.0); background: rgba(169,216,197,.38); }
+  60% { background: rgba(169,216,197,.18); } 100% { box-shadow: 0 0 0 6px rgba(169,216,197,0); background: transparent; } }
 .caption.streak b { font-size: clamp(18px, 3vw, 30px); color: #F5E6B8; }
 @keyframes capPop { from { opacity: 0; transform: translate(-50%, 12px) scale(.82); }
   to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
@@ -152,6 +157,7 @@ body.offline .server-control { display: none; }
   .table-frame.shake, .table-frame.shake-hard { animation: none; }
   .caption.show, .caption.show.out { animation: none; }
   .aim-layer { transition: none; }
+  .ai-panel.pulse { animation: none; }
 }
 </style>
 </head>
@@ -468,6 +474,9 @@ async function renderShot(s, generation) {
   lastEventDetail.textContent =
     `${s.targetBall ?? "?"}→${s.targetPocket ?? "?"} 瞄 ${(s.intentAngle ?? 0).toFixed(1)}° 力 ${(s.intentPower ?? 0).toFixed(2)}${spinStr}`;
   renderPublicPlan(s);
+  document.querySelector(".ai-panel")?.classList.remove("pulse");
+  void document.querySelector(".ai-panel")?.offsetWidth;
+  document.querySelector(".ai-panel")?.classList.add("pulse");
   await animateShot(s);
   if (generation !== playbackGeneration) return;
   if (s.pottedBalls?.length > 0) {
@@ -840,7 +849,7 @@ function animateShot(s) {
   const t0 = samples.frames[0].t;
   const tEnd = samples.frames[samples.frames.length - 1].t;
   const dur = Math.max(1.5, Math.min(8, tEnd - t0));
-  const cueHold = Array.isArray(embeddedEvents) ? 250 : 850;
+  const cueHold = Array.isArray(embeddedEvents) ? 1200 : 850;
   let playbackMs = 0;
   let lastNow = performance.now();
   let broken = false;
@@ -904,7 +913,7 @@ let playback = Promise.resolve();
 let playbackGeneration = 0;
 let currentEvents = [];
 
-/* 读人高光：金环凝视特效 + 字幕（心理层招牌时刻） */
+/* 读人高光：金环凝视特效 + 字幕（心理层招牌时刻）；带推理时展示模型原文 */
 function renderRead(msg, generation) {
   if (generation !== playbackGeneration) return;
   const readerName = names[msg.reader] ?? msg.reader;
@@ -912,9 +921,11 @@ function renderRead(msg, generation) {
   const dirKind = msg.directionCorrect ? "✓" : "✗";
   showCaption(
     `👁 ${readerName} 读人：${msg.estimateDeg.toFixed(3)}°`,
-    `误差 ${msg.errorDeg.toFixed(3)}° · ${dirText} ${dirKind} · 剩余 ${msg.attemptsLeft} 次`,
+    msg.rationale
+      ? `${msg.rationale}`
+      : `误差 ${msg.errorDeg.toFixed(3)}° · ${dirText} ${dirKind} · 剩余 ${msg.attemptsLeft} 次`,
     "read",
-    2400,
+    3600,
   );
   if (!reduceMotion && scene.fx) {
     const cx = TABLE_W / 2, cy = TABLE_H / 2;
@@ -944,6 +955,14 @@ function renderRead(msg, generation) {
   appendLog(msg.reader,
     `读人：估 ${msg.estimateDeg.toFixed(3)}° → 误差 ${msg.errorDeg.toFixed(3)}°（${dirText}）`,
     msg.directionCorrect ? "pot" : "miss");
+  if (msg.rationale) {
+    // 推理原文进 AI 思路面板（观众叙事）
+    lastEventEl.textContent = `👁 ${readerName} 的读人推理`;
+    lastEventDetail.textContent = msg.rationale;
+    planReview.textContent = `估计 ${msg.estimateDeg.toFixed(3)}° → 服务端误差 ${msg.errorDeg.toFixed(3)}°（${dirText} ${dirKind}）`;
+    document.querySelector(".ai-panel")?.classList.add("pulse");
+    setTimeout(() => document.querySelector(".ai-panel")?.classList.remove("pulse"), 3600);
+  }
 }
 
 function renderSummary(msg, generation) {

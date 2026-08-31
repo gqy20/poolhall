@@ -105,7 +105,7 @@ async function main(): Promise<void> {
     readThreshold += 3;
     const decision = await llm.readOpponent(tracker.render());
     if (!decision) return;
-    const scored = (await soft(() => client.read(decision.estimateDeg))) as {
+    const scored = (await soft(() => client.read(decision.estimateDeg, decision.rationale))) as {
       errorDeg: number;
       directionCorrect: boolean;
       attemptsLeft: number;

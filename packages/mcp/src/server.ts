@@ -383,11 +383,20 @@ export async function buildPoolhallMatchRemoteMcp(opts: MatchRemoteServerOpts): 
           .min(-5)
           .max(5)
           .describe("你估计的对手系统偏差（度，带符号）"),
+        rationale: z
+          .string()
+          .max(240)
+          .optional()
+          .describe("推理摘要（给观众看的判断依据，会公开展示）"),
       }),
     },
     async (args: unknown) => {
-      const input = z.object({ estimateDeg: z.number().finite() }).parse(args);
-      return textResult(JSON.stringify(await safeRemote(() => client.read(input.estimateDeg))));
+      const input = z
+        .object({ estimateDeg: z.number().finite(), rationale: z.string().max(240).optional() })
+        .parse(args);
+      return textResult(
+        JSON.stringify(await safeRemote(() => client.read(input.estimateDeg, input.rationale))),
+      );
     },
   );
 

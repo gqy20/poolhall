@@ -109,6 +109,7 @@ export interface ReadEvent {
   errorDeg: number;
   directionCorrect: boolean;
   attemptsLeft: number;
+  rationale?: string;
 }
 
 /** 每座每局读人次数上限（防把打分接口当二分 oracle 反推隐藏 bias） */
@@ -283,7 +284,11 @@ export class MatchHttp {
     const session = this.session;
     if (!session) return { status: 503, body: { error: "本桌尚未开局" } };
     const parsed = z
-      .object({ name: z.string().min(1), estimateDeg: z.number().finite().min(-5).max(5) })
+      .object({
+        name: z.string().min(1),
+        estimateDeg: z.number().finite().min(-5).max(5),
+        rationale: z.string().max(240).optional(),
+      })
       .safeParse(body);
     if (!parsed.success) {
       return { status: 400, body: { error: "读人载荷不合法（需 name + estimateDeg）" } };
@@ -320,6 +325,7 @@ export class MatchHttp {
       errorDeg: Number(scored.errorDeg.toFixed(3)),
       directionCorrect: scored.directionCorrect,
       attemptsLeft,
+      rationale: parsed.data.rationale,
     };
     (this.readSink ?? this.opts.onRead)?.(readEvent);
     return {

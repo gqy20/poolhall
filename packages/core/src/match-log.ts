@@ -94,6 +94,8 @@ export const MatchReadEventSchema = z.object({
   errorDeg: z.number().finite().nonnegative(),
   directionCorrect: z.boolean(),
   attemptsLeft: z.number().int().nonnegative(),
+  /** 读者推理摘要（模型原文，可选）：视频/观众叙事的黄金素材 */
+  rationale: z.string().max(240).optional(),
 });
 
 export const MatchEventSchema = z.discriminatedUnion("type", [
