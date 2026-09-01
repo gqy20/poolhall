@@ -39,3 +39,4 @@ coverage/
 experiments/figs/*.html
 experiments/figs/video/*.webm
 experiments/figs/video/*.mp4
+experiments/figs/video/cuts/*.webm

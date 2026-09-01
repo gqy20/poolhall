@@ -1,0 +1,8 @@
+file 'seg1-hook.webm'
+file 'seg2a-open.webm'
+file 'seg2b-fail.webm'
+file 'seg3a-streak.webm'
+file 'seg3b-plan.webm'
+file 'seg4a-read3.webm'
+file 'seg4b-read4.webm'
+file 'seg5-victory.webm'
