@@ -38,3 +38,4 @@ coverage/
 # 可视化生成物（可再生成；不入库）
 experiments/figs/*.html
 experiments/figs/video/*.webm
+experiments/figs/video/*.mp4

@@ -5,7 +5,7 @@
 
 ## 成片文件
 
-- **`poolhall-draft-v2.webm`**（123.5s / 12.7MB）— 主骨架，直接导入剪辑软件
+- **`poolhall-draft-v2.mp4`**（123.5s / 10.7MB · H.264+AAC）— **主骨架，导入剪辑软件用这个**（同目录 .webm 为原始版）
 - 备用素材：`rec-c-read-highlight.webm`（读人特写慢节奏）、`rec-b-oracle-win.webm`（逆转局）、`rec-a-llm-match.webm`（442s 长素材）
 
 ## 时间轴结构（8 段）
