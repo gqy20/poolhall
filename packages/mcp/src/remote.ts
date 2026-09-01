@@ -23,6 +23,14 @@ export interface RemoteShotArgs {
   targetBall: string;
   targetPocket: string;
   prediction?: string;
+  /** 完整公开计划（AI 内心戏）：透传观战面板 */
+  plan?: {
+    observation: string;
+    choice: string;
+    cuePlan: string;
+    risk: string;
+    confidence: "low" | "medium" | "high";
+  };
 }
 
 /** HTTP 非 2xx：payload 为服务端 JSON 错误体（含 error/turn 等） */

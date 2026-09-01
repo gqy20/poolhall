@@ -50,6 +50,16 @@ export const MatchShotInputSchema = z.object({
     .optional()
     .describe("旋球向量；防 scratch 用 spin.y 负值"),
   prediction: z.string().max(2000).optional().describe("可选：出杆预测文本（研究用）"),
+  plan: z
+    .object({
+      observation: z.string().max(160),
+      choice: z.string().max(160),
+      cuePlan: z.string().max(160),
+      risk: z.string().max(160),
+      confidence: z.enum(["low", "medium", "high"]),
+    })
+    .optional()
+    .describe("公开计划（观察/判断/走位/风险/信心）——观战直播展示给观众看"),
 });
 export type MatchShotInput = z.infer<typeof MatchShotInputSchema>;
 

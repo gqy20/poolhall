@@ -187,6 +187,7 @@ async function main(): Promise<void> {
         targetBall: shot.targetBall,
         targetPocket: shot.targetPocket,
         prediction,
+        plan: shot.publicPlan,
       }),
     );
     const accepted = res as { ok?: boolean } | null;

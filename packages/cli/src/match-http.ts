@@ -81,6 +81,16 @@ export const ExternalShotSchema = z.object({
   targetBall: z.string().min(1),
   targetPocket: z.string().min(1),
   prediction: z.string().max(2000).optional(),
+  /** 完整公开计划（AI 内心戏）：透传到观战面板与回放；缺省回退 prediction 文本 */
+  plan: z
+    .object({
+      observation: z.string().max(160),
+      choice: z.string().max(160),
+      cuePlan: z.string().max(160),
+      risk: z.string().max(160),
+      confidence: z.enum(["low", "medium", "high"]),
+    })
+    .optional(),
 });
 export type ExternalShot = z.infer<typeof ExternalShotSchema>;
 

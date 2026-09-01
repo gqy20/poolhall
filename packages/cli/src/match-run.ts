@@ -131,7 +131,7 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
       if (external === "abort") break;
       intent = external.intent;
       extra = { targetBall: external.targetBall, targetPocket: external.targetPocket };
-      publicPlan = externalPlan(external.prediction);
+      publicPlan = external.plan ?? externalPlan(external.prediction);
       prediction = external.prediction;
     } else if (obs.breakShot) {
       intent = session.breakIntent();
@@ -267,6 +267,7 @@ async function externalDecision(
       targetBall: string;
       targetPocket: string;
       prediction: string | null;
+      plan: MatchPublicPlan | null;
     }
 > {
   if (!opts.externalShot) throw new Error("spec=external 必须提供 externalShot 回调");
@@ -285,6 +286,7 @@ async function externalDecision(
     targetBall: wait.shot.targetBall,
     targetPocket: wait.shot.targetPocket,
     prediction: wait.shot.prediction ?? null,
+    plan: wait.shot.plan ?? null,
   };
 }
 

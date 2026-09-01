@@ -79,6 +79,8 @@ body.offline .server-control { display: none; }
 .caption.show.out { animation: capFade .38s ease both; }
 .caption.mock b { color: #FFD9A0; }
 .caption.mock span { color: #E8C9A0; font-style: italic; }
+.caption.mock span:first-of-type { font-style: normal; color: #F4EBDA; opacity: .95; }
+.caption.mock span:first-of-type::before { content: "❝ "; opacity: .6; }
 .caption.victory b { color: #E8B84B; }
 .caption.read b { color: #F5E6B8; text-shadow: 0 2px 18px rgba(232,184,75,.45), 0 0 2px rgba(11,20,16,.8); }
 .caption.read span { color: #E8B84B; }
@@ -601,7 +603,9 @@ function fxFrame(now) {
 
 function showCaption(main, sub, kind = "", ms = 1500) {
   captionEl.className = `caption ${kind}`;
-  captionEl.innerHTML = `<b>${main}</b>${sub ? `<span>${sub}</span>` : ""}`;
+  const esc = (t) => String(t).replaceAll("&", "&amp;").replaceAll("<", "&lt;");
+  const subs = Array.isArray(sub) ? sub : sub ? [sub] : [];
+  captionEl.innerHTML = `<b>${esc(main)}</b>${subs.map((t) => `<span>${esc(t)}</span>`).join("")}`;
   void captionEl.offsetWidth;
   captionEl.classList.add("show");
   clearTimeout(captionEl.__t1);
@@ -774,7 +778,15 @@ function showScratchMock(s) {
     ghost.setAttribute("opacity", String(inn * (k > 0.12 ? (0.5 + 0.5 * Math.sin(now / 160)) : 1) * (1 - out)));
   }, end: () => { dim.remove(); pool.remove(); core.remove(); ghost.remove(); } });
   shakeTable(true);
-  showCaption("母球进袋", MOCKS[s.trial % MOCKS.length], "mock", 2300);
+  // 打脸字幕：引用 AI 自己刚说的原话（走位/风险优先——"低杆防 scratch"型发言最讽刺）
+  const plan = s.publicPlan;
+  const quote = plan
+    ? [plan.cuePlan, plan.risk, plan.choice].find((t) => t && !t.includes("外部选手") && t.trim().length > 3)
+    : null;
+  const subs = quote
+    ? [`它刚说：「${quote.slice(0, 60)}」`, MOCKS[s.trial % MOCKS.length]]
+    : [MOCKS[s.trial % MOCKS.length]];
+  showCaption("母球进袋", subs, "mock", quote ? 3000 : 2300);
 }
 
 /* 胜负：金色粒子爆发 + 字幕 */

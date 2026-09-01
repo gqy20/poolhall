@@ -355,6 +355,7 @@ export async function buildPoolhallMatchRemoteMcp(opts: MatchRemoteServerOpts): 
           targetBall: input.targetBall,
           targetPocket: input.targetPocket,
           prediction: input.prediction,
+          plan: input.plan,
         }),
       );
       return textResult(JSON.stringify(out));
