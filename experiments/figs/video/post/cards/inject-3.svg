@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720">
+  <rect x="40" y="496" width="1200" height="184" rx="12" fill="black" fill-opacity="0.55"/>
+  <text x="80" y="560" font-family="Noto Sans CJK SC" font-weight="700" font-size="36" fill="#f5f5f5">物理引擎 · 永远精确</text>
+  <text x="80" y="606" font-family="Noto Sans CJK SC" font-weight="700" font-size="36" fill="#ffd166">注入层 · 每只手一份隐藏偏差</text><text x="80" y="652" font-family="Noto Sans CJK SC" font-weight="700" font-size="36" fill="#ff7b72">AI · 看不见自己的那只手</text>
+</svg>

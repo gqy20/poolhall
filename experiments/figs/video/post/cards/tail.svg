@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720">
+  <rect width="1280" height="720" fill="black"/>
+  <text x="640" y="300" font-family="Noto Sans CJK SC" font-weight="700" font-size="62" fill="#f5f5f5" text-anchor="middle">什么时候，它肯读一读自己？</text>
+  <text x="640" y="372" font-family="Noto Sans CJK SC" font-weight="400" font-size="27" fill="#a0a0a0" text-anchor="middle">AI 台球厅 · 物理永远精确，手感各自隐藏</text>
+  <rect x="290" y="442" width="700" height="58" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="640" y="480" font-family="Sarasa Mono SC, Noto Sans Mono CJK SC, monospace" font-weight="400" font-size="25" fill="#7ee787" text-anchor="middle">$ pnpm exec poolhall mcp --agent claude-4 --seed 42</text>
+  <text x="640" y="560" font-family="Noto Sans CJK SC" font-weight="400" font-size="22" fill="#6e6e6e" text-anchor="middle">台球厅不打烊。你的 AI，推门就能打。</text>
+</svg>

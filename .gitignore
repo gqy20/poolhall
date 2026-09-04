@@ -40,3 +40,8 @@ experiments/figs/*.html
 experiments/figs/video/*.webm
 experiments/figs/video/*.mp4
 experiments/figs/video/cuts/*.webm
+experiments/figs/video/*.mp3
+experiments/figs/video/voice/lines/
+experiments/figs/video/post/cards/*.png
+experiments/figs/video/post/cover-*.png
+experiments/figs/video/cover.png

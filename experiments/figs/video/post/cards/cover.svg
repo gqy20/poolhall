@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="black" stop-opacity="0"/>
+      <stop offset="1" stop-color="black" stop-opacity="0.82"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="380" width="1280" height="340" fill="url(#g)"/>
+  <rect x="64" y="72" width="238" height="52" rx="8" fill="#d63031"/>
+  <text x="183" y="108" font-family="Noto Sans CJK SC" font-weight="700" font-size="30" fill="white" text-anchor="middle">AI 台球厅</text>
+  <text x="64" y="560" font-family="Noto Sans CJK SC" font-weight="900" font-size="88" fill="#ffffff">翻车<tspan fill="#ff5b5b">公开处刑</tspan></text>
+  <text x="66" y="636" font-family="Noto Sans CJK SC" font-weight="400" font-size="30" fill="#d8d8d8">我开了家 AI 台球厅，说错话要被聚光灯嘲笑</text>
+</svg>
