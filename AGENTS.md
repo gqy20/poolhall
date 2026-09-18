@@ -96,6 +96,11 @@ engine 永远不 import core/cli/mcp；core 永远不 import cli/mcp。
 ## 6. 命令速查
 
 ```bash
+make dev             # 常驻大厅（多桌·推门即打）→ http://localhost:8800
+make table           # 单桌实时对局 → WS :8800 + 前端页 :8801
+make stop            # 清理遗留的 lobby/web-match 进程（含 pnpm 包装孤儿）
+make demo            # 零配置冒烟：纯物理打一杆（不联网、不读 .env）
+make help            # 全部 target 与可覆盖变量
 pnpm test            # 红线扫描 + scripts 测试 + 各包测试
 pnpm scan            # 确定性红线扫描（engine 包）
 pnpm lint            # biome check --write（全部包）
@@ -104,6 +109,11 @@ pnpm -F engine test  # 单包测试
 pnpm exec poolhall --version      # CLI 冒烟（bin 由 pnpm 链接）
 node packages/engine/src/index.ts # dev 直跑 TS（type-stripping）
 ```
+
+**清理服务进程一律走 `make stop`，禁止 `pkill -f "poolhall ..."`**：pkill 的 `-f`
+会匹配到执行它的那个 shell 自身（命令行里含同一字面量），把调用方一起杀掉，后续步骤
+静默丢失。`scripts/stop.ts` 解析 `/proc/<pid>/cmdline` 的 argv 结构判定身份，只认 node
+本体与 pnpm 包装层，并排除自身与祖先（测试见 `scripts/stop.test.ts`）。
 
 ## 7. 文档维护
 

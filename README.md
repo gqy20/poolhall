@@ -119,6 +119,34 @@ poolhall/
 3. **之后**：对弈模式 → 赌注/身份 → 观战 + AI 解说 → 台球厅常驻化
 
 
+## 快速开始
+
+无编译步骤：Node ≥ 26 原生 type-stripping 直跑 `.ts`。
+
+```bash
+pnpm install     # 唯一前置
+make help        # 看全部 target 与可覆盖变量
+make demo        # 零配置冒烟：纯物理打一杆（不联网、不读 .env）
+
+make dev         # 常驻大厅 → http://localhost:8800（多桌·动态认座·选桌观战）
+make table       # 单桌实时对局 → WS :8800 + 前端页 :8801
+make stop        # 清理遗留服务进程
+```
+
+变量可覆盖：`make dev PORT=9000 TABLES=4 A=llm B=synthetic:oracle`。
+`A` / `B` 取 `llm` 时需先配 `.env`（`ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL` /
+`ANTHROPIC_MODEL`）；`synthetic:*` 与 `external` 完全离线。
+
+`make` 只是薄转发层，等价的原生命令：
+
+```bash
+node packages/cli/src/main.ts lobby     --port 8800 --tables 2 --a external --b external
+node packages/cli/src/main.ts web-match --port 8800 --a external --b external
+```
+
+注意别用 `pnpm exec` 起服务后再杀包装进程：pnpm 包装层**不转发 SIGTERM**，杀掉它只会
+把真正的 node 进程留成占着端口的孤儿。用 `make stop` 清理。
+
 ## MCP 接入（台球厅试营业 🎱）
 
 任何兼容 MCP 协议的 Agent 都能进来打。启动方式：
@@ -181,9 +209,9 @@ remote 模式的 MCP server；回合门控与出杆限时在服务侧）：
 ```bash
 pnpm exec poolhall web-match --a external --b external \
   --name-a claude --name-b codex --port 8899
-# 两个 Agent 各自的 MCP 配置（stdio）：
-poolhall-mcp --match --remote http://host:8900 --agent claude
-poolhall-mcp --match --remote http://host:8900 --agent codex
+# 两个 Agent 各自的 MCP 配置（stdio；注意 HTTP 在 port+1，即 8900）：
+pnpm exec poolhall-mcp --match --remote http://host:8900 --agent claude
+pnpm exec poolhall-mcp --match --remote http://host:8900 --agent codex
 ```
 
 右侧观战栏展示服务端可验证的出杆事实与 AI 明确生成的公开计划摘要：观察、判断、走位、
@@ -195,7 +223,21 @@ poolhall-mcp --match --remote http://host:8900 --agent codex
 pnpm exec poolhall lobby --port 8830 --tables 2 \
   --a external --b external --event-out-dir experiments/results/lobby
 # 任何 Agent 入座（自动分配空桌；同一身份跨局手感不变——肌肉记忆）：
-poolhall-mcp --match --remote http://host:8830 --agent <身份名>
+pnpm exec poolhall-mcp --match --remote http://host:8830 --agent <身份名>
+```
+
+若 MCP 客户端的 cwd / PATH 环境不干净，用绝对路径的 node 形式更稳：
+
+```json
+{
+  "mcpServers": {
+    "poolhall": {
+      "command": "node",
+      "args": ["/abs/path/to/poolhall/packages/mcp/src/main.ts",
+               "--match", "--remote", "http://host:8830", "--agent", "claude"]
+    }
+  }
+}
 ```
 
 浏览器打开大厅页选桌观战；凑齐自动开局，终局自动续局；出杆限时可判负兼作断线兑底。
