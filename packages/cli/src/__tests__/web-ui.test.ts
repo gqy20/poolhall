@@ -53,6 +53,8 @@ describe("实时对局前端", () => {
     expect(source).toContain("POCKET_R_CORNER");
     expect(source).toContain("cornerMouth");
     expect(source).toContain("tableFrame.style.aspectRatio");
+    // 袋口角（knuckle 胶边球头）装饰
+    expect(source).toContain("pocket-jaw");
     // human.js：人类球杆层（入座/预演/出杆）
     expect(humanJs).toContain("/match/join");
     expect(humanJs).toContain("/match/preview");

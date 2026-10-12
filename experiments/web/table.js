@@ -213,6 +213,42 @@ function updateBallNode(group, p) {
 
 const scene = { root: null, cue: null, ballLayer: null, balls: new Map() };
 
+/** 袋口角（knuckle）位置：开口两端的胶边球头（视觉装饰，不影响物理判定） */
+function pocketJaws(p, pr, W, H) {
+  switch (p.id) {
+    case "lt":
+      return [
+        { x: pr, y: 0 },
+        { x: 0, y: pr },
+      ];
+    case "rt":
+      return [
+        { x: W - pr, y: 0 },
+        { x: W, y: pr },
+      ];
+    case "lb":
+      return [
+        { x: pr, y: H },
+        { x: 0, y: H - pr },
+      ];
+    case "rb":
+      return [
+        { x: W - pr, y: H },
+        { x: W, y: H - pr },
+      ];
+    case "ct":
+      return [
+        { x: W / 2 - pr, y: 0 },
+        { x: W / 2 + pr, y: 0 },
+      ];
+    default:
+      return [
+        { x: W / 2 - pr, y: H },
+        { x: W / 2 + pr, y: H },
+      ];
+  }
+}
+
 function createScene() {
   const root = el("svg", {
     viewBox: `0 0 ${TABLE_W} ${TABLE_H}`,
@@ -254,16 +290,30 @@ function createScene() {
   ];
   for (const p of pockets) {
     const pr = p.id.startsWith("c") ? POCKET_R_SIDE : POCKET_R_CORNER;
+    // 袋口：深色洞口（半径 = 物理判定圆）+ 两侧袋口角（knuckle 胶边球头，真实台面造型）
     root.appendChild(
       el("circle", {
         cx: p.x,
         cy: p.y,
         r: pr,
-        fill: "var(--bg)",
-        stroke: "var(--ink-soft)",
+        fill: "#0B1410",
+        stroke: "rgba(18,55,42,.85)",
         "stroke-width": 0.003,
       }),
     );
+    for (const j of pocketJaws(p, pr, TABLE_W, TABLE_H)) {
+      root.appendChild(
+        el("circle", {
+          class: "pocket-jaw",
+          cx: j.x,
+          cy: j.y,
+          r: pr * 0.24,
+          fill: "#12372A",
+          stroke: "rgba(247,244,238,.3)",
+          "stroke-width": 0.0018,
+        }),
+      );
+    }
     root.appendChild(
       el(
         "text",
@@ -272,7 +322,7 @@ function createScene() {
           y: p.y + pr * 0.32,
           "text-anchor": "middle",
           "font-size": pr * 0.66,
-          fill: "var(--ink-soft)",
+          fill: "var(--felt-light)",
         },
         [p.id.toUpperCase()],
       ),
