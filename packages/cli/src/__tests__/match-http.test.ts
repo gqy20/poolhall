@@ -198,6 +198,30 @@ describe("MatchHttp 动态认座（大厅模式）", () => {
   });
 });
 
+describe("MatchHttp 离席（/match/leave）", () => {
+  it("未认座 404；对局进行中离席 = 判负终局并结算挂起的出杆等待", async () => {
+    const { http, session } = mk();
+    expect(http.route("POST", "/match/leave", { name: "nobody" }).status).toBe(404);
+    // 挂起 A 的出杆等待（模拟对局循环在等外部选手）
+    const waiting = http.waitForShot("A");
+    const r = http.route("POST", "/match/leave", { name: "alice" });
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ ok: true, resigned: true });
+    // 对局立即终局：B 胜（alice 判负），挂起的等待按超时结算
+    expect(session.finished).toBe(true);
+    expect(session.result.winner).toBe("B");
+    expect(session.result.reason).toContain("离席");
+    expect((await waiting).kind).toBe("timeout");
+  });
+
+  it("对局已结束时离席走正常释放（大厅动态席位）", () => {
+    const http = new MatchHttp({ shotClockMs: 0 });
+    http.claim("alice");
+    expect(http.route("POST", "/match/leave", { name: "alice" }).status).toBe(200);
+    expect(http.seatOf("alice")).toBeNull();
+  });
+});
+
 describe("MatchHttp 试打预演（/match/preview）", () => {
   it("未开局 503；身份不符 404；载荷非法 400", () => {
     const bare = new MatchHttp({ shotClockMs: 0 });

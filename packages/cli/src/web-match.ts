@@ -247,20 +247,33 @@ export async function runWebMatch(opts: WebMatchOpts): Promise<void> {
   process.once("SIGINT", onSignal);
   process.once("SIGTERM", onSignal);
 
+  /** 单局可中断信号（「开新一局」打断当前局；与全局 shutdown 信号组合） */
+  let gameAbort = new AbortController();
+  /** 打断后排队的新局请求 */
+  let pendingStart: { maxShots: number; incrementSeed: boolean } | null = null;
+
   const startGame = async (maxShots: number, incrementSeed: boolean): Promise<void> => {
     if (running) {
-      hub.notify({ type: "control", state: "busy", message: "当前正在生成一局" });
+      // 打断本局：作废当前局，结束后按请求重开（seed 累进保持进度感）
+      gameAbort.abort();
+      matchHttp.abortPending();
+      pendingStart = { maxShots, incrementSeed };
       return;
     }
     if (incrementSeed) seed += 1;
     running = true;
     try {
-      await playGame(opts, sink, hub, matchHttp, seed, maxShots, abort.signal);
+      const signal = AbortSignal.any([abort.signal, gameAbort.signal]);
+      await playGame(opts, sink, hub, matchHttp, seed, maxShots, signal);
     } catch (error) {
       hub.notify({ type: "control", state: "error", message: "新局生成失败" });
       console.error(error);
     } finally {
       running = false;
+      gameAbort = new AbortController();
+      const queued = pendingStart;
+      pendingStart = null;
+      if (queued && !abort.signal.aborted) await startGame(queued.maxShots, queued.incrementSeed);
     }
   };
   const offControl = hub.onControl((control) => void startGame(control.maxShots, true));

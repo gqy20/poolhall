@@ -248,6 +248,11 @@ export class MatchHttp {
     this.readSink = sink;
   }
 
+  /** 打断当前局：挂起的出杆等待按超时结算（配合游戏内 AbortSignal 使用） */
+  abortPending(): void {
+    this.pending?.resolve({ kind: "timeout" });
+  }
+
   /** 绑定本局的权威对局会话（每局一次；同时重置读人限次） */
   attach(session: MatchSession): void {
     this.session = session;
@@ -305,10 +310,21 @@ export class MatchHttp {
   }
 
   private routeLeave(body: unknown): HttpRoute {
-    const ok = this.leave(this.nameOf(body));
+    const name = this.nameOf(body);
+    const seat = this.seatOf(name);
+    if (!seat) return { status: 404, body: { error: "未找到该席位" } };
+    // 对局进行中离席 = 放弃本局：判负立即终局，并把挂起的出杆等待按超时结算
+    // （外部选手随时可打断自己参与的对局——自用场景的权利）
+    if (this.session && !this.session.finished) {
+      this.session.resign(seat, `${name} 离席——判负`);
+      this.pending?.resolve({ kind: "timeout" });
+      this.leave(name); // 动态席位一并释放（固定席位 leave 自动跳过）
+      return { status: 200, body: { ok: true, resigned: true } };
+    }
+    const ok = this.leave(name);
     return ok
       ? { status: 200, body: { ok: true } }
-      : { status: 404, body: { error: "未找到该席位" } };
+      : { status: 409, body: { error: "固定席位不能离席（对局未开始时）" } };
   }
 
   /** 读对手：提交对对手习惯偏差的估计 → 带噪声评分（隐藏态不出库；限次防反推） */

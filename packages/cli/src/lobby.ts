@@ -71,6 +71,8 @@ export class TableRoom {
   private gameIdx = 0;
   private playing = false;
   private stopped = false;
+  /** 单局可中断（「开新一局」打断：本局作废，常驻循环自动续） */
+  private gameAbort: AbortController | null = null;
   private wakeSeats: (() => void) | null = null;
   private wakePause: (() => void) | null = null;
   private runner: Promise<void> | null = null;
@@ -84,7 +86,10 @@ export class TableRoom {
     if (cfg.specB !== "external") this.http.presetSeat("B", `${cfg.id}-b`);
     this.hub.onControl(() => {
       if (this.playing) {
-        this.hub.notify({ type: "control", state: "busy", message: "对局进行中，结束后自动续局" });
+        // 打断本局：runMatch 观察到 shouldStop 后收局，常驻循环自动续下一局
+        this.gameAbort?.abort();
+        this.http.abortPending();
+        this.wakePause?.();
         return;
       }
       this.wakePause?.();
@@ -189,6 +194,7 @@ export class TableRoom {
     this.session = session;
     this.http.attach(session);
     this.playing = true;
+    this.gameAbort = new AbortController();
     this.hub.clearHistory();
     this.broadcastHello(sink, seed, nameA, nameB);
     const result = await runMatch({
@@ -222,9 +228,11 @@ export class TableRoom {
         const simTime = shot.samples.at(-1)?.t ?? 0;
         await this.pause(850 + Math.max(1.5, Math.min(8, simTime)) * 1000);
       },
-      shouldStop: () => this.stopped,
+      shouldStop: () => this.stopped || this.gameAbort?.signal.aborted === true,
     });
     this.playing = false;
+    const aborted = this.gameAbort?.signal.aborted === true;
+    this.gameAbort = null;
     if (this.stopped) return;
     // 终局入账：自然结束（含平局）才计分；被打断的对局 reason 为 null，不入账
     if (result.reason) {
@@ -234,7 +242,7 @@ export class TableRoom {
       type: "summary",
       schema: MATCH_EVENT_SCHEMA,
       winner: result.winner,
-      reason: result.reason,
+      reason: result.reason ?? (aborted ? "本局被中断——开新一局" : result.reason),
       shots: result.shots,
     });
   }

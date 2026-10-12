@@ -688,13 +688,37 @@
     state.seat = data.seat;
     state.table = state.preferredTable ?? data.table ?? null;
     state.joined = true;
-    joinButton.textContent = "已入座";
-    joinButton.disabled = true;
+    joinButton.textContent = "离开";
     nameInput.disabled = true;
     const clock = data.shotClockMs > 0 ? `限时 ${Math.round(data.shotClockMs / 1000)}s` : "不限时";
     setStatus(
       `${state.table ? `${state.table} · ` : ""}${data.seat} 席 · ${clock}`,
       `已入座 ${data.seat} 位，出杆${clock}，等待轮到你`,
+    );
+  }
+
+  /** 离席：对局进行中 = 放弃本局（判负终局）；未开局 = 释放座位 */
+  async function leave() {
+    const { status, data } = await api("/match/leave", { name: state.name });
+    state.joined = false;
+    state.seat = null;
+    state.active = false;
+    state.ballInHand = false;
+    state.placedCue = null;
+    joinButton.textContent = "🪑 入座";
+    nameInput.disabled = false;
+    fireButton.disabled = true;
+    snapButton.disabled = true;
+    autoButton.disabled = true;
+    drawAim();
+    drawPreview(null);
+    setStatus(
+      status === 200
+        ? data?.resigned
+          ? "已离席 · 本局判负"
+          : "已离席"
+        : (data?.error ?? `离席失败（${status}）`),
+      status === 200 && data?.resigned ? "放弃本局判负，桌面立刻可续新局" : undefined,
     );
   }
 
@@ -773,7 +797,10 @@
     tableFrame.addEventListener("pointercancel", () => {
       state.drag = null;
     });
-    joinButton.addEventListener("click", () => void join());
+    joinButton.addEventListener("click", () => {
+      if (state.joined) void leave();
+      else void join();
+    });
     fireButton.addEventListener("click", () => void fire());
     snapButton.addEventListener("click", snapToGhost);
     powerInput.addEventListener("input", () => setPower(Number(powerInput.value)));
