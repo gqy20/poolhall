@@ -11,13 +11,12 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { McpServer } from "@modelcontextprotocol/server";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
-import { agentObserve, CalibSession, type ResearchShot } from "@poolhall/core";
+import { CalibSession, type ResearchShot } from "@poolhall/core";
 import { z } from "zod";
 
 /** MCP 文本结果助手（as const 让 type 字面量收窄，满足 registerTool 结果约束） */
 const textResult = (text: string) => ({ content: [{ type: "text" as const, text }] });
 
-import { DEFAULT_BALL } from "@poolhall/engine";
 import {
   type MatchSessionState,
   MatchShotInputSchema,
@@ -84,7 +83,7 @@ function shootOf(state: SessionState, args: ShotInput, out?: string): ShotResult
     const objFinal = rec.finalPos["1"] ?? null;
     appendFileSync(
       out,
-      JSON.stringify({
+      `${JSON.stringify({
         kind: "shot",
         trial: rec.trial,
         intentAngle: rec.intent.angle,
@@ -99,7 +98,7 @@ function shootOf(state: SessionState, args: ShotInput, out?: string): ShotResult
         samples: rec.samples,
         events: rec.events,
         prediction: args.prediction ?? null,
-      }) + "\n",
+      })}\n`,
     );
     void objFinal;
   }
@@ -129,13 +128,13 @@ export function buildPoolhallMcp(opts: ServerOpts): McpServer {
     mkdirSync(dirname(opts.out), { recursive: true });
     appendFileSync(
       opts.out,
-      JSON.stringify({
+      `${JSON.stringify({
         kind: "meta",
         agent: opts.agent,
         seed: opts.seed,
         trials: opts.trials,
         biasOverride: opts.biasOverride ?? null,
-      }) + "\n",
+      })}\n`,
     );
   }
 

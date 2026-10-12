@@ -14,7 +14,7 @@ import { resolveBallBall, resolveCushion } from "../collide.ts";
 import { DEFAULT_BALL, SPIN_SCALE } from "../consts.ts";
 import { simulate } from "../simulate.ts";
 import { buildTable } from "../table.ts";
-import { len, vec2 } from "../vec2.ts";
+import { vec2 } from "../vec2.ts";
 
 const table = buildTable();
 const p = DEFAULT_BALL;

@@ -153,14 +153,14 @@ export function newMatchState(opts: OpenMatchInput & { out?: string }): MatchSes
     mkdirSync(dirname(opts.out), { recursive: true });
     appendFileSync(
       opts.out,
-      JSON.stringify({
+      `${JSON.stringify({
         kind: "meta",
         mode: "match",
         seed: opts.seed,
         nameA: opts.nameA,
         nameB: opts.nameB,
         maxShots: opts.maxShots,
-      }) + "\n",
+      })}\n`,
     );
   }
   return s;
@@ -189,7 +189,7 @@ export function takeMatchShot(state: MatchSessionState, args: MatchShotInput): M
   if (state.out) {
     appendFileSync(
       state.out,
-      JSON.stringify({
+      `${JSON.stringify({
         kind: "shot",
         by: rec.byPlayer,
         targetBall: args.targetBall,
@@ -199,7 +199,7 @@ export function takeMatchShot(state: MatchSessionState, args: MatchShotInput): M
         intentSpin: spin,
         prediction: args.prediction ?? null,
         ...rec,
-      }) + "\n",
+      })}\n`,
     );
   }
   return {

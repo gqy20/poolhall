@@ -10,6 +10,7 @@ gen() { # $1=输出名 $2=行1 $3=行2（可空） $4=行3（可空）
   [ -n "${4:-}" ] && extra="$extra<text x=\"80\" y=\"652\" font-family=\"Noto Sans CJK SC\" font-weight=\"700\" font-size=\"36\" fill=\"#ff7b72\">$4</text>"
   cat > "$1" <<EOF
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720">
+  <title>$2</title>
   <rect x="40" y="496" width="1200" height="184" rx="12" fill="black" fill-opacity="0.55"/>
   <text x="80" y="560" font-family="Noto Sans CJK SC" font-weight="700" font-size="36" fill="#f5f5f5">$2</text>
   $extra

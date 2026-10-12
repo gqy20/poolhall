@@ -84,7 +84,7 @@ const cSide = runTrial({ x: 0, y: 0, z: 1 }, 3, "cushion side=+1", "cushion");
 mkdirSync(outDir, { recursive: true });
 writeFileSync(
   outJsonl,
-  [meta, s0, sTop, c0, cSide].map((r) => JSON.stringify(r)).join("\n") + "\n",
+  `${[meta, s0, sTop, c0, cSide].map((r) => JSON.stringify(r)).join("\n")}\n`,
 );
 
 console.log(`✓ spin-demo JSONL: ${outJsonl}`);

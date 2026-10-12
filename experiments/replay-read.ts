@@ -2,7 +2,6 @@
 // 用法: node experiments/replay-read.ts <事件日志> <对手座 A|B>
 import { readFileSync } from "node:fs";
 import { OppTracker } from "../packages/cli/src/opp-read.ts";
-import { expandMatchSamples } from "../packages/core/src/index.ts";
 
 const file = process.argv[2] ?? "experiments/results/eval-reading2/t1-g0.jsonl";
 const opp = process.argv[3] ?? "A";

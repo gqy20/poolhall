@@ -9,7 +9,7 @@
  * - 单端口提供：大厅页 /、状态 /lobby/status、桌页 /table/<id>、
  *   /match/* 入座层（按 ?table= 分发）、WS /ws/<id>
  */
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { join } from "node:path";
 import type { Duplex } from "node:stream";
 import {
@@ -59,8 +59,6 @@ interface RoomConfig {
   /** 战绩库：终局入账 Elo */
   store: Store;
 }
-
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** 一张桌：席位 + 权威对局 + 观战 hub，常驻循环“凑齐即打、打完续局” */
 export class TableRoom {
@@ -414,18 +412,22 @@ function joinLobby(
   body: unknown,
 ): void {
   const name = typeof body === "object" && body !== null && "name" in body ? String(body.name) : "";
-  if (!name) return sendJson(res, 400, { error: "缺 name" });
+  if (!name) {
+    sendJson(res, 400, { error: "缺 name" });
+    return;
+  }
   for (const room of rooms) {
     const claimed = room.http.claim(name);
     if (claimed.ok) {
       waiting.delete(name);
-      return sendJson(res, 200, {
+      sendJson(res, 200, {
         ok: true,
         seat: claimed.seat,
         seats: room.http.seatNames(),
         shotClockMs: room.http.opts.shotClockMs,
         table: room.id,
       });
+      return;
     }
   }
   waiting.add(name);
@@ -435,7 +437,10 @@ function joinLobby(
 function leaveLobby(rooms: TableRoom[], res: ServerResponse, body: unknown): void {
   const name = typeof body === "object" && body !== null && "name" in body ? String(body.name) : "";
   for (const room of rooms) {
-    if (room.http.leave(name)) return sendJson(res, 200, { ok: true, table: room.id });
+    if (room.http.leave(name)) {
+      sendJson(res, 200, { ok: true, table: room.id });
+      return;
+    }
   }
   sendJson(res, 404, { error: "未找到该席位" });
 }

@@ -11,7 +11,7 @@
  * 同一台面、同一杆、两个不同的脑子。
  */
 import { C, FONT, PAGE_CSS } from "./style.ts";
-import { line, polyline, svg, text } from "./svg.ts";
+import { svg } from "./svg.ts";
 import { shotCardSvg, type TableGeom } from "./table-svg.ts";
 
 const TABLE_GEOM: TableGeom = {
@@ -69,11 +69,6 @@ interface TrialView {
   shot: MatchShotRow;
 }
 
-function pairShots(shots: MatchShotRow[]): TrialView[] {
-  // 每杆只有一方出杆——按"双方各出一杆"组织：trial=1 时 A 击，trial=2 时 B 击...
-  return shots.map((s) => ({ trial: s.shot, by: s.by, shot: s }));
-}
-
 function statusBadge(s: MatchShotRow): { text: string; color: string } {
   if (s.over && s.winner && s.by === s.winner) return { text: "终局·胜", color: C.pot };
   if (s.over && s.winner && s.by !== s.winner) return { text: "终局·负", color: C.miss };
@@ -96,7 +91,6 @@ function smallTableSvg(s: MatchShotRow): string {
   }
   const cue = balls.find((b) => b.id === "cue");
   const objs = balls.filter((b) => b.id !== "cue" && b.id !== "8");
-  const eight = balls.find((b) => b.id === "8");
   const pocket = TABLE_GEOM.pockets.find((p) => p.id === s.pottedPockets?.[0]?.pocket);
 
   const inner = shotCardSvg(

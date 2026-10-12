@@ -14,7 +14,6 @@ const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, "figs");
 
 interface Row extends MatchMetaRow, MatchShotRow {}
-type Kind = Row["kind"];
 
 function isShot(r: Row): r is MatchShotRow & Row {
   return r.kind === "shot";

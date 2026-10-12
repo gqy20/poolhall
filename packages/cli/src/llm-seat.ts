@@ -165,12 +165,12 @@ async function main(): Promise<void> {
       continue;
     }
     const obs = (await soft(() => client.observe())) as MatchObserve | null;
-    if (!obs || obs.kind !== "match-observe") {
+    if (obs?.kind !== "match-observe") {
       await sleep(300);
       continue;
     }
     const shot = obs.breakShot ? breakShot(obs) : await llm.shotMatch(obs);
-    if (!shot || !shot.aimAt) {
+    if (!shot?.aimAt) {
       console.error("[llm-seat] 模型无决策，重试");
       await sleep(500);
       continue;
@@ -203,7 +203,6 @@ async function main(): Promise<void> {
 
 /** 开球决策：与 match-run 的 breakIntent 同语义——直击 1 号顶点 */
 function breakShot(obs: MatchObserve) {
-  const cue = obs.balls.find((b) => b.id === "cue")!;
   const apex = obs.balls.find((b) => b.id === "1") ?? obs.balls[0]!;
   return {
     angle: 0,

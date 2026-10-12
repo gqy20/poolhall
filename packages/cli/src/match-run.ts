@@ -239,10 +239,10 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
 function cueHeadingOf(
   samples: Array<{ t: number; pos: Record<string, { x: number; y: number }> }>,
 ): number | null {
-  const first = samples[0]?.pos["cue"];
+  const first = samples[0]?.pos.cue;
   if (!first) return null;
   for (const s of samples) {
-    const p = s.pos["cue"];
+    const p = s.pos.cue;
     if (!p) return null;
     const dx = p.x - first.x;
     const dy = p.y - first.y;
