@@ -41,6 +41,7 @@
     /** 桌页（/table/<id>）入座锁定本桌；大厅入口为 null（自动分配） */
     preferredTable: (location.pathname.match(/^\/table\/([^/]+)/) ?? [])[1] ?? null,
     joined: false,
+    joining: false,
     active: false,
     balls: [],
     aimAssists: [],
@@ -671,8 +672,11 @@
 
   /* ---------- 入座 ---------- */
   async function join() {
+    if (state.joining) return; // 自动入座与手动点击竞态：合并为一次
+    state.joining = true;
     const name = nameInput.value.trim();
     if (!name) {
+      state.joining = false;
       nameInput.focus();
       setStatus("先填名字", "先填一个身份名——跨局手感记忆绑定它");
       return;
@@ -685,12 +689,14 @@
       : "/match/join";
     const { status, data } = await api(path, { name });
     if (status !== 200 || !data?.ok) {
+      state.joining = false;
       setStatus(data?.error ?? `入座失败（${status}）`);
       return;
     }
     state.seat = data.seat;
     state.table = state.preferredTable ?? data.table ?? null;
     state.joined = true;
+    state.joining = false;
     joinButton.textContent = "离开";
     nameInput.disabled = true;
     const clock = data.shotClockMs > 0 ? `限时 ${Math.round(data.shotClockMs / 1000)}s` : "不限时";
@@ -802,7 +808,7 @@
     });
     joinButton.addEventListener("click", () => {
       if (state.joined) void leave();
-      else void join();
+      else if (!state.joining) void join();
     });
     fireButton.addEventListener("click", () => void fire());
     snapButton.addEventListener("click", snapToGhost);
