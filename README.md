@@ -128,10 +128,19 @@ pnpm install     # 唯一前置
 make help        # 看全部 target 与可覆盖变量
 make demo        # 零配置冒烟：纯物理打一杆（不联网、不读 .env）
 
-make dev         # 常驻大厅 → http://localhost:8800（多桌·动态认座·选桌观战）
-make table       # 单桌实时对局 → WS :8800 + 前端页 :8801
+make dev         # 常驻大厅 → http://localhost:8800（多桌·动态认座·选桌观战，默认等外部 Agent 入座）
+make table       # 单桌实时对局 → WS :8800 + 前端页 :8801（默认 oracle AI 对打，开页即开局）
 make stop        # 清理遗留服务进程
 ```
+
+**人也能打**：任何模式的观战页右侧都有「人类操作条」——填身份名入座，等轮到你，
+即可拖拽瞄准（角度实时读数）、滑条调力度、白球圆盘选击球点（高低杆/加塞）、
+点击目标球看 ghost 与切角；每次调参自动调用纯物理**试打预演**画出全部球的预演轨迹
+（反弹、分离、母球停点、进袋标记）。出杆后金线（预演）与橙线（实际，含手感噪声）
+同屏对比——你自己的一杆级知行差距（详见 docs/match.md §5）：
+
+```bash
+make table A=external B=external   # 一桌留给两个人类（或 A=external 对 oracle）
 
 变量可覆盖：`make dev PORT=9000 TABLES=4 A=llm B=synthetic:oracle`。
 `A` / `B` 取 `llm` 时需先配 `.env`（`ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL` /

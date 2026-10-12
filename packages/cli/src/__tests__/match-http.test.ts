@@ -117,11 +117,15 @@ describe("MatchHttp 入座与门控", () => {
       targetBall: "1",
       targetPocket: "rt",
       prediction: "直球轻推",
+      clean: true,
     });
     expect(res.status).toBe(202);
     const wait = await waiting;
     expect(wait.kind).toBe("shot");
-    if (wait.kind === "shot") expect(wait.shot.prediction).toBe("直球轻推");
+    if (wait.kind === "shot") {
+      expect(wait.shot.prediction).toBe("直球轻推");
+      expect(wait.shot.clean).toBe(true);
+    }
     // 等待已清空：再来一杆应 409
     expect(
       http.route("POST", "/match/shot", {
@@ -191,6 +195,45 @@ describe("MatchHttp 动态认座（大厅模式）", () => {
   it("leave 路由：未认座者 404", () => {
     const http = mkDynamic();
     expect(http.route("POST", "/match/leave", { name: "nobody" }).status).toBe(404);
+  });
+});
+
+describe("MatchHttp 试打预演（/match/preview）", () => {
+  it("未开局 503；身份不符 404；载荷非法 400", () => {
+    const bare = new MatchHttp({ shotClockMs: 0 });
+    expect(bare.route("POST", "/match/preview", { name: "x", angle: 0, power: 0.5 }).status).toBe(
+      503,
+    );
+    const { http } = mk();
+    expect(
+      http.route("POST", "/match/preview", { name: "carol", angle: 0, power: 0.5 }).status,
+    ).toBe(404);
+    expect(http.route("POST", "/match/preview", { name: "alice", angle: 0, power: 2 }).status).toBe(
+      400,
+    );
+  });
+
+  it("已认座即可预演（不要求轮到本人）：返回纯物理轨迹", () => {
+    const { http } = mk();
+    const r = http.route("POST", "/match/preview", { name: "bob", angle: 30, power: 0.6 });
+    expect(r.status).toBe(200);
+    const body = r.body as {
+      ok: boolean;
+      seat: string;
+      preview: { paths: Record<string, unknown> };
+    };
+    expect(body.ok).toBe(true);
+    expect(body.seat).toBe("B");
+    expect(body.preview.paths.cue).toBeDefined();
+  });
+
+  it("预演不改局面且不泄漏隐藏手感字段", () => {
+    const { http, session } = mk();
+    const before = JSON.stringify(session.observe());
+    http.route("POST", "/match/preview", { name: "alice", angle: 5, power: 0.5 });
+    expect(JSON.stringify(session.observe())).toBe(before);
+    const r = http.route("POST", "/match/preview", { name: "alice", angle: 5, power: 0.5 });
+    expect(JSON.stringify(r.body)).not.toMatch(/bias|sigma|noise|hand|drift/i);
   });
 });
 

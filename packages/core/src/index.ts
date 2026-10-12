@@ -19,7 +19,15 @@ export {
   traitFrom,
   unitUniform,
 } from "./hand.ts";
-export type { Group, MatchObserve, MatchOpts, MatchShotResult, PlayerId } from "./match.ts";
+export type {
+  Group,
+  MatchObserve,
+  MatchOpts,
+  MatchPreview,
+  MatchPreviewEvent,
+  MatchShotResult,
+  PlayerId,
+} from "./match.ts";
 export { BREAK_LINE_X, FOOT_SPOT_X, MATCH_TABLE, MatchSession } from "./match.ts";
 export type {
   DenseMatchSample,

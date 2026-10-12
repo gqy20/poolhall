@@ -9,8 +9,8 @@
 PORT     ?= 8800
 TABLES   ?= 2
 SEED     ?= 42
-A        ?= external
-B        ?= external
+A        ?= synthetic:oracle
+B        ?= synthetic:oracle
 MAXSHOTS ?= 60
 AGENT    ?= default
 TRIALS   ?= 20
@@ -33,7 +33,11 @@ help: ## 显示本帮助
 install: ## pnpm install（唯一前置；无 build 步骤）
 	@pnpm install
 
-dev: ## 常驻大厅：多桌 · 动态认座 · 选桌观战（单端口，默认 PORT=8800）
+# 大厅的意义就是等真人 Agent 推门入座，dev 单独回落到 external（命令行可覆盖）
+dev: A = external
+dev: B = external
+
+dev: ## 常驻大厅：多桌 · 动态认座 · 选桌观战（默认等外部 Agent 入座，A/B=external）
 	@echo "大厅 → http://localhost:$(PORT)   观战 /table/t1 …   Ctrl-C 关闭"
 	@exec $(CLI) lobby --port $(PORT) --tables $(TABLES) --seed $(SEED) --a $(A) --b $(B) --max-shots $(MAXSHOTS)
 

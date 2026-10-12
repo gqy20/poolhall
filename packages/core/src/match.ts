@@ -95,6 +95,95 @@ export interface MatchOpts {
   handSeed?: number;
 }
 
+/** 预演事件（带落点坐标，前端画碰撞/进袋标记） */
+export interface MatchPreviewEvent {
+  t: number;
+  kind: string;
+  a: string;
+  b?: string;
+  pocket?: string;
+  x: number;
+  y: number;
+}
+
+/** 试打预演结果：降采样轨迹 + 事件 + 终局（"知"层可视化原料） */
+export interface MatchPreview {
+  simTime: number;
+  /** 每球降采样路径 [x,y]（只含本杆移动过的球；3 位小数） */
+  paths: Record<string, Array<[number, number]>>;
+  events: MatchPreviewEvent[];
+  finalPos: Record<string, { x: number; y: number }>;
+  pottedPockets: Array<{ ball: string; pocket: string }>;
+  scratch: boolean;
+}
+
+/** 路径降采样：每 0.05s 一帧 + 事件前后邻帧（保拐点）+ 首末帧 */
+const PREVIEW_STEP = 0.05;
+
+function previewPaths(
+  samples: MatchShotResult["samples"],
+  events: Array<{ t: number }>,
+): Record<string, Array<[number, number]>> {
+  const keep = new Array<boolean>(samples.length).fill(false);
+  if (samples.length === 0) return {};
+  keep[0] = true;
+  keep[samples.length - 1] = true;
+  const dt = samples.length > 1 ? samples[1]!.t - samples[0]!.t : 1;
+  let lastKept = samples[0]!.t;
+  for (let i = 1; i < samples.length - 1; i++) {
+    const s = samples[i]!;
+    if (s.t - lastKept >= PREVIEW_STEP) {
+      keep[i] = true;
+      lastKept = s.t;
+    }
+  }
+  for (const e of events) {
+    const idx = Math.round((e.t - samples[0]!.t) / dt);
+    for (const j of [idx - 1, idx, idx + 1]) {
+      if (j >= 0 && j < samples.length) keep[j] = true;
+    }
+  }
+  const start = samples[0]!.pos;
+  const paths: Record<string, Array<[number, number]>> = {};
+  for (let i = 0; i < samples.length; i++) {
+    if (!keep[i]) continue;
+    const s = samples[i]!;
+    for (const [id, p] of Object.entries(s.pos)) {
+      const s0 = start[id];
+      if (!s0) continue;
+      const pt: [number, number] = [r3(p.x), r3(p.y)];
+      if (id in paths) paths[id]!.push(pt);
+      else if (Math.hypot(p.x - s0.x, p.y - s0.y) > 0.001) paths[id] = [pt];
+    }
+  }
+  return paths;
+}
+
+const r3 = (v: number): number => Math.round(v * 1000) / 1000;
+
+/** 事件落点：最近采样帧上的球位（ball-ball 取两球中点） */
+function previewEvents(
+  samples: MatchShotResult["samples"],
+  events: MatchShotResult["events"],
+): MatchPreviewEvent[] {
+  const dt = samples.length > 1 ? samples[1]!.t - samples[0]!.t : 1;
+  const at = (t: number): Record<string, { x: number; y: number }> => {
+    const i = Math.min(samples.length - 1, Math.max(0, Math.round((t - samples[0]!.t) / dt)));
+    return samples[i]?.pos ?? {};
+  };
+  const out: MatchPreviewEvent[] = [];
+  for (const e of events) {
+    const pos = at(e.t);
+    const pa = pos[e.a];
+    const pb = e.b ? pos[e.b] : undefined;
+    const x = pa && pb ? (pa.x + pb.x) / 2 : pa?.x;
+    const y = pa && pb ? (pa.y + pb.y) / 2 : pa?.y;
+    if (x === undefined || y === undefined) continue;
+    out.push({ ...e, x: r3(x), y: r3(y) });
+  }
+  return out;
+}
+
 const SOLIDS = new Set(["1", "2", "3", "4", "5", "6", "7"]);
 const STRIPES = new Set(["9", "10", "11", "12", "13", "14", "15"]);
 
@@ -279,6 +368,48 @@ export class MatchSession {
     return { target, errorDeg, directionCorrect };
   }
 
+  /**
+   * 试打预演（人类球杆 UI）：纯物理、零手感注入、零副作用——"知"层可视化。
+   * 与 shoot 同源模拟，但不改局面、不记分、不裁判。泄漏红线：不含任何 hand 字段。
+   */
+  preview(intent: {
+    angle: number;
+    power: number;
+    spin?: { x: number; y: number; z: number };
+  }): MatchPreview {
+    if (this.finished) throw new Error("对局已结束");
+    const balls = this.balls.map((b) => ({
+      ...b,
+      pos: { ...b.pos },
+      vel: { ...b.vel },
+      w: { ...b.w },
+    }));
+    const cue = balls.find((b) => b.id === "cue")!;
+    strike(cue, intent.angle, Math.min(1, Math.max(0, intent.power)), intent.spin);
+    const r = simulate(balls, this.table);
+
+    const alreadyIn = new Set(this.balls.filter((b) => b.pocketed).map((b) => b.id));
+    const pottedPockets: Array<{ ball: string; pocket: string }> = [];
+    let scratch = false;
+    for (const b of r.balls) {
+      if (!b.pocketed || alreadyIn.has(b.id)) continue;
+      if (b.id === "cue") scratch = true;
+      else if (b.pocket) pottedPockets.push({ ball: b.id, pocket: b.pocket });
+    }
+    const finalPos: Record<string, { x: number; y: number }> = {};
+    for (const b of r.balls) {
+      if (!b.pocketed) finalPos[b.id] = { x: b.pos.x, y: b.pos.y };
+    }
+    return {
+      simTime: r.simTime,
+      paths: previewPaths(r.samples, r.events),
+      events: previewEvents(r.samples, r.events),
+      pottedPockets,
+      scratch,
+      finalPos,
+    };
+  }
+
   /** 开球专用意图：从开球区中央直击顶球，不指定球袋。 */
   breakIntent(): { angle: number; power: number } {
     const cue = this.balls.find((b) => b.id === "cue")!;
@@ -297,18 +428,26 @@ export class MatchSession {
     return remain.length === 0 ? new Set(["8"]) : new Set(remain);
   }
 
-  /** 出杆：注入当前选手手感 → 模拟 → 裁判（首触/进袋/scratch/胜负） */
-  shoot(intent: {
-    angle: number;
-    power: number;
-    spin?: { x: number; y: number; z: number };
-  }): MatchShotResult {
+  /** 出杆：注入当前选手手感 → 模拟 → 裁判（首触/进袋/scratch/胜负）
+   *  opts.clean=true 时跳过手感注入（人类练习模式的纯物理出杆——所见即所得） */
+  shoot(
+    intent: {
+      angle: number;
+      power: number;
+      spin?: { x: number; y: number; z: number };
+    },
+    opts?: { clean?: boolean },
+  ): MatchShotResult {
     if (this.finished) throw new Error("对局已结束");
     const idx = this.shotIdx;
     const isBreak = idx === 0;
     const by = this.turn;
-    const noise = noiseAtShot(this.handOf(by), idx, this.seed, this.nameOf(by));
-    const actual = applyHand(intent, noise);
+    const noise = opts?.clean
+      ? { epsAngle: 0, epsPower: 0, biasAt: 0 }
+      : noiseAtShot(this.handOf(by), idx, this.seed, this.nameOf(by));
+    const actual = opts?.clean
+      ? { angle: intent.angle, power: intent.power }
+      : applyHand(intent, noise);
 
     const balls = this.balls.map((b) => ({
       ...b,

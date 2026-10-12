@@ -9,11 +9,9 @@
  * - 单端口提供：大厅页 /、状态 /lobby/status、桌页 /table/<id>、
  *   /match/* 入座层（按 ?table= 分发）、WS /ws/<id>
  */
-import { createReadStream, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import type { Duplex } from "node:stream";
-import { fileURLToPath } from "node:url";
 import {
   BREAK_LINE_X,
   FOOT_SPOT_X,
@@ -28,6 +26,7 @@ import { attachLastShot, MatchHttp, readJsonBody } from "./match-http.ts";
 import { runMatch } from "./match-run.ts";
 import { WsHub } from "./match-ws/server.ts";
 import { promptFingerprint } from "./prompt.ts";
+import { serveWebAsset } from "./web-asset.ts";
 import { createEventSink, type MatchEventSink, PLAYER_SPECS } from "./web-match.ts";
 
 export interface LobbyOpts {
@@ -341,22 +340,14 @@ export async function runLobby(opts: LobbyOpts): Promise<void> {
   await lobby.close();
 }
 
-const webDir = join(dirname(fileURLToPath(import.meta.url)), "../../../experiments/web");
-
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(body));
 }
 
+/** 页面/静态资产：白名单服务（lobby.html / index.html / style.css / table.js / human.js） */
 function servePage(res: ServerResponse, file: string): void {
-  const filePath = join(webDir, file);
-  try {
-    statSync(filePath);
-    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    createReadStream(filePath).pipe(res);
-  } catch {
-    res.writeHead(404).end(`${file} not found`);
-  }
+  if (!serveWebAsset(res, file)) sendJson(res, 404, { error: `${file} not found` });
 }
 
 async function routeLobby(
@@ -386,6 +377,7 @@ async function routeLobby(
     return servePage(res, "index.html");
   }
   if (path.startsWith("/match/")) return routeMatchApi(rooms, waiting, req, res, path, query);
+  if (req.method === "GET" && serveWebAsset(res, path.slice(1))) return;
   sendJson(res, 404, { error: `未知路由 ${req.method} ${path}` });
 }
 

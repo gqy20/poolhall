@@ -70,6 +70,7 @@ HTTP 入座接口（web-match HTTP 端口 = WS 端口 + 1，回合门控在服�
 | `POST /match/join {name}` | 身份名认领桌位；不符 → 404 |
 | `GET /match/state` | 公开状态（轮次/比分/等待谁）；随时可查 |
 | `GET /match/observe?name=` | 当前选手视角；没轮到你 → 409 `{error, turn}` |
+| `POST /match/preview` | 试打预演 `{name, angle, power, spin?}` → `{paths, events, finalPos, pottedPockets, scratch}`；纯物理、零手感注入、零副作用（已认座即可用，不要求轮到本人） |
 | `POST /match/shot` | 出杆载荷（aimX/aimY/power/spin/targetBall/targetPocket/prediction）；非当前回合 → 409；受理 → 202 |
 
 行为约定：
@@ -81,6 +82,28 @@ HTTP 入座接口（web-match HTTP 端口 = WS 端口 + 1，回合门控在服�
 - 外部选手的 `prediction` 文本进入公开计划（观战右栏）；开球由外部选手自行决定。
 - 冒烟工具：`node packages/mcp/src/smoke.ts A|B [remote-url] [身份名]`（oracle 同款驱动）。
 - v1 未做：断线重连（超时判负已覆盖最低容错）、双方同时抢座（身份名预分配）。
+
+## 5. 人类球杆（M7：浏览器直接打球 + 试打预演）
+
+观战页拆分为 `experiments/web/{index.html, style.css, table.js, human.js}`（table.js 观战核心、
+human.js 人类交互层，经 `globalThis.POOLHALL` 命名空间衔接）。人坐在观众席就能入座打球：
+
+```bash
+make table A=external B=external           # 单桌：两名都留给人（或一桌一人一 AI）
+# 浏览器开 http://localhost:8801 → 人类操作条：填身份名 → 入座 → 等轮到你
+```
+
+- **瞄准**：台面拖拽（母球→指针方向）；角度读数可左右拖动微调（Shift 精调）；方向键 ±0.5°（Shift ±0.1°）；↑↓ 调力度
+- **目标**：单击目标球选中（ghost 圈 + 球→袋参考线 + **切角读数**与目标球→母球连线）；「◎ 对准 ghost」一键对准
+- **击球点**：白球截面圆盘点选（上=高杆 下=低杆 左右=加塞，点中心清零）
+- **预演**（金虚线）：拖拽/调参后防抖 140ms 调 `POST /match/preview`，画全部球预演轨迹、
+  母球停点圈、碰撞点、预演进袋/scratch 标记——**纯物理、零手感注入**
+- **出杆**：走 `/match/shot`（与 MCP 外部选手同一条通道）；**默认纯物理（clean，所见即所得，练理论用）**，
+  勾选「手感注入」才启用噪声（clean 仅 casual 入座层开放，rated/benchmark 路径不受影响）；
+  金线（你算的）vs 橙线（实际轨迹）同屏
+- 桌页（/table/<id>）入座锁定本桌；大厅根入口入座自动分配
+- 跨局肌肉记忆绑定身份名（同名字跨局同 hand）；出杆限时与判负规则对外部选手一视同仁
+- 离线回放不含 human.js（单文件回放仅消费事件）
 
 ## 6. 实测（2026-08-30，真模型经 MCP remote 入座大厅）
 
@@ -206,3 +229,10 @@ HTTP 入座接口（web-match HTTP 端口 = WS 端口 + 1，回合门控在服�
 - 2026-08-31 读人上屏：MatchEvent 升 schema 4 新增 `read` 公开事件（读者/目标/估计/带噪声误差/方向/剩余次数），
   大厅与单桌读人评分后自动广播进观战流与公开日志；观战/回放页新增读人字幕（👁 金色）+ 金环凝视特效。
   端到端验证：smoke 对局中 curl 读人 → 事件落盘 → 回放页字幕“👁 smoke-a 读人：-0.100° 误差 0.102° 方向读对 ✓”。
+- 2026-10-12 人类球杆（§5）：`POST /match/preview` 试打端点（`MatchSession.preview`——纯物理、
+  零手感、零副作用、降采样轨迹）；观战页拆分为 style.css/table.js/human.js（index.html 回归骨架），
+  web-replay 内联观战核心保持单文件回放。浏览器可入座瞄准/调力/选击球点/预演/出杆。
+- 2026-10-12 人类球杆修正与练习模式：前端资产改绝对路径（修 /table/<id> 下 404）；入座锁定当前桌页
+  （大厅入口才自动分配）；场景重建清空球缓存 + 轮到人类时主动铺球（修开局空台）；出杆新增 `clean`
+  纯物理开关（默认开，练理论所见即所得；勾选「手感注入」才走噪声）；角度读数支持拖动微调；
+  新增切角读数与目标球→袋口/目标球→母球两条参考连线。

@@ -125,6 +125,7 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
     let extra: { targetBall?: string; targetPocket?: string | null } = {};
     let publicPlan: MatchPublicPlan;
     let prediction: string | null = null;
+    let clean = false;
     const spec = isA ? opts.specA : opts.specB;
     if (spec === "external") {
       const external = await externalDecision(opts, session, obs);
@@ -133,6 +134,7 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
       extra = { targetBall: external.targetBall, targetPocket: external.targetPocket };
       publicPlan = external.plan ?? externalPlan(external.prediction);
       prediction = external.prediction;
+      clean = external.clean;
     } else if (obs.breakShot) {
       intent = session.breakIntent();
       extra = { targetBall: "1", targetPocket: null };
@@ -154,7 +156,7 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
       extra = { targetBall: best0.ball, targetPocket: best0.pocket };
       publicPlan = oraclePlan(obs, best0.ball, best0.pocket);
     }
-    const rec: MatchShotResult = session.shoot(intent);
+    const rec: MatchShotResult = session.shoot(intent, { clean });
     log(opts.out, {
       kind: "shot",
       shot: rec.shot,
@@ -268,6 +270,8 @@ async function externalDecision(
       targetPocket: string;
       prediction: string | null;
       plan: MatchPublicPlan | null;
+      /** 纯物理出杆（人类练习模式） */
+      clean: boolean;
     }
 > {
   if (!opts.externalShot) throw new Error("spec=external 必须提供 externalShot 回调");
@@ -287,6 +291,7 @@ async function externalDecision(
     targetPocket: wait.shot.targetPocket,
     prediction: wait.shot.prediction ?? null,
     plan: wait.shot.plan ?? null,
+    clean: wait.shot.clean === true,
   };
 }
 

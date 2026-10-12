@@ -157,4 +157,49 @@ describe("MatchSession", () => {
     expect(s.result.winner).toBe("B");
     expect(s.result.reason).toBe("第一次判负");
   });
+
+  it("preview：确定性 + 零副作用（同 intent 两次结果全等，局面不变）", () => {
+    const s = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
+    const intent = { angle: 10, power: 0.7 };
+    const before = JSON.stringify(s.observe());
+    const p1 = s.preview(intent);
+    const p2 = s.preview(intent);
+    expect(p1).toEqual(p2);
+    expect(JSON.stringify(s.observe())).toBe(before);
+    expect(s.result.shots).toBe(0);
+  });
+
+  it("preview：结构与降采样（cue 有路径、点稀疏、事件带落点）", () => {
+    const s = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
+    const intent = s.breakIntent();
+    const p = s.preview(intent);
+    expect(p.simTime).toBeGreaterThan(0);
+    expect(p.paths.cue?.length).toBeGreaterThanOrEqual(2);
+    // 降采样上界：0.05s 一帧 + 每事件至多 3 帧 + 首末帧
+    const budget = Math.ceil(p.simTime / 0.05) + 3 * p.events.length + 4;
+    for (const pts of Object.values(p.paths)) expect(pts.length).toBeLessThanOrEqual(budget);
+    for (const e of p.events) {
+      expect(Number.isFinite(e.x)).toBe(true);
+      expect(Number.isFinite(e.y)).toBe(true);
+    }
+    expect(Object.keys(p.finalPos).length).toBeGreaterThan(0);
+  });
+
+  it("preview：不含 hand/bias/noise 字段（泄漏红线）", () => {
+    const s = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
+    const p = s.preview({ angle: 0, power: 0.5 });
+    expect(JSON.stringify(p)).not.toMatch(/bias|sigma|noise|hand|drift/i);
+  });
+
+  it("clean：纯物理出杆轨迹 ≡ 预演轨迹；默认出杆含手感噪声（两者不同）", () => {
+    const intent = new MatchSession({ seed: 42, nameA: "a", nameB: "b" }).breakIntent();
+    const s1 = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
+    const expectFinal = s1.preview(intent);
+    const clean = s1.shoot(intent, { clean: true });
+    expect(clean.finalPos).toEqual(expectFinal.finalPos);
+    // 同 seed 默认出杆：手感噪声非零 → 实际轨迹偏离纯物理预演（seed 42 固定可复现）
+    const s2 = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
+    const noisy = s2.shoot(intent);
+    expect(noisy.finalPos).not.toEqual(expectFinal.finalPos);
+  });
 });

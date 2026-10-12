@@ -7,6 +7,7 @@
  * - GET  /match/state    公开对局状态（轮次/比分/等待谁）
  * - GET  /match/observe  当前选手视角（仅轮到自己时可用——回合门控）
  * - POST /match/shot     出杆（仅轮到自己时受理，否则 409）
+ * - POST /match/preview  试打预演（纯物理轨迹，不注入手感、不改局面——人类球杆 UI 用）
  *
  * 隐藏状态红线：本层只透出 MatchSession.observe()/result 已净化的字段。
  */
@@ -81,6 +82,8 @@ export const ExternalShotSchema = z.object({
   targetBall: z.string().min(1),
   targetPocket: z.string().min(1),
   prediction: z.string().max(2000).optional(),
+  /** 纯物理出杆（人类练习模式：跳过手感注入；casual 入座层信任协议，rated 对局勿用） */
+  clean: z.boolean().optional(),
   /** 完整公开计划（AI 内心戏）：透传到观战面板与回放；缺省回退 prediction 文本 */
   plan: z
     .object({
@@ -93,6 +96,20 @@ export const ExternalShotSchema = z.object({
     .optional(),
 });
 export type ExternalShot = z.infer<typeof ExternalShotSchema>;
+
+/** 试打预演载荷（人类球杆 UI）：angle 直接采用出杆角度约定（度，屏幕系） */
+export const PreviewSchema = z.object({
+  name: z.string().min(1),
+  angle: z.number().finite().min(-3600).max(3600),
+  power: z.number().min(0).max(1),
+  spin: z
+    .object({
+      x: z.number().min(-1).max(1),
+      y: z.number().min(-1).max(1),
+      z: z.number().min(-1).max(1),
+    })
+    .optional(),
+});
 
 /** 对局循环等待外部出杆的两种结局：收到合法出杆 / 超时（判负原料） */
 export type ShotWait = { kind: "shot"; shot: ExternalShot } | { kind: "timeout" };
@@ -261,6 +278,7 @@ export class MatchHttp {
     if (method === "GET" && path === "/match/state") return this.routeState();
     if (method === "GET" && path === "/match/observe") return this.routeObserve(query.get("name"));
     if (method === "POST" && path === "/match/shot") return this.routeShot(body);
+    if (method === "POST" && path === "/match/preview") return this.routePreview(body);
     return { status: 404, body: { error: `未知路由 ${method} ${path}` } };
   }
 
@@ -382,6 +400,24 @@ export class MatchHttp {
       return { status: 409, body: { error: "还没轮到你", turn: session.currentTurn } };
     }
     return { status: 200, body: session.observe() };
+  }
+
+  /** 试打预演：已认座即可用（不要求轮到本人——对手思考时预演属学习行为，无泄漏） */
+  private routePreview(body: unknown): HttpRoute {
+    const session = this.session;
+    if (!session) return { status: 503, body: { error: "本桌尚未开局" } };
+    const parsed = PreviewSchema.safeParse(body);
+    if (!parsed.success) {
+      return { status: 400, body: { error: "预演载荷不合法（需 name/angle/power）" } };
+    }
+    const seat = this.seatOf(parsed.data.name);
+    if (!seat)
+      return { status: 404, body: { error: "身份名与本桌席位不符", seats: this.seatNames() } };
+    if (session.finished) return { status: 409, body: { error: "对局已结束", ...session.result } };
+    return {
+      status: 200,
+      body: { ok: true, seat, preview: session.preview(parsed.data) },
+    };
   }
 
   private routeShot(body: unknown): HttpRoute {

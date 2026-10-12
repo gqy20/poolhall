@@ -1,7 +1,6 @@
-import { appendFileSync, createReadStream, mkdirSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 import {
   BREAK_LINE_X,
   encodeMatchEvent,
@@ -15,6 +14,7 @@ import { attachLastShot, type EventSink, MatchHttp, readJsonBody } from "./match
 import { runMatch } from "./match-run.ts";
 import { WsHub } from "./match-ws/server.ts";
 import { promptFingerprint } from "./prompt.ts";
+import { serveWebAsset } from "./web-asset.ts";
 
 export interface WebMatchOpts {
   host: string;
@@ -38,25 +38,18 @@ export const PLAYER_SPECS = new Set(["synthetic:oracle", "llm", "external"]);
 export type MatchEventSink = EventSink;
 
 function startWebServer(port: number, host: string, matchHttp: MatchHttp): Promise<Server> {
-  const webDir = join(dirname(fileURLToPath(import.meta.url)), "../../../experiments/web");
   const server = createServer((req, res) => {
     const path = (req.url ?? "").split("?")[0]!;
     if (path.startsWith("/match/")) {
       void handleMatchRoute(req, res, matchHttp);
       return;
     }
-    if (req.url !== "/" && req.url !== "/index.html") {
+    if (req.method !== "GET") {
       res.writeHead(404).end();
       return;
     }
-    const filePath = join(webDir, "index.html");
-    try {
-      statSync(filePath);
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      createReadStream(filePath).pipe(res);
-    } catch {
-      res.writeHead(404).end("experiments/web/index.html not found");
-    }
+    const file = path === "/" || path === "/index.html" ? "index.html" : path.slice(1);
+    if (!serveWebAsset(res, file)) res.writeHead(404).end();
   });
   return new Promise((resolve, reject) => {
     server.once("error", reject);
