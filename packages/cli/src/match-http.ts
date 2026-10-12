@@ -150,6 +150,8 @@ interface PendingShot {
   player: PlayerId;
   resolve: (wait: ShotWait) => void;
   timer: ReturnType<typeof setTimeout> | null;
+  /** 出杆限时截止时刻（epoch ms；前端倒计时显示） */
+  deadlineMs: number | null;
 }
 
 export interface HttpRoute {
@@ -272,7 +274,12 @@ export class MatchHttp {
         this.opts.shotClockMs > 0
           ? setTimeout(() => settle({ kind: "timeout" }), this.opts.shotClockMs)
           : null;
-      this.pending = { player, resolve: settle, timer };
+      this.pending = {
+        player,
+        resolve: settle,
+        timer,
+        deadlineMs: this.opts.shotClockMs > 0 ? Date.now() + this.opts.shotClockMs : null,
+      };
       signal?.addEventListener("abort", () => settle({ kind: "timeout" }), { once: true });
     });
   }
@@ -403,6 +410,8 @@ export class MatchHttp {
         winner: r.winner,
         reason: r.reason,
         waitingFor: this.pending?.player ?? null,
+        /** 出杆限时截止（epoch ms；null = 无挂起或不限时） */
+        shotDeadlineMs: this.pending?.deadlineMs ?? null,
         lastShot: this.lastShot,
         recentShots: this.recentShots,
       },

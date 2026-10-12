@@ -31,6 +31,17 @@ describe("MatchHttp 入座与门控", () => {
     expect(http.route("GET", "/match/observe?name=a", null).status).toBe(503);
   });
 
+  it("state：透出 shotDeadlineMs（限时截止时刻；无挂起/不限时为 null）", () => {
+    const { http } = mk();
+    expect(http.route("GET", "/match/state", null).body).toMatchObject({ shotDeadlineMs: null });
+    const timed = new MatchHttp({ fixed: { A: "a", B: "b" }, shotClockMs: 60000 });
+    timed.attach(new MatchSession({ seed: 42, nameA: "a", nameB: "b" }));
+    timed.waitForShot("A");
+    const body = timed.route("GET", "/match/state", null).body as { shotDeadlineMs: number };
+    expect(body.shotDeadlineMs).toBeGreaterThan(Date.now());
+    expect(body.shotDeadlineMs).toBeLessThan(Date.now() + 100000);
+  });
+
   it("state：透出轮次/比分/等待对象（不含隐藏手感字段）", () => {
     const { http } = mk();
     const r = http.route("GET", "/match/state", null);

@@ -256,3 +256,6 @@ make table A=external B=external           # 单桌：两名都留给人（或�
   每局独立 AbortController，runMatch 观察到 shouldStop 收局、大厅自动续局、被打断局不计 Elo；
   「离开」按钮 = 离席判负（MatchHttp.abortPending 即时结算挂起的出杆等待，固定席位保留绑定）。
   回答最初的问题：现在任何一场都可以随时打断。
+- 2026-10-12 体验打磨：KPI「轮到」与胜负字幕显示选手名（不再只 A/B 字母）；出杆限时倒计时
+  （state 透出 shotDeadlineMs，状态栏每秒刷新 ⏱ Ns）；角度读数加大触控热区（56px + touch-action none）；
+  入座竞态修复（自动入座与手动点击合并，防误触离席判负）。

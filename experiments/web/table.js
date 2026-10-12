@@ -440,7 +440,7 @@ function notifyAnim(v) {
 async function renderShot(s, generation) {
   const displayShot = s.trial + 1;
   kpi.shot = displayShot;
-  kpi.turn = s.by;
+  kpi.turn = names[s.by] ?? s.by;
   setKpi();
   status.textContent = `▶ ${s.by} 正在击第 ${displayShot} 杆`;
   lastEventEl.textContent = `第 ${displayShot} 杆 · ${s.by} 正在执行计划`;
@@ -505,7 +505,7 @@ async function renderShot(s, generation) {
     `第${displayShot}杆 ${s.targetBall ?? "?"}→${s.targetPocket ?? "?"} 瞄${(s.intentAngle ?? 0).toFixed(0)}° ${label}`,
     cls,
   );
-  kpi.turn = s.nextTurn;
+  kpi.turn = names[s.nextTurn] ?? s.nextTurn;
   setKpi();
 }
 
@@ -1118,7 +1118,12 @@ function renderRead(msg, generation) {
 
 function renderSummary(msg, generation) {
   if (generation !== playbackGeneration) return;
-  const w = msg.winner === "A" ? "A 胜" : msg.winner === "B" ? "B 胜" : "平局";
+  const w =
+    msg.winner === "A"
+      ? `${names.A ?? "A"} 胜`
+      : msg.winner === "B"
+        ? `${names.B ?? "B"} 胜`
+        : "平局";
   const color =
     msg.winner === "A" ? "var(--A)" : msg.winner === "B" ? "var(--B)" : "var(--ink-soft)";
   const reason = (msg.reason ?? "").replaceAll("——平局", "").replaceAll("——", "：");

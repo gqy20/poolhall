@@ -85,9 +85,23 @@
     return { status: res.status, data: await res.json().catch(() => null) };
   }
 
+  /** 基础状态文本（轮询倒计时在其上追加显示） */
+  let statusBase = "观战";
   function setStatus(text, long) {
+    statusBase = text;
     statusEl.textContent = text;
     statusEl.title = long ?? text; // 单行截断时悬停看全文
+  }
+
+  /** 出杆限时倒计时：轮到本人时每秒刷新显示 */
+  function renderCountdown(waitingFor, deadlineMs) {
+    if (waitingFor !== state.seat || !deadlineMs) return;
+    const left = Math.ceil((deadlineMs - Date.now()) / 1000);
+    if (left <= 0) {
+      statusEl.textContent = `${statusBase} · ⏱ 超时判负中`;
+      return;
+    }
+    statusEl.textContent = `${statusBase} · ⏱ ${left}s`;
   }
 
   /* ---------- SVG 坐标 ---------- */
@@ -615,6 +629,7 @@
         return;
       }
       const waiting = data.waitingFor;
+      renderCountdown(waiting, data.shotDeadlineMs);
       if (waiting === state.seat && !state.active && !P.animating()) {
         await activate();
       } else if (waiting !== state.seat && state.active) {
