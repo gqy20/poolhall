@@ -290,15 +290,15 @@ function createScene() {
   ];
   for (const p of pockets) {
     const pr = p.id.startsWith("c") ? POCKET_R_SIDE : POCKET_R_CORNER;
-    // 袋口：深色洞口（半径 = 物理判定圆）+ 两侧袋口角（knuckle 胶边球头，真实台面造型）
+    // 袋口：细环（半径 = 物理判定圆）+ 两侧袋口角；袋位文字直接显示，无底色
     root.appendChild(
       el("circle", {
         cx: p.x,
         cy: p.y,
         r: pr,
-        fill: "#0B1410",
-        stroke: "rgba(18,55,42,.85)",
-        "stroke-width": 0.003,
+        fill: "rgba(11,20,16,.35)",
+        stroke: "rgba(247,244,238,.4)",
+        "stroke-width": 0.0025,
       }),
     );
     for (const j of pocketJaws(p, pr, TABLE_W, TABLE_H)) {

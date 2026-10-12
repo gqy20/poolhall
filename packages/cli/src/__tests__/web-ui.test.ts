@@ -67,6 +67,9 @@ describe("实时对局前端", () => {
     expect(humanJs).toContain("human-path-first");
     expect(humanJs).toContain("spinDiskBig");
     expect(humanJs).toContain("spinDesc");
+    // a 键自动瞄准（切角最小目标 + ghost 对准）；预演轨迹收拢（变化最大的另外 3 颗）
+    expect(humanJs).toContain("autoAim");
+    expect(humanJs).toContain("pathLength");
     expect(humanJs).toContain("updateCueStick");
     // index.html：控件 id 齐全（含人类操作条）
     expect(html).toContain('id="new-match"');

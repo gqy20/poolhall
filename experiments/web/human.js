@@ -191,11 +191,20 @@
     P.updateCueStick(P.scene.cue, cue, state.angle, seatColor());
   }
 
+  /** 路径总长度（轨迹变化量） */
+  function pathLength(pts) {
+    let sum = 0;
+    for (let i = 1; i < pts.length; i++) {
+      sum += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    }
+    return sum;
+  }
+
   function drawPreview(pv) {
     if (!previewGroup) return;
     previewGroup.replaceChildren();
     if (!pv) return;
-    // 首触目标球（母球撞上的第一颗）轨迹亮白突出，其余球压暗
+    // 轨迹收拢：母球 + 首触目标球（亮白突出）+ 其余球中变化最大的 3 颗（压暗）
     const firstContact = (pv.events ?? []).find(
       (e) => e.kind === "ball-ball" && (e.a === "cue" || e.b === "cue"),
     );
@@ -204,8 +213,13 @@
         ? firstContact.b
         : firstContact.a
       : null;
+    const others = Object.entries(pv.paths ?? {})
+      .filter(([id, pts]) => id !== "cue" && id !== firstBall && pts.length >= 2)
+      .map(([id, pts]) => [id, pts, pathLength(pts)])
+      .sort((a, b) => b[2] - a[2]);
+    const visible = new Set(["cue", firstBall, ...others.slice(0, 3).map(([id]) => id)]);
     for (const [id, pts] of Object.entries(pv.paths ?? {})) {
-      if (!Array.isArray(pts) || pts.length < 2) continue;
+      if (!visible.has(id) || !Array.isArray(pts) || pts.length < 2) continue;
       const points = pts.map(([x, y]) => `${x},${y}`).join(" ");
       previewGroup.appendChild(
         P.el("polyline", {
@@ -376,6 +390,22 @@
     setAngle((Math.atan2(-(t.ghost.y - cue.y), t.ghost.x - cue.x) * 180) / Math.PI);
   }
 
+  /** 自动瞄准：选切角最小的合法目标（oracle 同款）并对准 ghost；开球直取顶球 */
+  function autoAim() {
+    if (!state.active) return;
+    const cue = cueBall();
+    if (!cue) return;
+    if (state.breakShot) {
+      const apex = state.balls.find((b) => b.id === "1");
+      if (apex) setAngle((Math.atan2(-(apex.y - cue.y), apex.x - cue.x) * 180) / Math.PI);
+      return;
+    }
+    const t = bestAssist();
+    if (!t) return;
+    state.target = t;
+    snapToGhost();
+  }
+
   /* ---------- 击球点（spin）圆盘：侧栏大盘 + 全屏小盘，同步同一状态 ---------- */
   function setSpinFromDisk(disk, event) {
     const rect = disk.getBoundingClientRect();
@@ -444,7 +474,7 @@
         setAngle((Math.atan2(-(apex.y - cue.y), apex.x - cue.x) * 180) / Math.PI);
         setPower(0.85);
       }
-      setStatus("▶ 你 · 开球", "轮到你开球：瞄准球堆，力度已调至 0.85");
+      setStatus("▶ 你 · 开球", "轮到你开球：瞄准球堆，力度已调至 0.85；a=自动瞄准，Enter=出杆");
     } else {
       const cue = cueBall();
       if (cue && state.target) {
@@ -455,7 +485,10 @@
       }
       const group =
         data.yourGroup === "stripes" ? "花色" : data.yourGroup === "solids" ? "全色" : "开放";
-      setStatus(`▶ 你 · ${group}组`, "轮到你。点击球选目标，拖拽瞄准；金线=纯物理预演");
+      setStatus(
+        `▶ 你 · ${group}组`,
+        "轮到你。点击球选目标，拖拽瞄准；a=自动瞄准，Enter=出杆；金线=纯物理预演",
+      );
     }
     groups();
     drawAim();
@@ -578,7 +611,7 @@
     if (state.joined) setStatus("新局 · 等回合", "新局开始，等待轮到你");
   }
 
-  /* ---------- 键盘微调 ---------- */
+  /* ---------- 键盘微调（a=自动瞄准最佳球，Enter=出杆） ---------- */
   document.addEventListener("keydown", (event) => {
     if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement?.tagName)) return;
     if (!state.active) return;
@@ -595,6 +628,12 @@
     } else if (event.key === "ArrowDown") {
       event.preventDefault();
       setPower(state.power - 0.02);
+    } else if (event.key.toLowerCase() === "a") {
+      event.preventDefault();
+      autoAim();
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      void fire();
     }
   });
 
