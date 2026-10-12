@@ -49,7 +49,7 @@ function startWebServer(port: number, host: string, matchHttp: MatchHttp): Promi
       return;
     }
     const file = path === "/" || path === "/index.html" ? "index.html" : path.slice(1);
-    if (!serveWebAsset(res, file)) res.writeHead(404).end();
+    if (!serveWebAsset(req, res, file)) res.writeHead(404).end();
   });
   return new Promise((resolve, reject) => {
     server.once("error", reject);
@@ -99,6 +99,8 @@ function broadcastHello(
       height: MATCH_TABLE.height,
       breakLineX: BREAK_LINE_X,
       footSpotX: FOOT_SPOT_X,
+      cornerMouth: MATCH_TABLE.cornerMouth,
+      sideMouth: MATCH_TABLE.sideMouth,
     },
   });
 }

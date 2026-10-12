@@ -4,10 +4,15 @@ let TABLE_W = 2.54,
   TABLE_H = 1.27;
 let BREAK_LINE_X = TABLE_W / 4,
   FOOT_SPOT_X = (TABLE_W * 3) / 4;
+/* 袋口渲染半径 = 物理判定半径（hello 事件下发；老回放按 CHINESE_EIGHT 同值兜底） */
+let POCKET_R_CORNER = 0.11811 / 2;
+let POCKET_R_SIDE = 0.136525 / 2;
 const R = 0.028575;
 const CUE_LENGTH = 1.4;
 const svgNS = "http://www.w3.org/2000/svg";
 const kpi = { shot: 0, turn: "-", A: 0, B: 0 };
+/** 已进袋球（按选手累积，进球顺序）——台边球带数据源 */
+const pottedBy = { A: [], B: [] };
 const embeddedEvents = globalThis.POOLHALL_EVENTS;
 let playbackSpeed = Array.isArray(embeddedEvents) ? 4 : 1;
 let paused = false;
@@ -248,11 +253,12 @@ function createScene() {
     { id: "cb", x: TABLE_W / 2, y: TABLE_H },
   ];
   for (const p of pockets) {
+    const pr = p.id.startsWith("c") ? POCKET_R_SIDE : POCKET_R_CORNER;
     root.appendChild(
       el("circle", {
         cx: p.x,
         cy: p.y,
-        r: 0.072,
+        r: pr,
         fill: "var(--bg)",
         stroke: "var(--ink-soft)",
         "stroke-width": 0.003,
@@ -263,9 +269,9 @@ function createScene() {
         "text",
         {
           x: p.x,
-          y: p.y + 0.022,
+          y: p.y + pr * 0.32,
           "text-anchor": "middle",
-          "font-size": 0.04,
+          "font-size": pr * 0.66,
           fill: "var(--ink-soft)",
         },
         [p.id.toUpperCase()],
@@ -284,6 +290,7 @@ function createScene() {
   root.appendChild(scene.ballLayer);
   root.appendChild(scene.fx);
   scene.root = root;
+  tableFrame.style.aspectRatio = String(TABLE_W / TABLE_H); // 与台尺寸一致，消除 letterbox 边缘间隙
   tableFrame.replaceChildren(root);
 }
 
@@ -312,6 +319,25 @@ function setKpi() {
   document.getElementById("kpi-turn").textContent = kpi.turn;
   document.getElementById("kpi-A").textContent = kpi.A;
   document.getElementById("kpi-B").textContent = kpi.B;
+}
+
+/* 已进袋球带：小色球（纯色/花色样式与台面一致） */
+function pottedChip(id) {
+  const spec = ballSpec(id);
+  if (!spec) return null;
+  const chip = document.createElement("span");
+  chip.className = `potted-chip ${id === "8" ? "eight" : spec.stripe ? "stripe" : "solid"}`;
+  chip.style.setProperty("--c", spec.color);
+  chip.textContent = id;
+  return chip;
+}
+
+function renderPottedStrip() {
+  for (const side of ["A", "B"]) {
+    const host = document.getElementById(`potted-balls-${side}`);
+    host.replaceChildren(...pottedBy[side].map((id) => pottedChip(id)).filter(Boolean));
+    document.getElementById(`potted-name-${side}`).textContent = names[side] ?? side;
+  }
 }
 
 function appendLog(by, text, cls) {
@@ -372,6 +398,8 @@ async function renderShot(s, generation) {
   if (s.pottedBalls?.length > 0) {
     if (s.by === "A") kpi.A += s.pottedBalls.length;
     else kpi.B += s.pottedBalls.length;
+    pottedBy[s.by].push(...s.pottedBalls);
+    renderPottedStrip();
     if (!s.foul) {
       const balls = s.pottedBalls.join("、");
       if (lastPotBy === s.by) potStreak += 1;
@@ -1045,6 +1073,9 @@ function beginSession(msg) {
   kpi.turn = "-";
   kpi.A = 0;
   kpi.B = 0;
+  pottedBy.A = [];
+  pottedBy.B = [];
+  renderPottedStrip();
   setKpi();
   clearAimFx();
   lastEventEl.textContent = "—";
@@ -1093,6 +1124,8 @@ function handle(msg, record = true) {
       TABLE_H = msg.table.height;
       BREAK_LINE_X = msg.table.breakLineX;
       FOOT_SPOT_X = msg.table.footSpotX;
+      if (msg.table.cornerMouth) POCKET_R_CORNER = msg.table.cornerMouth / 2;
+      if (msg.table.sideMouth) POCKET_R_SIDE = msg.table.sideMouth / 2;
     }
     document.getElementById("meta").innerHTML =
       `seed <b>${msg.seed}</b> · <span class="A">A: ${msg.nameA}</span> vs <span class="B">B: ${msg.nameB}</span>` +
@@ -1101,6 +1134,7 @@ function handle(msg, record = true) {
         : "");
     names.A = msg.nameA || "A";
     names.B = msg.nameB || "B";
+    renderPottedStrip();
     if (scene.root) createScene();
     status.textContent = "🔵 等首杆";
     updateScene(null);

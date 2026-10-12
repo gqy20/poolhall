@@ -49,6 +49,10 @@ describe("实时对局前端", () => {
     expect(source).toContain("globalThis.POOLHALL");
     // 场景重建必须清空球缓存（否则旧球节点脱离 DOM 被复用 → 球隐形）
     expect(source).toContain("scene.balls = new Map()");
+    // 袋口渲染半径 = 物理判定半径；台框宽高比按台尺寸动态设（无 letterbox 边缘间隙）
+    expect(source).toContain("POCKET_R_CORNER");
+    expect(source).toContain("cornerMouth");
+    expect(source).toContain("tableFrame.style.aspectRatio");
     // human.js：人类球杆层（入座/预演/出杆）
     expect(humanJs).toContain("/match/join");
     expect(humanJs).toContain("/match/preview");

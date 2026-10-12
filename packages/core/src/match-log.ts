@@ -42,6 +42,9 @@ export const MatchHelloEventSchema = z.object({
     height: z.number().positive(),
     breakLineX: z.number().nonnegative(),
     footSpotX: z.number().positive(),
+    /** 袋口物理判定参数（可选：老日志无此字段，前端按同值兜底渲染） */
+    cornerMouth: z.number().positive().optional(),
+    sideMouth: z.number().positive().optional(),
   }),
 });
 

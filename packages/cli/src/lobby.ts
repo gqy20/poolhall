@@ -254,6 +254,8 @@ export class TableRoom {
         height: MATCH_TABLE.height,
         breakLineX: BREAK_LINE_X,
         footSpotX: FOOT_SPOT_X,
+        cornerMouth: MATCH_TABLE.cornerMouth,
+        sideMouth: MATCH_TABLE.sideMouth,
       },
     });
   }
@@ -344,8 +346,8 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
 }
 
 /** 页面/静态资产：白名单服务（lobby.html / index.html / style.css / table.js / human.js） */
-function servePage(res: ServerResponse, file: string): void {
-  if (!serveWebAsset(res, file)) sendJson(res, 404, { error: `${file} not found` });
+function servePage(req: IncomingMessage, res: ServerResponse, file: string): void {
+  if (!serveWebAsset(req, res, file)) sendJson(res, 404, { error: `${file} not found` });
 }
 
 async function routeLobby(
@@ -359,7 +361,7 @@ async function routeLobby(
   const path = url.split("?")[0]!;
   const query = new URLSearchParams(url.split("?")[1] ?? "");
   if (req.method === "GET" && (path === "/" || path === "/lobby" || path === "/index.html")) {
-    return servePage(res, "lobby.html");
+    return servePage(req, res, "lobby.html");
   }
   if (req.method === "GET" && path === "/lobby/status") {
     return sendJson(res, 200, {
@@ -372,10 +374,10 @@ async function routeLobby(
   if (req.method === "GET" && tablePage) {
     if (!rooms.some((room) => room.id === tablePage[1]))
       return sendJson(res, 404, { error: "桌不存在" });
-    return servePage(res, "index.html");
+    return servePage(req, res, "index.html");
   }
   if (path.startsWith("/match/")) return routeMatchApi(rooms, waiting, req, res, path, query);
-  if (req.method === "GET" && serveWebAsset(res, path.slice(1))) return;
+  if (req.method === "GET" && serveWebAsset(req, res, path.slice(1))) return;
   sendJson(res, 404, { error: `未知路由 ${req.method} ${path}` });
 }
 
