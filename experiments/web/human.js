@@ -26,6 +26,9 @@
   const snapButton = document.getElementById("human-snap");
   const spinDisk = document.getElementById("human-spin");
   const spinDot = document.getElementById("human-spin-dot");
+  const spinDiskBig = document.getElementById("human-spin-big");
+  const spinDotBig = document.getElementById("human-spin-dot-big");
+  const spinRead = document.getElementById("spin-read");
   const noiseInput = document.getElementById("human-noise");
   const fireButton = document.getElementById("human-fire");
   const tableFrame = document.getElementById("table");
@@ -72,8 +75,9 @@
     return { status: res.status, data: await res.json().catch(() => null) };
   }
 
-  function setStatus(text) {
+  function setStatus(text, long) {
     statusEl.textContent = text;
+    statusEl.title = long ?? text; // 单行截断时悬停看全文
   }
 
   /* ---------- SVG 坐标 ---------- */
@@ -191,12 +195,22 @@
     if (!previewGroup) return;
     previewGroup.replaceChildren();
     if (!pv) return;
+    // 首触目标球（母球撞上的第一颗）轨迹亮白突出，其余球压暗
+    const firstContact = (pv.events ?? []).find(
+      (e) => e.kind === "ball-ball" && (e.a === "cue" || e.b === "cue"),
+    );
+    const firstBall = firstContact
+      ? firstContact.a === "cue"
+        ? firstContact.b
+        : firstContact.a
+      : null;
     for (const [id, pts] of Object.entries(pv.paths ?? {})) {
       if (!Array.isArray(pts) || pts.length < 2) continue;
       const points = pts.map(([x, y]) => `${x},${y}`).join(" ");
       previewGroup.appendChild(
         P.el("polyline", {
-          class: id === "cue" ? "human-path-cue" : "human-path",
+          class:
+            id === "cue" ? "human-path-cue" : id === firstBall ? "human-path-first" : "human-path",
           points,
         }),
       );
@@ -362,9 +376,9 @@
     setAngle((Math.atan2(-(t.ghost.y - cue.y), t.ghost.x - cue.x) * 180) / Math.PI);
   }
 
-  /* ---------- 击球点（spin）圆盘 ---------- */
-  function setSpinFromDisk(event) {
-    const rect = spinDisk.getBoundingClientRect();
+  /* ---------- 击球点（spin）圆盘：侧栏大盘 + 全屏小盘，同步同一状态 ---------- */
+  function setSpinFromDisk(disk, event) {
+    const rect = disk.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
     const maxR = rect.width / 2;
@@ -383,12 +397,25 @@
     schedulePreview();
   }
 
+  function spinDesc(s) {
+    if (!s) return "中心";
+    const parts = [];
+    if (s.y > 0.03) parts.push(`高杆 +${s.y.toFixed(2)}`);
+    else if (s.y < -0.03) parts.push(`低杆 ${s.y.toFixed(2)}`);
+    if (s.z > 0.03) parts.push(`右塞 +${s.z.toFixed(2)}`);
+    else if (s.z < -0.03) parts.push(`左塞 ${s.z.toFixed(2)}`);
+    return parts.length ? parts.join(" · ") : "中心";
+  }
+
   function updateSpinDot() {
     const s = state.spin;
     const pctX = s ? (s.z / SPIN_MAX) * 42 : 0;
     const pctY = s ? (-s.y / SPIN_MAX) * 42 : 0;
-    spinDot.style.left = `${50 + pctX}%`;
-    spinDot.style.top = `${50 + pctY}%`;
+    for (const dot of [spinDot, spinDotBig]) {
+      dot.style.left = `${50 + pctX}%`;
+      dot.style.top = `${50 + pctY}%`;
+    }
+    spinRead.textContent = spinDesc(s);
   }
 
   /* ---------- 回合状态机 ---------- */
@@ -417,7 +444,7 @@
         setAngle((Math.atan2(-(apex.y - cue.y), apex.x - cue.x) * 180) / Math.PI);
         setPower(0.85);
       }
-      setStatus("轮到你 · 开球：瞄准球堆，力度已调至 0.85");
+      setStatus("▶ 你 · 开球", "轮到你开球：瞄准球堆，力度已调至 0.85");
     } else {
       const cue = cueBall();
       if (cue && state.target) {
@@ -428,7 +455,7 @@
       }
       const group =
         data.yourGroup === "stripes" ? "花色" : data.yourGroup === "solids" ? "全色" : "开放";
-      setStatus(`轮到你 · 目标组 ${group} · 点击球选目标，拖拽瞄准`);
+      setStatus(`▶ 你 · ${group}组`, "轮到你。点击球选目标，拖拽瞄准；金线=纯物理预演");
     }
     groups();
     drawAim();
@@ -458,7 +485,7 @@
       if (waiting === state.seat && !state.active) {
         await activate();
       } else if (waiting !== state.seat && state.active) {
-        const opp = waiting ? `等待 ${data.seats?.[waiting] ?? waiting} 出杆…` : "等待对局推进…";
+        const opp = waiting ? `等 ${data.seats?.[waiting] ?? waiting} 出杆…` : "等对局推进…";
         deactivate(opp);
       }
     } catch {
@@ -499,6 +526,7 @@
       return;
     }
     setStatus(
+      noiseInput.checked ? "已出杆 · 金=预演 橙=实际" : "已出杆 · 纯物理",
       noiseInput.checked
         ? "已出杆 · 金线=预演，橙线=实际（手感噪声后的真实轨迹）"
         : "已出杆 · 纯物理：实际轨迹应与预演金线重合",
@@ -511,7 +539,7 @@
     const name = nameInput.value.trim();
     if (!name) {
       nameInput.focus();
-      setStatus("先填一个身份名（跨局手感记忆绑定它）");
+      setStatus("先填名字", "先填一个身份名——跨局手感记忆绑定它");
       return;
     }
     state.name = name;
@@ -531,10 +559,11 @@
     joinButton.textContent = "已入座";
     joinButton.disabled = true;
     nameInput.disabled = true;
-    const clock =
-      data.shotClockMs > 0 ? `出杆限时 ${Math.round(data.shotClockMs / 1000)}s` : "不限时";
-    const tableInfo = state.table ? `${state.table} 桌 · ` : "";
-    setStatus(`已入座 ${tableInfo}${data.seat} 位 · ${clock} · 等待轮到你`);
+    const clock = data.shotClockMs > 0 ? `限时 ${Math.round(data.shotClockMs / 1000)}s` : "不限时";
+    setStatus(
+      `${state.table ? `${state.table} · ` : ""}${data.seat} 席 · ${clock}`,
+      `已入座 ${data.seat} 位，出杆${clock}，等待轮到你`,
+    );
   }
 
   function onNewSession() {
@@ -546,7 +575,7 @@
     snapButton.disabled = true;
     drawAim();
     drawPreview(null);
-    if (state.joined) setStatus("新局开始 · 等待轮到你…");
+    if (state.joined) setStatus("新局 · 等回合", "新局开始，等待轮到你");
   }
 
   /* ---------- 键盘微调 ---------- */
@@ -610,7 +639,11 @@
     powerInput.addEventListener("input", () => setPower(Number(powerInput.value)));
     spinDisk.addEventListener("pointerdown", (event) => {
       event.preventDefault();
-      setSpinFromDisk(event);
+      setSpinFromDisk(spinDisk, event);
+    });
+    spinDiskBig.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      setSpinFromDisk(spinDiskBig, event);
     });
     P.onSession(onNewSession);
     setInterval(() => void poll(), POLL_MS);

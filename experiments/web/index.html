@@ -12,53 +12,54 @@
     <h1>PoolHall · 中式八球对局</h1>
     <div class="meta" id="meta">连接中...</div>
   </div>
+  <div class="controls" role="toolbar" aria-label="对局与播放控制">
+    <button class="control primary server-control" id="new-match" type="button" disabled title="开新的一局">＋ 新局</button>
+    <button class="control" id="pause-playback" type="button" disabled title="暂停/继续">Ⅱ</button>
+    <button class="control" id="replay-match" type="button" disabled title="重新播放本局">↻</button>
+    <select class="control-field" id="playback-speed" aria-label="播放速度">
+      <option value="0.5">0.5×</option><option value="1" selected>1×</option>
+      <option value="2">2×</option><option value="4">4×</option>
+    </select>
+    <label class="control-label server-control" for="max-shots" title="最大杆数">上限
+      <input class="control-field" id="max-shots" type="number" min="1" max="120" value="60" inputmode="numeric"/>
+    </label>
+    <div class="control-spacer"></div>
+    <button class="control" id="fullscreen-table" type="button" title="全屏球桌">⛶</button>
+    <span class="control-status" id="control-status" role="status" aria-live="polite">等待连接</span>
+  </div>
   <div class="status" id="status">⏳ 等待连接</div>
 </header>
 
 <div class="main">
   <div>
     <div class="stage" id="stage">
-    <div class="controls" role="toolbar" aria-label="对局与播放控制">
-      <button class="control primary server-control" id="new-match" type="button" disabled>＋ 开新一局</button>
-      <button class="control" id="pause-playback" type="button" disabled>Ⅱ 暂停</button>
-      <button class="control" id="replay-match" type="button" disabled>↻ 重新播放</button>
-      <label class="control-label" for="playback-speed">速度
-        <select class="control-field" id="playback-speed" aria-label="播放速度">
-          <option value="0.5">0.5×</option><option value="1" selected>1×</option>
-          <option value="2">2×</option><option value="4">4×</option>
-        </select>
-      </label>
-      <label class="control-label server-control" for="max-shots">最大杆数
-        <input class="control-field" id="max-shots" type="number" min="1" max="120" value="60" inputmode="numeric"/>
-      </label>
-      <div class="control-spacer"></div>
-      <button class="control" id="fullscreen-table" type="button">⛶ 全屏球桌</button>
-      <span class="control-status" id="control-status" role="status" aria-live="polite">等待连接</span>
-    </div>
     <div class="human-bar" id="human-bar" hidden>
-      <label class="human-who" for="human-name">名字
-        <input class="control-field" id="human-name" type="text" maxlength="24"
-               placeholder="你的身份名" autocomplete="off"/>
-      </label>
-      <button class="control" id="human-join" type="button">🪑 入座</button>
-      <span class="human-status" id="human-status" role="status" aria-live="polite">观战中（入座后可打球）</span>
-      <span class="human-read">角 <b id="human-angle" title="拖动微调角度（←→ 或 Shift 精调）">0.0°</b></span>
-      <span class="human-read">切角 <b id="human-cut" title="目标球→袋口 与 目标球→母球 的夹角">—</b></span>
-      <label class="human-power-label" for="human-power">力
-        <input class="human-power" id="human-power" type="range" min="0" max="1" step="0.01" value="0.5"
-               aria-label="出杆力度"/>
-      </label>
-      <span class="human-read"><b id="human-power-v">0.50</b></span>
-      <button class="human-spin" id="human-spin" type="button" title="击球点：上=高杆 下=低杆 左右=加塞；点中心清零"
-              aria-label="击球点选择">
-        <span class="human-spin-dot" id="human-spin-dot"></span>
-      </button>
-      <button class="control" id="human-snap" type="button" disabled>◎ 对准 ghost</button>
-      <label class="human-clean" for="human-noise"
-             title="不勾=纯物理（所见即所得，练理论用）；勾上=注入手感噪声——你也有了一双会抖的手">
-        <input type="checkbox" id="human-noise"/> 手感注入
-      </label>
-      <button class="control primary" id="human-fire" type="button" disabled>🎱 出杆</button>
+      <div class="human-row">
+        <label class="human-who" for="human-name">名字
+          <input class="control-field" id="human-name" type="text" maxlength="24"
+                 placeholder="你的身份名" autocomplete="off"/>
+        </label>
+        <button class="control" id="human-join" type="button">🪑 入座</button>
+        <span class="human-status" id="human-status" role="status" aria-live="polite"
+              title="入座后可打球">观战</span>
+        <span class="human-read">角 <b id="human-angle" title="拖动微调角度（←→ 或 Shift 精调）">0.0°</b></span>
+        <span class="human-read">切角 <b id="human-cut" title="目标球→袋口 与 目标球→母球 的夹角">—</b></span>
+        <label class="human-power-label" for="human-power">力
+          <input class="human-power" id="human-power" type="range" min="0" max="1" step="0.01" value="0.5"
+                 aria-label="出杆力度"/>
+        </label>
+        <span class="human-read"><b id="human-power-v">0.50</b></span>
+        <button class="control" id="human-snap" type="button" disabled title="对准 ghost（把瞄准角设为目标 ghost 位方向）">◎ ghost</button>
+        <button class="human-spin" id="human-spin" type="button" title="击球点：上=高杆 下=低杆 左右=加塞；点中心清零"
+                aria-label="击球点选择">
+          <span class="human-spin-dot" id="human-spin-dot"></span>
+        </button>
+        <label class="human-clean" for="human-noise"
+               title="不勾=纯物理（所见即所得，练理论用）；勾上=注入手感噪声——你也有了一双会抖的手">
+          <input type="checkbox" id="human-noise"/> 噪声
+        </label>
+        <button class="control primary" id="human-fire" type="button" disabled title="出杆（Enter 同效）">出杆</button>
+      </div>
     </div>
     <div class="table-frame" id="table">
       <div class="placeholder">球台将在第一杆时激活</div>
@@ -66,13 +67,13 @@
     <div class="caption" id="caption" aria-live="polite"></div>
     </div>
     <div class="legend">
-      <span><i style="background:var(--A)"></i>A 选手</span>
-      <span><i style="background:var(--B)"></i>B 选手</span>
+      <span><i style="background:var(--A)"></i>A</span>
+      <span><i style="background:var(--B)"></i>B</span>
       <span><i style="background:var(--pot)"></i>进球</span>
       <span><i style="background:var(--miss)"></i>未中/犯规</span>
-      <span><i style="background:rgba(58,92,128,.9)"></i>预测线（AI 计划）</span>
+      <span><i style="background:rgba(58,92,128,.9)"></i>AI 计划</span>
       <span><i style="background:#E8872D"></i>实际轨迹</span>
-      <span><i style="background:#F5E6B8"></i>人类预演（纯物理）</span>
+      <span><i style="background:#F5E6B8"></i>预演·纯物理</span>
     </div>
   </div>
 
@@ -86,6 +87,19 @@
         <div><div class="v" id="kpi-B">0</div><div class="sub">B 进球</div></div>
       </div>
     </div>
+    <section class="spin-panel" aria-label="击球点">
+      <div class="section-head">
+        <h2>击球点</h2>
+        <span class="spin-read" id="spin-read">中心</span>
+      </div>
+      <div class="spin-disk-big" id="human-spin-big"
+           title="点击白球截面选点：上=高杆 下=低杆 左右=加塞；点中心清零"
+           role="button" tabindex="0" aria-label="击球点选择（大盘）">
+        <span class="spin-label spin-label-top">高杆</span>
+        <span class="spin-label spin-label-bottom">低杆</span>
+        <span class="human-spin-dot" id="human-spin-dot-big"></span>
+      </div>
+    </section>
     <section class="ai-panel" aria-labelledby="ai-plan-title">
       <div class="section-head">
         <h2 id="ai-plan-title">AI 本杆思路</h2>

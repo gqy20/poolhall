@@ -57,6 +57,10 @@ describe("实时对局前端", () => {
     expect(humanJs).toContain("globalThis.POOLHALL");
     expect(humanJs).toContain('document.getElementById("human-fire")');
     expect(humanJs).toContain("human-path-cue");
+    // 首触目标球轨迹突出 + 击球点双盘（侧栏大盘 + 全屏小盘）同步
+    expect(humanJs).toContain("human-path-first");
+    expect(humanJs).toContain("spinDiskBig");
+    expect(humanJs).toContain("spinDesc");
     expect(humanJs).toContain("updateCueStick");
     // index.html：控件 id 齐全（含人类操作条）
     expect(html).toContain('id="new-match"');
@@ -73,6 +77,8 @@ describe("实时对局前端", () => {
     expect(html).toContain('id="human-power"');
     expect(html).toContain('id="human-spin"');
     expect(html).toContain('id="human-noise"');
+    expect(html).toContain('id="human-spin-big"');
+    expect(html).toContain('id="spin-read"');
     // style.css：原样式迁移 + 人类层样式
     expect(css).toContain("background: var(--bg)");
     expect(css).toContain("tableShake");
@@ -80,7 +86,9 @@ describe("实时对局前端", () => {
     expect(css).toContain("capPop");
     expect(css).toContain(".human-bar");
     expect(css).toContain(".human-path-cue");
+    expect(css).toContain(".human-path-first");
     expect(css).toContain(".human-ghost");
+    expect(css).toContain(".spin-disk-big");
   });
 
   it("公开 JSONL 可生成无网络依赖的自包含 HTML", async () => {

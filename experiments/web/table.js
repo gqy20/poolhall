@@ -349,7 +349,7 @@ function renderPublicPlan(shot) {
   planRisk.textContent = plan?.risk ?? "未记录风险判断";
   const confidence = { low: "低", medium: "中", high: "高" }[plan?.confidence] ?? "未标注";
   planConfidence.innerHTML = `<span class="confidence"><i></i>${confidence}</span>`;
-  planReview.textContent = "本杆结束后显示复盘";
+  planReview.textContent = "结束后复盘";
 }
 
 async function renderShot(s, generation) {
@@ -403,7 +403,7 @@ async function renderShot(s, generation) {
   const cls = s.scratch ? "miss" : s.foul ? "foul" : s.pottedBalls?.length > 0 ? "pot" : "";
   lastEventEl.textContent = `第 ${displayShot} 杆 · ${s.by} ${label}`;
   planReview.textContent = s.review;
-  aiPhase.textContent = "本杆已复盘";
+  aiPhase.textContent = "已复盘";
   appendLog(
     s.by,
     `第${displayShot}杆 ${s.targetBall ?? "?"}→${s.targetPocket ?? "?"} 瞄${(s.intentAngle ?? 0).toFixed(0)}° ${label}`,
@@ -1038,7 +1038,7 @@ function beginSession(msg) {
   cancelAnimation();
   playback = Promise.resolve();
   paused = false;
-  pauseButton.textContent = "Ⅱ 暂停";
+  pauseButton.textContent = "Ⅱ";
   pauseButton.disabled = false;
   replayButton.disabled = true;
   kpi.shot = 0;
@@ -1048,7 +1048,7 @@ function beginSession(msg) {
   setKpi();
   clearAimFx();
   lastEventEl.textContent = "—";
-  lastEventDetail.textContent = "AI 选择目标后将在这里展示公开计划";
+  lastEventDetail.textContent = "选择目标后展示计划";
   aiPhase.className = "ai-phase";
   aiPhase.textContent = "等待分析";
   planObservation.textContent = "—";
@@ -1056,10 +1056,10 @@ function beginSession(msg) {
   planCue.textContent = "—";
   planRisk.textContent = "—";
   planConfidence.textContent = "—";
-  planReview.textContent = "本杆结束后显示复盘";
+  planReview.textContent = "结束后复盘";
   const empty = document.createElement("div");
   empty.className = "placeholder";
-  empty.textContent = "等待首杆...";
+  empty.textContent = "等首杆…";
   logEl.replaceChildren(empty);
   if (msg.maxShots) maxShotsInput.value = String(msg.maxShots);
 }
@@ -1072,7 +1072,7 @@ function applyControlNotice(msg) {
   if (msg.state === "thinking") {
     aiPhase.className = "ai-phase thinking";
     aiPhase.textContent = msg.message;
-    planReview.textContent = "正在读取局面并形成公开计划";
+    planReview.textContent = "分析局面中…";
   }
 }
 
@@ -1102,7 +1102,7 @@ function handle(msg, record = true) {
     names.A = msg.nameA || "A";
     names.B = msg.nameB || "B";
     if (scene.root) createScene();
-    status.textContent = "🔵 等待首杆";
+    status.textContent = "🔵 等首杆";
     updateScene(null);
     lastPotBy = null;
     potStreak = 0;
@@ -1148,7 +1148,7 @@ let socket = null;
 function togglePause() {
   if (pauseButton.disabled) return;
   paused = !paused;
-  pauseButton.textContent = paused ? "▶ 继续" : "Ⅱ 暂停";
+  pauseButton.textContent = paused ? "▶" : "Ⅱ";
   controlStatus.textContent = paused ? "已暂停" : "播放中";
   showFullscreenControls();
 }
@@ -1207,7 +1207,8 @@ stage.addEventListener("pointermove", showFullscreenControls);
 stage.addEventListener("keydown", showFullscreenControls);
 document.addEventListener("fullscreenchange", () => {
   const active = document.fullscreenElement === stage;
-  fullscreenButton.textContent = active ? "退出全屏" : "⛶ 全屏球桌";
+  fullscreenButton.textContent = "⛶";
+  fullscreenButton.title = active ? "退出全屏" : "全屏球桌";
   stage.classList.toggle("controls-visible", active);
   if (active && !fullscreenButton.matches(":focus-visible")) fullscreenButton.blur();
   if (active) showFullscreenControls();
@@ -1233,7 +1234,7 @@ function connectLive() {
     socket = new WebSocket(`${proto}//${location.hostname}:${wsPort}`);
   }
   socket.addEventListener("open", () => {
-    status.textContent = "🟢 已连接，等待首杆";
+    status.textContent = "🟢 已连接";
     controlStatus.textContent = "已连接";
     newMatchButton.disabled = false;
   });

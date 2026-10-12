@@ -31,13 +31,13 @@ body {
   flex-direction: column;
 }
 header {
-  padding: 16px 24px;
+  padding: 12px 24px;
   border-bottom: 1px solid var(--grid);
   display: flex;
   flex: 0 0 auto;
   justify-content: space-between;
   align-items: center;
-  gap: 24px;
+  gap: 12px 24px;
   flex-wrap: wrap;
 }
 h1 {
@@ -62,11 +62,11 @@ h1 {
 .main {
   min-height: 0;
   flex: 1 1 auto;
-  padding: 16px 24px;
+  padding: 14px 24px;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 400px;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 18px;
   align-items: stretch;
 }
 .play-column {
@@ -90,17 +90,23 @@ h1 {
   position: relative;
   min-width: 0;
 }
+/* 播放/对局控制条：位于标题栏右侧（header 内），不占球台上方独立行 */
 .controls {
-  min-height: 52px;
-  margin-bottom: 10px;
-  padding: 0 0 10px;
+  min-height: 40px;
+  padding: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--grid);
+}
+.controls #pause-playback,
+.controls #replay-match,
+.controls #fullscreen-table {
+  width: 34px;
+  padding: 0;
+  text-align: center;
 }
 .control-spacer {
   flex: 1;
@@ -109,14 +115,14 @@ h1 {
 .control-field {
   min-height: 44px;
   border: 0;
-  border-radius: 5px;
+  border-radius: 6px;
   background: transparent;
   color: var(--ink);
   font: inherit;
   font-weight: 650;
 }
 .control {
-  padding: 0 13px;
+  padding: 0 12px;
   cursor: pointer;
 }
 .control.primary {
@@ -155,19 +161,23 @@ h1 {
   font-weight: 650;
 }
 .control-field {
-  height: 36px;
-  min-height: 36px;
-  padding: 0 5px;
-  border-radius: 0;
-  border-bottom: 1px solid #a9a99f;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(169, 169, 159, 0.55);
+  background: rgba(27, 77, 62, 0.04);
   font-family: "JetBrains Mono", monospace;
   font-variant-numeric: tabular-nums;
 }
+.control-field:hover:not(:disabled) {
+  background: rgba(27, 77, 62, 0.08);
+}
 #max-shots {
-  width: 68px;
+  width: 58px;
 }
 #playback-speed {
-  width: 64px;
+  width: 66px;
 }
 .control-status {
   min-width: 84px;
@@ -191,39 +201,7 @@ body.offline .server-control {
   max-height: calc(100vh - 24px);
   margin: auto;
 }
-.stage:fullscreen .controls {
-  position: fixed;
-  left: 50%;
-  bottom: max(16px, env(safe-area-inset-bottom));
-  z-index: 10;
-  width: max-content;
-  max-width: calc(100vw - 24px);
-  margin: 0;
-  padding: 6px;
-  border-color: #4b4e4c;
-  background: #232624;
-  color: #fff;
-  opacity: 0;
-  transform: translate(-50%, 12px);
-  transition:
-    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-.stage:fullscreen.controls-visible .controls,
-.stage:fullscreen .controls:focus-within {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
-.stage:fullscreen .control:not(.primary),
-.stage:fullscreen .control-field {
-  background: #303431;
-  border-color: #5d625e;
-  color: #fff;
-}
-.stage:fullscreen .control-label,
-.stage:fullscreen .control-status {
-  color: #e4e8e5;
-}
+/* 控制条已移至 header（stage 外），全屏时不可达；人类操作条仍留在 stage 内由下方规则处理 */
 .legend {
   padding: 8px 12px;
   font-size: 12px;
@@ -406,7 +384,6 @@ body.offline .server-control {
 }
 .kpi {
   padding: 4px 4px 16px;
-  border-bottom: 1px solid var(--grid);
 }
 .kpi h3 {
   margin: 0 0 6px;
@@ -436,7 +413,6 @@ body.offline .server-control {
   max-height: 42%;
   padding: 12px 4px 14px;
   overflow-y: auto;
-  border-bottom: 1px solid var(--grid);
 }
 .section-head {
   display: flex;
@@ -655,15 +631,23 @@ body.offline .server-control {
 /* ---------- 人类球杆层（human.js）：入座 · 瞄准 · 力度 · 击球点 · 预演 ---------- */
 .human-bar {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  min-height: 44px;
-  margin-bottom: 10px;
-  padding: 8px 0 10px;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+  padding: 0;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--grid);
+}
+.human-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  min-height: 36px;
+}
+.human-row .control {
+  padding: 0 8px;
+  min-height: 36px;
 }
 .human-bar[hidden] {
   display: none;
@@ -677,14 +661,18 @@ body.offline .server-control {
   font-weight: 650;
 }
 .human-who .control-field {
-  width: 108px;
+  width: 88px;
   height: 32px;
   min-height: 32px;
 }
 .human-status {
   color: var(--ink-soft);
   font-size: 12px;
-  min-width: 132px;
+  min-width: 60px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .human-read {
   font-family: "JetBrains Mono", monospace;
@@ -722,7 +710,7 @@ body.offline .server-control {
 input[type="range"].human-power {
   -webkit-appearance: none;
   appearance: none;
-  width: 150px;
+  width: 110px;
   height: 6px;
   border-radius: 3px;
   background: linear-gradient(90deg, #a9c7b4, var(--felt));
@@ -768,6 +756,71 @@ input[type="range"].human-power:disabled {
 .human-spin:focus-visible {
   outline: 3px solid #a9d8c5;
   outline-offset: 2px;
+}
+/* 击球点选择：侧栏大盘（常规模式）+ 操作条小盘（仅全屏可见） */
+#human-spin {
+  display: none;
+}
+.stage:fullscreen #human-spin {
+  display: block;
+}
+.spin-panel {
+  padding: 10px 4px 16px;
+}
+.spin-read {
+  color: var(--ink-soft);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.spin-disk-big {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  margin: 4px auto 2px;
+  border-radius: 50%;
+  background: #fafaf7;
+  border: 2px solid #343a3d;
+  cursor: crosshair;
+}
+.spin-disk-big::before,
+.spin-disk-big::after {
+  content: "";
+  position: absolute;
+  background: rgba(20, 24, 22, 0.16);
+}
+.spin-disk-big::before {
+  left: 50%;
+  top: 8%;
+  bottom: 8%;
+  width: 1px;
+  transform: translateX(-50%);
+}
+.spin-disk-big::after {
+  top: 50%;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+.spin-disk-big:focus-visible {
+  outline: 3px solid #a9d8c5;
+  outline-offset: 3px;
+}
+.spin-label {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+.spin-label-top {
+  top: 6%;
+}
+.spin-label-bottom {
+  bottom: 6%;
 }
 .human-spin::before,
 .human-spin::after {
@@ -819,7 +872,7 @@ input[type="range"].human-power:disabled {
   height: 15px;
   cursor: pointer;
 }
-/* SVG：人类瞄准与预演（金=预演知层，橙=实际轨迹，蓝=AI 计划） */
+/* SVG：人类瞄准与预演（金=预演知层，橙=实际轨迹，蓝=AI 计划；首触目标球亮白突出） */
 .human-layer {
   pointer-events: none;
 }
@@ -840,8 +893,13 @@ input[type="range"].human-power:disabled {
   stroke-dasharray: 0.014 0.012;
 }
 .human-path {
-  stroke: rgba(235, 242, 238, 0.42);
-  stroke-width: 0.0024;
+  stroke: rgba(235, 242, 238, 0.26);
+  stroke-width: 0.002;
+  fill: none;
+}
+.human-path-first {
+  stroke: rgba(247, 244, 238, 0.85);
+  stroke-width: 0.004;
   fill: none;
 }
 .human-path-cue {
@@ -884,18 +942,36 @@ body.offline .human-bar {
 .stage:fullscreen .human-bar {
   position: fixed;
   left: 50%;
-  bottom: 68px;
+  bottom: max(12px, env(safe-area-inset-bottom));
   z-index: 11;
   transform: translateX(-50%);
   margin: 0;
-  padding: 8px 12px;
+  padding: 6px 12px;
   border: 0;
-  border-radius: 8px;
-  background: #232624;
+  border-radius: 10px;
+  background: rgba(35, 38, 36, 0.92);
   color: #fff;
   opacity: 0;
   max-width: calc(100vw - 24px);
   transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* 全屏底部信息强制单行：不遮球桌 */
+.stage:fullscreen .human-row {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+.stage:fullscreen .human-row > * {
+  flex-shrink: 0;
+}
+.stage:fullscreen .human-row .control {
+  min-height: 34px;
+  padding: 0 8px;
+}
+.stage:fullscreen input[type="range"].human-power {
+  width: 72px;
+}
+.stage:fullscreen .human-status {
+  max-width: 92px;
 }
 .stage:fullscreen.controls-visible .human-bar,
 .stage:fullscreen .human-bar:focus-within {
