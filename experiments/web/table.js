@@ -11,8 +11,8 @@ const R = 0.028575;
 const CUE_LENGTH = 1.4;
 const svgNS = "http://www.w3.org/2000/svg";
 const kpi = { shot: 0, turn: "-", A: 0, B: 0 };
-/** 已进袋球（按选手累积，进球顺序）——台边球带数据源 */
-const pottedBy = { A: [], B: [] };
+/** 已进袋球（按花色归属：1-7 全色 / 9-15 花色 / 8 黑）——台边球带数据源；不管谁打进的 */
+const pottedGroups = { solids: [], stripes: [], eight: [] };
 const embeddedEvents = globalThis.POOLHALL_EVENTS;
 let playbackSpeed = Array.isArray(embeddedEvents) ? 4 : 1;
 let paused = false;
@@ -371,7 +371,7 @@ function setKpi() {
   document.getElementById("kpi-B").textContent = kpi.B;
 }
 
-/* 已进袋球带：小色球（纯色/花色样式与台面一致） */
+/* 已进袋球带：按花色归属展示（1-7 全色 / 9-15 花色 / 8 黑居中） */
 function pottedChip(id) {
   const spec = ballSpec(id);
   if (!spec) return null;
@@ -383,11 +383,12 @@ function pottedChip(id) {
 }
 
 function renderPottedStrip() {
-  for (const side of ["A", "B"]) {
-    const host = document.getElementById(`potted-balls-${side}`);
-    host.replaceChildren(...pottedBy[side].map((id) => pottedChip(id)).filter(Boolean));
-    document.getElementById(`potted-name-${side}`).textContent = names[side] ?? side;
-  }
+  const solids = document.getElementById("potted-balls-A");
+  const stripes = document.getElementById("potted-balls-B");
+  const eight = document.getElementById("potted-balls-8");
+  solids.replaceChildren(...pottedGroups.solids.map((id) => pottedChip(id)).filter(Boolean));
+  stripes.replaceChildren(...pottedGroups.stripes.map((id) => pottedChip(id)).filter(Boolean));
+  eight.replaceChildren(...pottedGroups.eight.map((id) => pottedChip(id)).filter(Boolean));
 }
 
 function appendLog(by, text, cls) {
@@ -448,7 +449,11 @@ async function renderShot(s, generation) {
   if (s.pottedBalls?.length > 0) {
     if (s.by === "A") kpi.A += s.pottedBalls.length;
     else kpi.B += s.pottedBalls.length;
-    pottedBy[s.by].push(...s.pottedBalls);
+    for (const id of s.pottedBalls) {
+      if (id === "8") pottedGroups.eight.push(id);
+      else if (Number(id) <= 7) pottedGroups.solids.push(id);
+      else pottedGroups.stripes.push(id);
+    }
     renderPottedStrip();
     if (!s.foul) {
       const balls = s.pottedBalls.join("、");
@@ -1123,8 +1128,9 @@ function beginSession(msg) {
   kpi.turn = "-";
   kpi.A = 0;
   kpi.B = 0;
-  pottedBy.A = [];
-  pottedBy.B = [];
+  pottedGroups.solids = [];
+  pottedGroups.stripes = [];
+  pottedGroups.eight = [];
   renderPottedStrip();
   setKpi();
   clearAimFx();
@@ -1363,6 +1369,7 @@ globalThis.POOLHALL = {
   R,
   updateScene,
   updateCueStick,
+  pocketR: (id) => (id.startsWith("c") ? POCKET_R_SIDE : POCKET_R_CORNER),
   table: {
     get w() {
       return TABLE_W;

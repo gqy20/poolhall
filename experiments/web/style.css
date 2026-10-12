@@ -224,11 +224,9 @@ body.offline .server-control {
 .potted-name {
   font-size: 12px;
   font-weight: 700;
-  color: var(--A);
+  color: var(--ink-soft);
   flex: 0 0 auto;
-}
-.potted-side-b .potted-name {
-  color: var(--B);
+  font-family: "JetBrains Mono", monospace;
 }
 .potted-balls {
   display: flex;

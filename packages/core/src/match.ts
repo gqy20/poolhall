@@ -9,7 +9,8 @@
  * - 判负：提前进 8；打 8 时 scratch；打 8 未进且犯规（v1 简化：只做前两条）
  * - 犯规 v1 只判两类：scratch（母球进袋，换人+母球重置开球点）、首触错组/错打8
  *   （首触从 events 首个 ball-ball 事件读取）
- * - 自由球 v1 简化：不做任意摆位，scratch 后母球重置开球点（被挡时向右顺延）
+ * - 自由球：scratch 后下手方 ballInHand=true，可拖放母球到任意合法位置再出杆
+ *   （不摆位则默认开球点，向后兼容 oracle/llm）
  *
  * 双选手各自 hand model（bias 独立）——"读对手 bias"心理层的地基。
  */
@@ -41,6 +42,8 @@ export interface MatchObserve {
   shot: number;
   /** 当前该谁打 */
   turn: PlayerId;
+  /** 自由球：上一杆 scratch，当前选手可拖放母球摆位 */
+  ballInHand: boolean;
   /** 第一杆使用独立开球策略，不按普通选球进袋处理 */
   breakShot: boolean;
   /** 你是哪组（观察永远以当前选手视角给出）*/
@@ -240,6 +243,7 @@ export class MatchSession {
   private balls: Ball[];
   private shotIdx = 0;
   private turn: PlayerId = "A";
+  private inHand = false;
   private groupA: Group = "open";
   private groupB: Group = "open";
   private pottedSolids: string[] = [];
@@ -298,6 +302,7 @@ export class MatchSession {
       kind: "match-observe",
       shot: this.shotIdx,
       turn: this.turn,
+      ballInHand: this.inHand,
       breakShot: this.shotIdx === 0,
       you: this.turn,
       yourGroup: this.turn === "A" ? this.groupA : this.groupB,
@@ -376,6 +381,8 @@ export class MatchSession {
     angle: number;
     power: number;
     spin?: { x: number; y: number; z: number };
+    /** 自由球摆位（仅 ballInHand 时合法） */
+    cue?: { x: number; y: number };
   }): MatchPreview {
     if (this.finished) throw new Error("对局已结束");
     const balls = this.balls.map((b) => ({
@@ -385,6 +392,11 @@ export class MatchSession {
       w: { ...b.w },
     }));
     const cue = balls.find((b) => b.id === "cue")!;
+    if (intent.cue) {
+      if (!this.inHand) throw new Error("当前不是自由球，不允许摆位");
+      this.validateCueSpot(intent.cue, balls);
+      cue.pos = vec2(intent.cue.x, intent.cue.y);
+    }
     strike(cue, intent.angle, Math.min(1, Math.max(0, intent.power)), intent.spin);
     const r = simulate(balls, this.table);
 
@@ -408,6 +420,37 @@ export class MatchSession {
       scratch,
       finalPos,
     };
+  }
+
+  /** 摆位合法性校验（自由球）：界内、不与其他球重叠、不在袋口判定区 */
+  private validateCueSpot(pos: { x: number; y: number }, balls: Ball[]): void {
+    const R = DEFAULT_BALL.R;
+    if (pos.x < R || pos.x > this.table.width - R || pos.y < R || pos.y > this.table.height - R)
+      throw new Error("摆位越界（球体须在台面内）");
+    for (const b of balls) {
+      if (b.pocketed || b.id === "cue") continue;
+      if (Math.hypot(b.pos.x - pos.x, b.pos.y - pos.y) < 2 * R - 1e-9)
+        throw new Error(`摆位与 ${b.id} 号球重叠`);
+    }
+    for (const pk of this.table.pockets) {
+      if (Math.hypot(pk.center.x - pos.x, pk.center.y - pos.y) < pk.r)
+        throw new Error("摆位落在袋口判定区内");
+    }
+  }
+
+  /** 自由球权（公开状态；入座层预检用） */
+  get ballInHand(): boolean {
+    return this.inHand;
+  }
+
+  /** 摆位预检：返回错误文案或 null（入座层用，不抛异常） */
+  checkCueSpot(pos: { x: number; y: number }): string | null {
+    try {
+      this.validateCueSpot(pos, this.balls);
+      return null;
+    } catch (e) {
+      return (e as Error).message;
+    }
   }
 
   /** 开球专用意图：从开球区中央直击顶球，不指定球袋。 */
@@ -436,12 +479,20 @@ export class MatchSession {
       power: number;
       spin?: { x: number; y: number; z: number };
     },
-    opts?: { clean?: boolean },
+    opts?: { clean?: boolean; cue?: { x: number; y: number } },
   ): MatchShotResult {
     if (this.finished) throw new Error("对局已结束");
     const idx = this.shotIdx;
     const isBreak = idx === 0;
     const by = this.turn;
+    // 自由球摆位（仅上一杆 scratch 后合法）；无论是否摆位，本杆消耗自由球权
+    if (opts?.cue) {
+      if (!this.inHand) throw new Error("当前不是自由球，不允许摆位");
+      this.validateCueSpot(opts.cue, this.balls);
+      const cueSpot = this.balls.find((b) => b.id === "cue")!;
+      cueSpot.pos = vec2(opts.cue.x, opts.cue.y);
+    }
+    this.inHand = false;
     const noise = opts?.clean
       ? { epsAngle: 0, epsPower: 0, biasAt: 0 }
       : noiseAtShot(this.handOf(by), idx, this.seed, this.nameOf(by));
@@ -546,8 +597,9 @@ export class MatchSession {
     }
     this.turn = nextTurn;
 
-    // scratch 母球重置（v1：开球点，被挡向右顺延）
+    // scratch：母球重置默认位（开球点，被挡向右顺延）+ 下手方自由球权（可拖放摆位）
     if (scratch && !this.over_) {
+      this.inHand = true;
       const cueBall = this.balls.find((b) => b.id === "cue")!;
       cueBall.pocketed = false;
       cueBall.pocket = undefined;

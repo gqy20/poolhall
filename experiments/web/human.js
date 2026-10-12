@@ -24,6 +24,7 @@
   const powerInput = document.getElementById("human-power");
   const powerVal = document.getElementById("human-power-v");
   const snapButton = document.getElementById("human-snap");
+  const autoButton = document.getElementById("human-auto");
   const spinDisk = document.getElementById("human-spin");
   const spinDot = document.getElementById("human-spin-dot");
   const spinDiskBig = document.getElementById("human-spin-big");
@@ -44,6 +45,14 @@
     balls: [],
     aimAssists: [],
     breakShot: false,
+    /** 自由球：上一杆 scratch，母球可拖放摆位 */
+    ballInHand: false,
+    /** 已确认的摆位（null = 用服务端默认重置位） */
+    placedCue: null,
+    /** 摆放拖拽中 */
+    placing: false,
+    /** 摆放起始位（不合法时还原用） */
+    placingFrom: null,
     angle: 0,
     power: 0.5,
     spin: null,
@@ -298,6 +307,7 @@
           angle: state.angle,
           power: state.power,
           spin: state.spin ?? undefined,
+          cue: state.placedCue ?? undefined,
         },
         ac.signal,
       );
@@ -343,7 +353,15 @@
     if (event.pointerType === "mouse" && event.button !== 0) return;
     const p = svgPoint(event);
     if (!p) return;
-    state.drag = { x: event.clientX, y: event.clientY, moved: false };
+    const cue = cueBall();
+    // 自由球：按住母球（3R 范围内）进入摆放模式
+    if (state.ballInHand && cue && Math.hypot(p.x - cue.x, p.y - cue.y) < R * 3) {
+      state.placing = true;
+      state.placingFrom = { x: cue.x, y: cue.y };
+      state.drag = null;
+    } else {
+      state.drag = { x: event.clientX, y: event.clientY, moved: false };
+    }
     try {
       tableFrame.setPointerCapture(event.pointerId);
     } catch {
@@ -352,7 +370,13 @@
   }
 
   function onPointerMove(event) {
-    if (!state.active || !state.drag) return;
+    if (!state.active) return;
+    if (state.placing) {
+      const p = svgPoint(event);
+      if (p) moveCueTo(p);
+      return;
+    }
+    if (!state.drag) return;
     if (Math.hypot(event.clientX - state.drag.x, event.clientY - state.drag.y) > 7)
       state.drag.moved = true;
     if (!state.drag.moved) return;
@@ -361,13 +385,79 @@
   }
 
   function onPointerUp(event) {
+    if (state.placing) {
+      state.placing = false;
+      finishPlacement();
+      return;
+    }
     const drag = state.drag;
     state.drag = null;
     if (!drag || !state.active) return;
     if (drag.moved) return;
     const p = svgPoint(event);
     const ball = p ? pointerBall(p) : null;
-    if (ball && ball.id !== "cue") selectTarget(ball.id);
+    if (ball && ball.id !== "cue") {
+      selectTarget(ball.id);
+      return;
+    }
+    // 自由球：点空处直接落点
+    if (state.ballInHand && p && !ball) tryPlaceCue(p);
+  }
+
+  /* ---------- 自由球摆放 ---------- */
+  function cueSpotError(x, y) {
+    if (x < R || x > P.table.w - R || y < R || y > P.table.h - R) return "越界";
+    for (const b of state.balls) {
+      if (b.id === "cue") continue;
+      if (Math.hypot(b.x - x, b.y - y) < 2 * R - 1e-9) return `与 ${b.id} 号球重叠`;
+    }
+    for (const [id, pk] of Object.entries(P.scene.pockets ?? {})) {
+      if (Math.hypot(pk.x - x, pk.y - y) < P.pocketR(id)) return "落在袋口区";
+    }
+    return null;
+  }
+
+  function moveCueTo(p) {
+    const x = Math.min(P.table.w - R, Math.max(R, p.x));
+    const y = Math.min(P.table.h - R, Math.max(R, p.y));
+    const cue = cueBall();
+    if (!cue) return;
+    cue.x = x;
+    cue.y = y;
+    P.updateScene(Object.fromEntries(state.balls.map((b) => [b.id, { x: b.x, y: b.y }])));
+    drawAim();
+  }
+
+  function tryPlaceCue(p) {
+    const x = Math.min(P.table.w - R, Math.max(R, p.x));
+    const y = Math.min(P.table.h - R, Math.max(R, p.y));
+    const err = cueSpotError(x, y);
+    if (err) {
+      setStatus("位置不合法", `摆位失败：${err}——须台内、不压球、不入袋口区`);
+      return;
+    }
+    moveCueTo(p);
+    state.placedCue = { x, y };
+    setStatus(`自由球已摆 (${x.toFixed(2)}, ${y.toFixed(2)})`, "再瞄准出杆；不满意可继续拖动母球");
+    schedulePreview();
+  }
+
+  function finishPlacement() {
+    const cue = cueBall();
+    if (!cue || !state.placingFrom) return;
+    const err = cueSpotError(cue.x, cue.y);
+    if (err) {
+      cue.x = state.placingFrom.x;
+      cue.y = state.placingFrom.y;
+      moveCueTo(cue);
+      setStatus("位置不合法，已还原", `摆位失败：${err}——须台内、不压球、不入袋口区`);
+      state.placingFrom = null;
+      return;
+    }
+    state.placedCue = { x: cue.x, y: cue.y };
+    state.placingFrom = null;
+    setStatus(`自由球已摆 (${cue.x.toFixed(2)}, ${cue.y.toFixed(2)})`, "再瞄准出杆；不满意可继续拖动母球");
+    schedulePreview();
   }
 
   function selectTarget(ballId) {
@@ -465,6 +555,8 @@
     state.balls = data.balls ?? [];
     state.aimAssists = data.aimAssists ?? [];
     state.breakShot = data.breakShot;
+    state.ballInHand = data.ballInHand === true;
+    state.placedCue = null;
     state.target = bestAssist();
     ensureBallsVisible();
     if (state.breakShot) {
@@ -486,14 +578,17 @@
       const group =
         data.yourGroup === "stripes" ? "花色" : data.yourGroup === "solids" ? "全色" : "开放";
       setStatus(
-        `▶ 你 · ${group}组`,
-        "轮到你。点击球选目标，拖拽瞄准；a=自动瞄准，Enter=出杆；金线=纯物理预演",
+        state.ballInHand ? "▶ 你 · 自由球" : `▶ 你 · ${group}组`,
+        state.ballInHand
+          ? "母球落袋：拖动母球（或点空处）摆到空位，再瞄准出杆"
+          : "轮到你。点击球选目标，拖拽瞄准；a=自动瞄准，Enter=出杆；金线=纯物理预演",
       );
     }
     groups();
     drawAim();
     fireButton.disabled = false;
     snapButton.disabled = !state.target;
+    autoButton.disabled = false;
     schedulePreview();
   }
 
@@ -501,6 +596,7 @@
     state.active = false;
     fireButton.disabled = true;
     snapButton.disabled = true;
+    autoButton.disabled = true;
     if (message) setStatus(message);
     drawAim();
   }
@@ -551,6 +647,8 @@
       prediction: `瞄 ${state.angle.toFixed(1)}° 力 ${state.power.toFixed(2)}${state.spin ? " 带旋转" : ""}`,
       // 默认纯物理（clean）；勾选「手感注入」后才带噪声
       clean: noiseInput.checked ? undefined : true,
+      // 自由球摆位（仅 ballInHand 时已确认摆放才携带）
+      cue: state.placedCue ?? undefined,
     });
     if (status !== 202) {
       state.active = true;
@@ -565,6 +663,7 @@
         : "已出杆 · 纯物理：实际轨迹应与预演金线重合",
     );
     snapButton.disabled = true;
+    state.placedCue = null;
   }
 
   /* ---------- 入座 ---------- */
@@ -604,6 +703,8 @@
     state.balls = [];
     state.aimAssists = [];
     state.target = null;
+    state.ballInHand = false;
+    state.placedCue = null;
     fireButton.disabled = true;
     snapButton.disabled = true;
     drawAim();

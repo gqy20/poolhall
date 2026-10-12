@@ -84,6 +84,8 @@ export const ExternalShotSchema = z.object({
   prediction: z.string().max(2000).optional(),
   /** 纯物理出杆（人类练习模式：跳过手感注入；casual 入座层信任协议，rated 对局勿用） */
   clean: z.boolean().optional(),
+  /** 自由球摆位（仅 ballInHand 时合法；校验失败 → 服务端报错） */
+  cue: z.object({ x: z.number().finite(), y: z.number().finite() }).optional(),
   /** 完整公开计划（AI 内心戏）：透传到观战面板与回放；缺省回退 prediction 文本 */
   plan: z
     .object({
@@ -109,6 +111,8 @@ export const PreviewSchema = z.object({
       z: z.number().min(-1).max(1),
     })
     .optional(),
+  /** 自由球摆位（仅 ballInHand 时合法；预演按摆位后的母球计算） */
+  cue: z.object({ x: z.number().finite(), y: z.number().finite() }).optional(),
 });
 
 /** 对局循环等待外部出杆的两种结局：收到合法出杆 / 超时（判负原料） */
@@ -414,10 +418,14 @@ export class MatchHttp {
     if (!seat)
       return { status: 404, body: { error: "身份名与本桌席位不符", seats: this.seatNames() } };
     if (session.finished) return { status: 409, body: { error: "对局已结束", ...session.result } };
-    return {
-      status: 200,
-      body: { ok: true, seat, preview: session.preview(parsed.data) },
-    };
+    try {
+      return {
+        status: 200,
+        body: { ok: true, seat, preview: session.preview(parsed.data) },
+      };
+    } catch (e) {
+      return { status: 400, body: { error: (e as Error).message } };
+    }
   }
 
   private routeShot(body: unknown): HttpRoute {
@@ -433,6 +441,13 @@ export class MatchHttp {
     if (session.finished) return { status: 409, body: { error: "对局已结束", ...session.result } };
     if (!this.pending || this.pending.player !== seat) {
       return { status: 409, body: { error: "还没轮到你", turn: session.currentTurn } };
+    }
+    // 摆位预检（防非法 cue 进对局循环导致 shoot 抛异常崩局）
+    if (shot.cue) {
+      if (!session.ballInHand)
+        return { status: 409, body: { error: "当前不是自由球，不允许摆位" } };
+      const err = session.checkCueSpot(shot.cue);
+      if (err) return { status: 400, body: { error: `摆位不合法：${err}` } };
     }
     this.pending.resolve({ kind: "shot", shot });
     return { status: 202, body: { ok: true, by: seat } };

@@ -49,7 +49,9 @@
                  aria-label="出杆力度"/>
         </label>
         <span class="human-read"><b id="human-power-v">0.50</b></span>
-        <button class="control" id="human-snap" type="button" disabled title="对准 ghost（把瞄准角设为目标 ghost 位方向）">◎ ghost</button>
+        <button class="control" id="human-auto" type="button" disabled
+                title="自动瞄准切角最小的球并对准 ghost（a 键同效）">★ 最佳</button>
+        <button class="control" id="human-snap" type="button" disabled title="对准 ghost（把瞄准角设为当前目标的 ghost 位方向）">◎ ghost</button>
         <button class="human-spin" id="human-spin" type="button" title="击球点：上=高杆 下=低杆 左右=加塞；点中心清零"
                 aria-label="击球点选择">
           <span class="human-spin-dot" id="human-spin-dot"></span>
@@ -66,14 +68,15 @@
     </div>
     <div class="caption" id="caption" aria-live="polite"></div>
     </div>
-    <div class="potted-strip" id="potted-strip" aria-label="已进袋球">
+    <div class="potted-strip" id="potted-strip" aria-label="已进袋球（按花色归属）">
       <div class="potted-side" id="potted-A">
-        <span class="potted-name" id="potted-name-A">A</span>
+        <span class="potted-name">1–7</span>
         <span class="potted-balls" id="potted-balls-A"></span>
       </div>
+      <span class="potted-balls" id="potted-balls-8"></span>
       <div class="potted-side potted-side-b" id="potted-B">
-        <span class="potted-name" id="potted-name-B">B</span>
         <span class="potted-balls" id="potted-balls-B"></span>
+        <span class="potted-name">9–15</span>
       </div>
     </div>
     <div class="legend">

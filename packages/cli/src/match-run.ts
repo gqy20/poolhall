@@ -126,6 +126,7 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
     let publicPlan: MatchPublicPlan;
     let prediction: string | null = null;
     let clean = false;
+    let cueSpot: { x: number; y: number } | null = null;
     const spec = isA ? opts.specA : opts.specB;
     if (spec === "external") {
       const external = await externalDecision(opts, session, obs);
@@ -135,6 +136,7 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
       publicPlan = external.plan ?? externalPlan(external.prediction);
       prediction = external.prediction;
       clean = external.clean;
+      cueSpot = external.cue;
     } else if (obs.breakShot) {
       intent = session.breakIntent();
       extra = { targetBall: "1", targetPocket: null };
@@ -156,7 +158,10 @@ export async function runMatch(opts: MatchRunOpts): Promise<{
       extra = { targetBall: best0.ball, targetPocket: best0.pocket };
       publicPlan = oraclePlan(obs, best0.ball, best0.pocket);
     }
-    const rec: MatchShotResult = session.shoot(intent, { clean });
+    const rec: MatchShotResult = session.shoot(intent, {
+      clean,
+      ...(cueSpot ? { cue: cueSpot } : {}),
+    });
     log(opts.out, {
       kind: "shot",
       shot: rec.shot,
@@ -272,6 +277,8 @@ async function externalDecision(
       plan: MatchPublicPlan | null;
       /** 纯物理出杆（人类练习模式） */
       clean: boolean;
+      /** 自由球摆位 */
+      cue: { x: number; y: number } | null;
     }
 > {
   if (!opts.externalShot) throw new Error("spec=external 必须提供 externalShot 回调");
@@ -283,8 +290,10 @@ async function externalDecision(
     }
     return "abort";
   }
-  const cue = obs.balls.find((b) => b.id === "cue")!;
-  const angle = (Math.atan2(-(wait.shot.aimY - cue.y), wait.shot.aimX - cue.x) * 180) / Math.PI;
+  // 角度原点：有摆位时以摆位点为准（aim 点是"摆位点 → aim"射线上的点，不是 observe 里的母球位）
+  const cue0 = obs.balls.find((b) => b.id === "cue")!;
+  const origin = wait.shot.cue ?? cue0;
+  const angle = (Math.atan2(-(wait.shot.aimY - origin.y), wait.shot.aimX - origin.x) * 180) / Math.PI;
   return {
     intent: { angle, power: wait.shot.power, spin: wait.shot.spin },
     targetBall: wait.shot.targetBall,
@@ -292,6 +301,7 @@ async function externalDecision(
     prediction: wait.shot.prediction ?? null,
     plan: wait.shot.plan ?? null,
     clean: wait.shot.clean === true,
+    cue: wait.shot.cue ?? null,
   };
 }
 

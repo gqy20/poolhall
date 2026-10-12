@@ -202,4 +202,37 @@ describe("MatchSession", () => {
     const noisy = s2.shoot(intent);
     expect(noisy.finalPos).not.toEqual(expectFinal.finalPos);
   });
+
+  it("自由球：scratch 后下手方 ballInHand，摆位校验齐全", () => {
+    const s = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
+    // A 直接把母球打进 lb 角袋（clean 无噪声，路径空旷，确定性 scratch）
+    const obs0 = s.observe();
+    const cue0 = obs0.balls.find((b) => b.id === "cue")!;
+    const lb = obs0.pockets.find((p) => p.id === "lb")!;
+    const angle = (Math.atan2(-(lb.y - cue0.y), lb.x - cue0.x) * 180) / Math.PI;
+    const r1 = s.shoot({ angle, power: 1 }, { clean: true });
+    expect(r1.scratch).toBe(true);
+    const obs1 = s.observe();
+    expect(obs1.ballInHand).toBe(true);
+    expect(obs1.turn).toBe("B");
+    // 越界摆位 → 抛错且不影响局面
+    expect(() => s.shoot({ angle: 0, power: 0.3 }, { cue: { x: 10, y: 10 } })).toThrow("越界");
+    expect(s.ballInHand).toBe(true);
+    // 压球摆位 → checkCueSpot 报错
+    const one = obs1.balls.find((b) => b.id === "1")!;
+    expect(s.checkCueSpot({ x: one.x, y: one.y })).toMatch(/重叠/);
+    // 合法摆位 → 母球移到该点，自由球权消耗
+    const spot = { x: 1.2, y: 0.4 };
+    expect(s.checkCueSpot(spot)).toBeNull();
+    const r2 = s.shoot({ angle: 90, power: 0.2 }, { clean: true, cue: spot });
+    expect(r2.finalPos.cue).toBeDefined();
+    expect(s.observe().ballInHand).toBe(false);
+  });
+
+  it("自由球：非 ballInHand 摆位直接抛错", () => {
+    const s = new MatchSession({ seed: 42, nameA: "a", nameB: "b" });
+    expect(() => s.shoot({ angle: 0, power: 0.3 }, { cue: { x: 1, y: 0.5 } })).toThrow(
+      "不是自由球",
+    );
+  });
 });
