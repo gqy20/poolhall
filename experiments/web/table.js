@@ -429,6 +429,14 @@ function renderPublicPlan(shot) {
   planReview.textContent = "结束后复盘";
 }
 
+/* ---------- 动画生命周期：human.js 用（动画播完再激活瞄准，避免瞄准层与动画叠画） ---------- */
+const animHooks = new Set();
+let animatingNow = false;
+function notifyAnim(v) {
+  animatingNow = v;
+  for (const cb of animHooks) cb(v);
+}
+
 async function renderShot(s, generation) {
   const displayShot = s.trial + 1;
   kpi.shot = displayShot;
@@ -444,7 +452,12 @@ async function renderShot(s, generation) {
   document.querySelector(".ai-panel")?.classList.remove("pulse");
   void document.querySelector(".ai-panel")?.offsetWidth;
   document.querySelector(".ai-panel")?.classList.add("pulse");
-  await animateShot(s);
+  notifyAnim(true);
+  try {
+    await animateShot(s);
+  } finally {
+    notifyAnim(false);
+  }
   if (generation !== playbackGeneration) return;
   if (s.pottedBalls?.length > 0) {
     if (s.by === "A") kpi.A += s.pottedBalls.length;
@@ -1154,7 +1167,8 @@ function beginSession(msg) {
 function applyControlNotice(msg) {
   controlStatus.textContent = msg.message;
   // 开新局仅在「正在生成新局」与断线时禁用；对局进行中保持可点（= 打断重开权限）
-  newMatchButton.disabled = msg.state === "starting" || !socket || socket.readyState !== WebSocket.OPEN;
+  newMatchButton.disabled =
+    msg.state === "starting" || !socket || socket.readyState !== WebSocket.OPEN;
   maxShotsInput.disabled = msg.state === "starting";
   if (msg.state === "thinking") {
     aiPhase.className = "ai-phase thinking";
@@ -1372,6 +1386,11 @@ globalThis.POOLHALL = {
   updateScene,
   updateCueStick,
   pocketR: (id) => (id.startsWith("c") ? POCKET_R_SIDE : POCKET_R_CORNER),
+  animating: () => animatingNow,
+  onAnim: (cb) => {
+    animHooks.add(cb);
+    return () => animHooks.delete(cb);
+  },
   table: {
     get w() {
       return TABLE_W;

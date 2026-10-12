@@ -70,6 +70,9 @@ describe("实时对局前端", () => {
     // a 键自动瞄准（切角最小目标 + ghost 对准）；预演轨迹收拢（变化最大的另外 3 颗）
     expect(humanJs).toContain("autoAim");
     expect(humanJs).toContain("pathLength");
+    // 动画生命周期：播完再激活瞄准（human.js 消费）
+    expect(source).toContain("animating");
+    expect(humanJs).toContain("onAnim");
     expect(humanJs).toContain("updateCueStick");
     // index.html：控件 id 齐全（含人类操作条）
     expect(html).toContain('id="new-match"');

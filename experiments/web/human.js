@@ -456,7 +456,10 @@
     }
     state.placedCue = { x: cue.x, y: cue.y };
     state.placingFrom = null;
-    setStatus(`自由球已摆 (${cue.x.toFixed(2)}, ${cue.y.toFixed(2)})`, "再瞄准出杆；不满意可继续拖动母球");
+    setStatus(
+      `自由球已摆 (${cue.x.toFixed(2)}, ${cue.y.toFixed(2)})`,
+      "再瞄准出杆；不满意可继续拖动母球",
+    );
     schedulePreview();
   }
 
@@ -611,7 +614,7 @@
         return;
       }
       const waiting = data.waitingFor;
-      if (waiting === state.seat && !state.active) {
+      if (waiting === state.seat && !state.active && !P.animating()) {
         await activate();
       } else if (waiting !== state.seat && state.active) {
         const opp = waiting ? `等 ${data.seats?.[waiting] ?? waiting} 出杆…` : "等对局推进…";
@@ -813,6 +816,10 @@
       setSpinFromDisk(spinDiskBig, event);
     });
     P.onSession(onNewSession);
+    // 动画播完即尝试激活（不等下一轮轮询）；动画期间激活被 gate 住
+    P.onAnim((busy) => {
+      if (!busy && state.joined) void poll();
+    });
     setInterval(() => void poll(), POLL_MS);
     // 记住名字即自动重连入座（幂等：已在座则返回原席位）
     if (nameInput.value) void join();
